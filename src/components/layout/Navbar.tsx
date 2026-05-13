@@ -206,6 +206,25 @@ export default function Navbar() {
               </button>
             )}
 
+            {/* Messages */}
+            <Link href="/messages" className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
+              style={{
+                color: "var(--text-muted)",
+                background: "transparent",
+                border: "1px solid var(--glass-border)",
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "rgba(108,92,231,0.4)";
+                (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.borderColor = "var(--glass-border)";
+                (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+              }}
+            >
+              <MessageSquare className="w-4 h-4" />
+            </Link>
+
             {/* Notifications */}
             <button className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
               style={{
