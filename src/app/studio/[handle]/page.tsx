@@ -33,12 +33,48 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
       const { data: { user } } = await supabase.auth.getUser();
       setCurrentUser(user);
 
-      // Fetch the profile
-      const { data: profileData } = await supabase
+      let targetHandle = resolvedParams.handle;
+      
+      // If handle is 'me', resolve to the current user's actual handle
+      if (targetHandle === 'me') {
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+        const { data: userMeta } = await supabase.from('users').select('handle').eq('id', user.id).single();
+        if (userMeta?.handle) {
+          targetHandle = userMeta.handle;
+          // Optionally redirect to the canonical URL
+          router.replace(`/studio/${targetHandle}`);
+          return;
+        } else {
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Fetch the profile gracefully handling missing foreign tables if they aren't created yet
+      let profileData: any = null;
+      const { data: fullProfile, error: profileError } = await supabase
         .from('users')
         .select('*, skills(*), feed_posts(*)')
-        .eq('handle', resolvedParams.handle)
-        .single();
+        .eq('handle', targetHandle)
+        .maybeSingle();
+
+      if (profileError) {
+        console.warn("Joined profile fetch failed, attempting base user fetch...", profileError);
+        const { data: baseProfile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('handle', targetHandle)
+          .maybeSingle();
+          
+        if (baseProfile) {
+          profileData = { ...baseProfile, skills: [], feed_posts: [] };
+        }
+      } else {
+        profileData = fullProfile;
+      }
 
       if (!profileData) {
         setLoading(false);
@@ -46,28 +82,31 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
       }
       setProfile(profileData);
 
-      // Fetch follower count
-      const { count: followers } = await supabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('following_id', profileData.id);
-      setFollowerCount(followers || 0);
-
-      // Fetch following count
-      const { count: following } = await supabase
-        .from('follows')
-        .select('*', { count: 'exact', head: true })
-        .eq('follower_id', profileData.id);
-      setFollowingCount(following || 0);
-
-      if (user) {
-        const { data: followRecord } = await supabase
+      // Fetch follower count gracefully
+      try {
+        const { count: followers } = await supabase
           .from('follows')
-          .select('id')
-          .eq('follower_id', user.id)
-          .eq('following_id', profileData.id)
-          .maybeSingle();
-        setIsFollowing(!!followRecord);
+          .select('*', { count: 'exact', head: true })
+          .eq('following_id', profileData.id);
+        setFollowerCount(followers || 0);
+
+        const { count: following } = await supabase
+          .from('follows')
+          .select('*', { count: 'exact', head: true })
+          .eq('follower_id', profileData.id);
+        setFollowingCount(following || 0);
+
+        if (user) {
+          const { data: followRecord } = await supabase
+            .from('follows')
+            .select('id')
+            .eq('follower_id', user.id)
+            .eq('following_id', profileData.id)
+            .maybeSingle();
+          setIsFollowing(!!followRecord);
+        }
+      } catch (e) {
+        console.warn("Follows relation check skipped:", e);
       }
 
       setLoading(false);
