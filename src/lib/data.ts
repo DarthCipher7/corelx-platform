@@ -242,6 +242,7 @@ export const MOCK_FEED_POSTS = [
     mediaUrl: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
     tags: ["UI Design", "Motion", "Concept"],
     saves: 342,
+    category: "UI Design",
   },
   {
     id: "fp2",
@@ -253,6 +254,7 @@ export const MOCK_FEED_POSTS = [
     mediaUrl: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2670&auto=format&fit=crop",
     tags: ["WebGL", "Three.js", "Spotlight"],
     saves: 891,
+    category: "Code",
   },
   {
     id: "fp3",
@@ -263,6 +265,7 @@ export const MOCK_FEED_POSTS = [
     caption: "Series A startup in the AI space needs a motion designer for our rebrand campaign. 4-week engagement. DM with your portfolio if interested.",
     tags: ["Motion Design", "After Effects", "Brand Identity", "Paid Collab"],
     saves: 45,
+    category: "Writing",
   },
   {
     id: "fp4",
@@ -274,6 +277,7 @@ export const MOCK_FEED_POSTS = [
     mediaUrl: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=2564&auto=format&fit=crop",
     tags: ["3D Art", "Blender", "WebGL"],
     saves: 1205,
+    category: "3D",
   },
   {
     id: "fp5",
@@ -285,6 +289,7 @@ export const MOCK_FEED_POSTS = [
     mediaUrl: "https://images.unsplash.com/photo-1678324424699-4c12513fdf1b?q=80&w=2670&auto=format&fit=crop",
     tags: ["AI", "Stable Diffusion", "Beta"],
     saves: 567,
+    category: "UI Design",
   }
 ];
 

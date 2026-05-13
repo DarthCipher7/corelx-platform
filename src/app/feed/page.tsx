@@ -19,6 +19,7 @@ export default function FeedPage() {
   const [postTitle, setPostTitle] = useState("");
   const [postCaption, setPostCaption] = useState("");
   const [postMediaUrl, setPostMediaUrl] = useState("");
+  const [postCategory, setPostCategory] = useState("UI Design");
   const [isPosting, setIsPosting] = useState(false);
   
   const supabase = createClient();
@@ -27,17 +28,21 @@ export default function FeedPage() {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUser(user);
     });
-    fetchPosts();
   }, []);
 
+  useEffect(() => {
+    fetchPosts();
+  }, [activeFilter]);
+
   const fetchPosts = async () => {
-    const { data, error } = await supabase
+    let query = supabase
       .from('feed_posts')
       .select(`
         id,
         title,
         caption,
         media_url,
+        category,
         created_at,
         user_id,
         users (
@@ -48,6 +53,12 @@ export default function FeedPage() {
         )
       `)
       .order('created_at', { ascending: false });
+
+    if (activeFilter !== "All") {
+      query = query.eq('category', activeFilter);
+    }
+      
+    const { data, error } = await query;
       
     if (data) {
       setDbPosts(data);
@@ -64,7 +75,8 @@ export default function FeedPage() {
       user_id: user.id,
       title: postTitle,
       caption: postCaption,
-      media_url: postMediaUrl
+      media_url: postMediaUrl,
+      category: postCategory
     });
     
     setIsPosting(false);
@@ -74,6 +86,7 @@ export default function FeedPage() {
       setPostTitle("");
       setPostCaption("");
       setPostMediaUrl("");
+      setPostCategory("UI Design");
       fetchPosts();
     } else {
       alert(error.message);
@@ -97,9 +110,10 @@ export default function FeedPage() {
       caption: p.caption,
       mediaUrl: p.media_url,
       tags: [],
-      saves: 0
+      saves: 0,
+      category: p.category
     })),
-    ...MOCK_FEED_POSTS
+    ...(activeFilter === "All" ? MOCK_FEED_POSTS : MOCK_FEED_POSTS.filter((p: any) => p.category === activeFilter))
   ];
 
   return (
@@ -215,6 +229,27 @@ export default function FeedPage() {
                   />
                 </div>
                 
+                <div className="pt-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Category</label>
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+                    {FILTERS.filter(f => f !== "All").map((f) => (
+                      <button
+                        key={f}
+                        type="button"
+                        onClick={() => setPostCategory(f)}
+                        className="whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                        style={{
+                          backgroundColor: postCategory === f ? "var(--accent-primary)" : "var(--bg-frosted)",
+                          color: postCategory === f ? "#ffffff" : "var(--text-secondary)",
+                          border: `1px solid ${postCategory === f ? "var(--accent-primary)" : "var(--glass-border)"}`
+                        }}
+                      >
+                        {f}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="pt-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
                   <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Media URL (Optional)</label>
                   <div className="flex items-center gap-3">

@@ -74,4 +74,5 @@ export interface FeedPostData {
   mediaUrl?: string;
   tags: string[];
   saves: number;
+  category?: string;
 }

@@ -81,10 +81,60 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
         </div>
       </div>
 
-      {/* Media */}
-      {post.mediaUrl && (
-        <div className="w-full aspect-square md:aspect-video relative overflow-hidden" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
-          <img src={post.mediaUrl} alt={post.title || "Post media"} className="w-full h-full object-cover" />
+      {/* Media / Custom Renders based on Category */}
+      {post.category === "Code" && (
+        <div className="w-full p-6 relative overflow-hidden" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
+          <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: "radial-gradient(circle at 80% 20%, var(--accent-primary) 0%, transparent 40%)" }} />
+          <div className="rounded-xl overflow-hidden shadow-2xl relative" style={{ backgroundColor: "#1e1e1e", border: "1px solid var(--border-subtle)" }}>
+            <div className="flex items-center px-4 py-3 bg-[#2d2d2d] border-b border-[#3d3d3d]">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                <div className="w-3 h-3 rounded-full bg-green-500/80" />
+              </div>
+              <span className="ml-4 text-xs font-mono text-gray-400">app.tsx</span>
+            </div>
+            <pre className="p-4 text-sm font-mono overflow-x-auto text-gray-300">
+              <code>
+                <span className="text-pink-400">export function </span>
+                <span className="text-blue-400">Component</span>() {'{\n'}
+                {'  '}
+                <span className="text-pink-400">return </span>
+                (
+                <br />
+                {'    '}
+                <span className="text-blue-300">&lt;div </span>
+                <span className="text-sky-300">className</span>=
+                <span className="text-orange-300">"glass-card"</span>
+                <span className="text-blue-300">&gt;</span>
+                <br />
+                {'      '}
+                <span className="text-gray-100">{post.caption ? (post.caption.length > 50 ? post.caption.substring(0, 50) + "..." : post.caption) : "Hello World!"}</span>
+                <br />
+                {'    '}
+                <span className="text-blue-300">&lt;/div&gt;</span>
+                <br />
+                  );
+                <br />
+                {'}'}
+              </code>
+            </pre>
+          </div>
+        </div>
+      )}
+
+      {post.category === "Writing" && (
+        <div className="w-full p-8 md:p-12 relative overflow-hidden" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
+          <div className="absolute inset-0 opacity-10 pointer-events-none" style={{ backgroundImage: "url('https://www.transparenttextures.com/patterns/cream-paper.png')" }} />
+          <blockquote className="border-l-4 pl-6 italic text-xl md:text-2xl font-serif leading-relaxed relative z-10" style={{ borderColor: "var(--accent-primary)", color: "var(--text-primary)" }}>
+            "{post.caption.length > 200 ? post.caption.substring(0, 200) + '...' : post.caption}"
+          </blockquote>
+        </div>
+      )}
+
+      {(!post.category || ["UI Design", "3D", "Film", "Music", "All"].includes(post.category)) && post.mediaUrl && (
+        <div className="w-full aspect-square md:aspect-video relative overflow-hidden group/media" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
+          <img src={post.mediaUrl} alt={post.title || "Post media"} className="w-full h-full object-cover transition-transform duration-700 group-hover/media:scale-105" />
         </div>
       )}
 
@@ -95,9 +145,11 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
             {post.title}
           </h3>
         )}
-        <p className="text-sm leading-relaxed mb-4 line-clamp-3" style={{ color: "var(--text-secondary)" }}>
-          {post.caption}
-        </p>
+        {post.category !== "Writing" && (
+          <p className="text-sm leading-relaxed mb-4 line-clamp-3" style={{ color: "var(--text-secondary)" }}>
+            {post.caption}
+          </p>
+        )}
         
         <div className="flex flex-wrap gap-2 mb-5">
           {post.tags.map((tag) => (
