@@ -5,6 +5,9 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const next = searchParams.get('next') ?? '/feed'
+  // These are passed from email signup to preserve the user's chosen identity
+  const chosenHandle = searchParams.get('handle') || ''
+  const chosenName = searchParams.get('display_name') || ''
 
   if (code) {
     const supabase = await createClient()
@@ -13,12 +16,12 @@ export async function GET(request: Request) {
     if (!error && session?.user) {
       const user = session.user;
       const metadata = user.user_metadata || {};
-      const fullName = metadata.full_name || '';
+      const fullName = chosenName || metadata.full_name || '';
       const avatarUrl = metadata.avatar_url || '';
       const email = user.email || '';
       
-      // Generate fallback handle from full_name
-      let baseHandle = fullName
+      // Use chosen handle first, then fall back to generating from name/email
+      let baseHandle = chosenHandle || fullName
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '.')
         .replace(/\.+/g, '.')

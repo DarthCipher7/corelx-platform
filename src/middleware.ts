@@ -38,6 +38,8 @@ export async function middleware(request: NextRequest) {
                         request.nextUrl.pathname.startsWith('/collabs') ||
                         request.nextUrl.pathname.startsWith('/showcase') ||
                         request.nextUrl.pathname.startsWith('/studio') ||
+                        request.nextUrl.pathname.startsWith('/auth') ||
+                        request.nextUrl.pathname.startsWith('/api') ||
                         request.nextUrl.pathname === '/login' ||
                         request.nextUrl.pathname === '/signup';
 

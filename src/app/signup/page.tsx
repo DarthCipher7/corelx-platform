@@ -14,6 +14,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   
   const router = useRouter();
   const supabase = createClient();
@@ -24,9 +25,13 @@ export default function SignupPage() {
     setError(null);
 
     // 1. Sign up the user in auth.users
+    const callbackUrl = `${window.location.origin}/auth/callback?handle=${encodeURIComponent(handle)}&display_name=${encodeURIComponent(name || handle)}`;
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: callbackUrl,
+      },
     });
 
     if (authError) {
@@ -36,19 +41,26 @@ export default function SignupPage() {
     }
 
     if (authData.user) {
-      // 2. Insert the public user record
+      // If email confirmation is required, session will be null
+      // We cannot insert into public.users until the user confirms their email
+      // and is redirected back via the auth callback
+      if (!authData.session) {
+        setSuccess("Almost there! Check your email to confirm your account. You'll be signed in automatically after.");
+        setLoading(false);
+        return;
+      }
+
+      // 2. Insert the public user record (only if session is active)
       const { error: dbError } = await supabase
         .from("users")
         .insert({
           id: authData.user.id,
           handle: handle,
           display_name: name || handle,
-          // default avatar
           avatar_url: `https://api.dicebear.com/8.x/lorelei/svg?seed=${handle}&backgroundColor=6c5ce7`
         });
 
       if (dbError) {
-        // Handle constraint violations, etc.
         setError(dbError.message);
         setLoading(false);
         return;
@@ -87,6 +99,12 @@ export default function SignupPage() {
         {error && (
           <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
             {error}
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-6 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
+            ✉️ {success}
           </div>
         )}
 
