@@ -1,15 +1,106 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { MOCK_FEED_POSTS } from "@/lib/data";
 import FeedPost from "@/components/cards/FeedPost";
 import Button from "@/components/ui/Button";
+import { createClient } from "@/utils/supabase/client";
+import { X, Image as ImageIcon } from "lucide-react";
+import { FeedPostData } from "@/types";
 
 const FILTERS = ["All", "UI Design", "Code", "Film", "Music", "3D", "Writing"];
 
 export default function FeedPage() {
   const [activeFilter, setActiveFilter] = useState("All");
+  const [user, setUser] = useState<any>(null);
+  const [dbPosts, setDbPosts] = useState<any[]>([]);
+  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [postTitle, setPostTitle] = useState("");
+  const [postCaption, setPostCaption] = useState("");
+  const [postMediaUrl, setPostMediaUrl] = useState("");
+  const [isPosting, setIsPosting] = useState(false);
+  
+  const supabase = createClient();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setUser(user);
+    });
+    fetchPosts();
+  }, []);
+
+  const fetchPosts = async () => {
+    const { data, error } = await supabase
+      .from('feed_posts')
+      .select(`
+        id,
+        title,
+        caption,
+        media_url,
+        created_at,
+        user_id,
+        users (
+          handle,
+          display_name,
+          avatar_url,
+          tagline
+        )
+      `)
+      .order('created_at', { ascending: false });
+      
+    if (data) {
+      setDbPosts(data);
+    }
+  };
+
+  const handlePostSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+    
+    setIsPosting(true);
+    
+    const { error } = await supabase.from('feed_posts').insert({
+      user_id: user.id,
+      title: postTitle,
+      caption: postCaption,
+      media_url: postMediaUrl
+    });
+    
+    setIsPosting(false);
+    
+    if (!error) {
+      setIsPostModalOpen(false);
+      setPostTitle("");
+      setPostCaption("");
+      setPostMediaUrl("");
+      fetchPosts();
+    } else {
+      alert(error.message);
+    }
+  };
+
+  const combinedPosts: FeedPostData[] = [
+    ...dbPosts.map(p => ({
+      id: p.id,
+      type: "work_post" as const,
+      creator: {
+        id: p.user_id,
+        name: p.users?.display_name || "Unknown",
+        handle: p.users?.handle || "unknown",
+        avatar: p.users?.avatar_url || "",
+        verified: false,
+        role: p.users?.tagline || "Creator"
+      },
+      timestamp: new Date(p.created_at).toLocaleDateString(),
+      title: p.title,
+      caption: p.caption,
+      mediaUrl: p.media_url,
+      tags: [],
+      saves: 0
+    })),
+    ...MOCK_FEED_POSTS
+  ];
 
   return (
     <div className="min-h-screen pt-24 pb-32">
@@ -36,7 +127,7 @@ export default function FeedPage() {
 
       <div className="max-w-[680px] mx-auto px-4 sm:px-6">
         <div className="flex flex-col">
-          {MOCK_FEED_POSTS.map((post, i) => (
+          {combinedPosts.map((post, i) => (
             <FeedPost key={post.id} post={post} index={i} />
           ))}
         </div>
@@ -58,11 +149,99 @@ export default function FeedPage() {
           <p className="mb-8 max-w-sm mx-auto" style={{ color: "var(--text-secondary)" }}>
             You've seen all the latest updates from your network. Now go build something amazing.
           </p>
-          <Button variant="primary" className="mx-auto">
-            Post your work
-          </Button>
+          {user ? (
+            <Button variant="primary" className="mx-auto" onClick={() => setIsPostModalOpen(true)}>
+              Post your work
+            </Button>
+          ) : (
+            <Button variant="primary" className="mx-auto" onClick={() => window.location.href = '/login'}>
+              Join to Post
+            </Button>
+          )}
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {isPostModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPostModalOpen(false)}
+              className="absolute inset-0 backdrop-blur-sm"
+              style={{ backgroundColor: "rgba(0,0,0,0.6)" }}
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden p-6"
+              style={{ backgroundColor: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-display font-bold" style={{ color: "var(--text-primary)" }}>Create Post</h3>
+                <button 
+                  onClick={() => setIsPostModalOpen(false)}
+                  className="p-2 rounded-full transition-colors"
+                  style={{ color: "var(--text-secondary)", backgroundColor: "var(--bg-frosted)" }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              
+              <form onSubmit={handlePostSubmit} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Title your work..."
+                    className="w-full text-lg font-bold bg-transparent border-none focus:outline-none focus:ring-0 px-0"
+                    style={{ color: "var(--text-primary)" }}
+                    value={postTitle}
+                    onChange={(e) => setPostTitle(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <textarea
+                    required
+                    placeholder="Share the story behind this..."
+                    rows={4}
+                    className="w-full resize-none bg-transparent border-none focus:outline-none focus:ring-0 px-0 text-sm"
+                    style={{ color: "var(--text-secondary)" }}
+                    value={postCaption}
+                    onChange={(e) => setPostCaption(e.target.value)}
+                  />
+                </div>
+                
+                <div className="pt-4 border-t" style={{ borderColor: "var(--border-subtle)" }}>
+                  <label className="block text-xs font-semibold uppercase tracking-wider mb-2" style={{ color: "var(--text-muted)" }}>Media URL (Optional)</label>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg" style={{ backgroundColor: "var(--bg-frosted)" }}>
+                      <ImageIcon className="w-5 h-5 text-purple-400" />
+                    </div>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/image.png"
+                      className="flex-1 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-purple-400 transition-colors"
+                      style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
+                      value={postMediaUrl}
+                      onChange={(e) => setPostMediaUrl(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end pt-4">
+                  <Button variant="primary" disabled={isPosting}>
+                    {isPosting ? "Posting..." : "Post to Feed"}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
