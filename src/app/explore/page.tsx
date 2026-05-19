@@ -13,8 +13,14 @@ import Button from "@/components/ui/Button";
 import { Flare } from "@/types";
 
 const FILTER_ROLES = [
-  "All", "Designer", "Engineer", "3D Artist", "Motion Designer",
-  "AI Engineer", "Brand Strategist", "Creative Developer",
+  "All",
+  "Designer", "Illustrator", "Graphic Artist", "Poster Maker",
+  "Photographer", "Videographer", "Video Editor", "Motion Designer", "Short Film Maker",
+  "Musician", "Music Producer", "Sound Designer",
+  "Content Creator", "Social Media Manager", "Copywriter", "Blogger",
+  "3D Artist", "Animator", "Game Designer", "Game Tester",
+  "Engineer", "AI Engineer", "Creative Developer",
+  "Freelancer", "Brand Strategist", "Fashion Designer",
 ];
 
 export default function ExplorePage() {
@@ -89,24 +95,41 @@ export default function ExplorePage() {
           `)
           .order("created_at", { ascending: false });
 
+        let sparkCounts: Record<string, number> = {};
+        if (flareData && flareData.length > 0) {
+          const flareIds = flareData.map(f => f.id);
+          const { data: flareSparks } = await supabase
+            .from('sparks')
+            .select('target_id')
+            .in('target_id', flareIds)
+            .eq('target_type', 'flare');
+            
+          flareSparks?.forEach(s => {
+            sparkCounts[s.target_id] = (sparkCounts[s.target_id] || 0) + 1;
+          });
+        }
+
         if (flareData && flareData.length > 0) {
           // Format with correct user typing
-          const formattedFlares: Flare[] = flareData.map((f: any) => ({
-            id: f.id,
-            user_id: f.user_id,
-            media_url: f.media_url,
-            thumbnail_url: f.thumbnail_url || undefined,
-            caption: f.caption || undefined,
-            tags: f.tags || [],
-            duration_seconds: f.duration_seconds || undefined,
-            created_at: f.created_at,
-            spark_count: Math.floor(Math.random() * 80) + 15, // Mock count for now
-            users: f.users ? {
-              display_name: f.users.display_name || undefined,
-              handle: f.users.handle,
-              avatar_url: f.users.avatar_url || undefined
-            } : undefined
-          }));
+          const formattedFlares: Flare[] = flareData.map((f: any) => {
+            const authorUser = Array.isArray(f.users) ? f.users[0] : f.users;
+            return {
+              id: f.id,
+              user_id: f.user_id,
+              media_url: f.media_url,
+              thumbnail_url: f.thumbnail_url || undefined,
+              caption: f.caption || undefined,
+              tags: f.tags || [],
+              duration_seconds: f.duration_seconds || undefined,
+              created_at: f.created_at,
+              spark_count: sparkCounts[f.id] || 0,
+              users: authorUser ? {
+                display_name: authorUser.display_name || undefined,
+                handle: authorUser.handle,
+                avatar_url: authorUser.avatar_url || undefined
+              } : undefined
+            };
+          });
           setFlares(formattedFlares);
         } else {
           // Fallback to beautiful mock flares

@@ -76,7 +76,16 @@ export interface FeedPostData {
   saves: number;
   views?: number;
   category?: string;
+  bug_details?: {
+    title: string;
+    severity: "critical" | "high" | "medium" | "low";
+    platforms: string[];
+    steps: string[];
+    stackTrace?: string;
+    screenshotUrl?: string;
+  };
 }
+
 
 export interface Flare {
   id: string;

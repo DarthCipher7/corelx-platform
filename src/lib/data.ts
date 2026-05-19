@@ -290,6 +290,55 @@ export const MOCK_FEED_POSTS = [
     tags: ["AI", "Stable Diffusion", "Beta"],
     saves: 567,
     category: "UI Design",
+  },
+  {
+    id: "fp6",
+    type: "work_post" as const,
+    creator: MOCK_CREATORS[4],
+    timestamp: "3h ago",
+    title: "Short Film Colour Grade — Neon Noir",
+    caption: "Finished grading a short film for a local director. Full neon noir treatment — pushed the shadows hard, kept skin tones warm against the city blues. DaVinci Resolve 18 + custom LUTs.",
+    mediaUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    tags: ["Video Editing", "Color Grading", "DaVinci Resolve"],
+    saves: 218,
+    category: "Video",
+  },
+  {
+    id: "fp7",
+    type: "trending_creator_spotlight" as const,
+    creator: MOCK_CREATORS[1],
+    timestamp: "6h ago",
+    title: "Creator Spotlight: Beat Architect",
+    caption: "This producer built an entire hip-hop instrumental using only field recordings from a street market. No samples, no loops — just raw sound. The result is something genuinely new.",
+    mediaUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    tags: ["Music Production", "FL Studio", "Spotlight"],
+    saves: 672,
+    category: "Music",
+  },
+  {
+    id: "fp8",
+    type: "work_post" as const,
+    creator: MOCK_CREATORS[2],
+    timestamp: "1d ago",
+    title: "Bug Report Log — Indie RPG QA Sprint",
+    caption: "Just wrapped a 2-week QA sprint for an indie RPG studio. Found 47 reproducible bugs across 3 platforms. Logging methodology, regression test templates, and priority triage notes available.",
+    mediaUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2670&auto=format&fit=crop",
+    tags: ["Game Testing / QA", "Playtesting", "Indie Games"],
+    saves: 156,
+    category: "Gaming",
+    bug_details: {
+      title: "Indie RPG Quest State Reset Bug",
+      severity: "high" as const,
+      platforms: ["PC", "Console"],
+      steps: [
+        "Load the game save from Chapter 3.",
+        "Talk to the Merchant NPC at the crossroads.",
+        "Cancel the trade screen immediately.",
+        "Check quest log - main quest progress is reset to 0%."
+      ],
+      stackTrace: "QuestManager.cs:Line 142\nNullReferenceException: Object reference not set to an instance of an object at QuestManager.ResetActiveQuest()",
+      screenshotUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2670&auto=format&fit=crop"
+    }
   }
 ];
 

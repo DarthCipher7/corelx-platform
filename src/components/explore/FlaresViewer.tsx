@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Flame, MessageSquare, Share2, Volume2, VolumeX, ArrowLeft } from "lucide-react";
+import { X, Flame, MessageSquare, Share2, Volume2, VolumeX, ArrowLeft, Loader2, UserPlus, UserCheck } from "lucide-react";
 import { Flare } from "@/types";
 import Link from "next/link";
+import { createClient } from "@/utils/supabase/client";
+import CommentDrawer from "../cards/CommentDrawer";
 
 interface FlaresViewerProps {
   flares: Flare[];
@@ -89,11 +91,61 @@ interface FlareItemProps {
 }
 
 function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
+  const supabase = createClient();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const completedRef = useRef(false);
   const [sparked, setSparked] = useState(false);
   const [sparkCount, setSparkCount] = useState(flare.spark_count || 0);
   const [showHeartOverlay, setShowHeartOverlay] = useState(false);
   const [shareText, setShareText] = useState("Share");
+  const [isSloMo, setIsSloMo] = useState(false);
+  const [commentDrawerOpen, setCommentDrawerOpen] = useState(false);
+  const [commentCount, setCommentCount] = useState(0);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [following, setFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  // Reset completion flag when active state changes
+  useEffect(() => {
+    if (isActive) {
+      completedRef.current = false;
+
+      // Load auth user id, spark status, follow status, comment count
+      const loadState = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        setCurrentUserId(user.id);
+
+        // Sparked?
+        const { count: sCount } = await supabase
+          .from('sparks')
+          .select('*', { count: 'exact', head: true })
+          .eq('sender_id', user.id)
+          .eq('target_type', 'flare')
+          .eq('target_id', flare.id);
+        setSparked(sCount ? sCount > 0 : false);
+
+        // Following this creator?
+        if (user.id !== flare.user_id) {
+          const { count: fCount } = await supabase
+            .from('follows')
+            .select('*', { count: 'exact', head: true })
+            .eq('follower_id', user.id)
+            .eq('following_id', flare.user_id);
+          setFollowing(fCount ? fCount > 0 : false);
+        }
+
+        // Comment count
+        const { count: cCount } = await supabase
+          .from('comments')
+          .select('*', { count: 'exact', head: true })
+          .eq('target_type', 'flare')
+          .eq('target_id', flare.id);
+        setCommentCount(cCount ?? 0);
+      };
+      loadState();
+    }
+  }, [isActive, flare.id]);
 
   // Handle play/pause based on active state
   useEffect(() => {
@@ -101,7 +153,6 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
     if (!video) return;
 
     if (isActive) {
-      // Small timeout to allow transition to settle
       const timer = setTimeout(() => {
         video.play().catch((err) => console.log("Video auto-play blocked: ", err));
       }, 50);
@@ -112,15 +163,52 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
     }
   }, [isActive]);
 
-  const handleSparkToggle = () => {
+  const handleSparkToggle = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     if (sparked) {
       setSparkCount(prev => prev - 1);
+      setSparked(false);
+      await supabase
+        .from('sparks')
+        .delete()
+        .eq('sender_id', user.id)
+        .eq('target_type', 'flare')
+        .eq('target_id', flare.id);
     } else {
       setSparkCount(prev => prev + 1);
+      setSparked(true);
       setShowHeartOverlay(true);
       setTimeout(() => setShowHeartOverlay(false), 800);
+      await supabase.from('sparks').insert({
+        sender_id: user.id,
+        target_type: 'flare',
+        target_id: flare.id
+      });
     }
-    setSparked(!sparked);
+  };
+
+  const handleFollowToggle = async () => {
+    if (!currentUserId || followLoading || currentUserId === flare.user_id) return;
+    setFollowLoading(true);
+    // Optimistic
+    const wasFollowing = following;
+    setFollowing(!wasFollowing);
+
+    if (wasFollowing) {
+      await supabase
+        .from('follows')
+        .delete()
+        .eq('follower_id', currentUserId)
+        .eq('following_id', flare.user_id);
+    } else {
+      await supabase.from('follows').insert({
+        follower_id: currentUserId,
+        following_id: flare.user_id,
+      });
+    }
+    setFollowLoading(false);
   };
 
   const handleShare = () => {
@@ -131,6 +219,41 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
     });
   };
 
+  // Time update progress check
+  const handleTimeUpdate = async () => {
+    const video = videoRef.current;
+    if (!video || !video.duration) return;
+
+    const progress = video.currentTime / video.duration;
+    if (progress >= 0.8 && !completedRef.current) {
+      completedRef.current = true;
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('flare_views').upsert({
+          user_id: user.id,
+          flare_id: flare.id,
+          watch_duration_seconds: Math.round(video.duration * progress),
+          completed: true
+        }, { onConflict: 'user_id,flare_id' });
+      }
+    }
+  };
+
+  // Slo-mo speed mechanics
+  const startSloMo = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = 0.5;
+    setIsSloMo(true);
+  };
+
+  const endSloMo = () => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = 1.0;
+    setIsSloMo(false);
+  };
+
   return (
     <div
       className="w-full h-full relative flex-shrink-0 flex items-center justify-center scroll-snap-align-start bg-[#030308]"
@@ -138,6 +261,11 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
         scrollSnapAlign: "start",
         height: "100dvh",
       }}
+      onMouseDown={startSloMo}
+      onMouseUp={endSloMo}
+      onMouseLeave={endSloMo}
+      onTouchStart={startSloMo}
+      onTouchEnd={endSloMo}
     >
       {/* Video element */}
       <video
@@ -147,9 +275,27 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
         muted={isMuted}
         loop
         playsInline
-        onClick={toggleMute}
+        onTimeUpdate={handleTimeUpdate}
+        onClick={(e) => {
+          e.stopPropagation();
+          toggleMute();
+        }}
         className="w-full h-full object-cover cursor-pointer"
       />
+
+      {/* Slo-mo indicator */}
+      <AnimatePresence>
+        {isSloMo && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+            className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-black/60 border border-[var(--accent-primary)] text-[var(--accent-primary)] font-mono text-xs px-4 py-2 rounded-full uppercase tracking-widest animate-pulse shadow-[0_0_20px_rgba(108,92,231,0.6)]"
+          >
+            SLO-MO ACTIVE
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Double tap / Heart burst overlay */}
       <AnimatePresence>
@@ -172,7 +318,10 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
       <div className="absolute right-4 bottom-24 z-20 flex flex-col gap-5 items-center">
         {/* Spark Button */}
         <button
-          onClick={handleSparkToggle}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleSparkToggle();
+          }}
           className="flex flex-col items-center gap-1 group"
         >
           <div
@@ -196,15 +345,27 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
         </button>
 
         {/* Comment Button */}
-        <button className="flex flex-col items-center gap-1 group">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            setCommentDrawerOpen(true);
+          }}
+          className="flex flex-col items-center gap-1 group"
+        >
           <div className="p-3.5 rounded-full bg-[rgba(14,14,36,0.6)] border border-[rgba(255,255,255,0.08)] backdrop-blur-md hover:border-[var(--accent-secondary)] hover:bg-[rgba(0,210,255,0.1)] transition-all">
             <MessageSquare className="w-6 h-6 text-white group-hover:text-[var(--accent-secondary)] transition-all" />
           </div>
-          <span className="text-xs font-mono text-[var(--text-secondary)]">Comments</span>
+          <span className="text-xs font-mono text-[var(--text-secondary)]">{commentCount}</span>
         </button>
 
         {/* Share Button */}
-        <button onClick={handleShare} className="flex flex-col items-center gap-1 group">
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleShare();
+          }} 
+          className="flex flex-col items-center gap-1 group"
+        >
           <div className="p-3.5 rounded-full bg-[rgba(14,14,36,0.6)] border border-[rgba(255,255,255,0.08)] backdrop-blur-md hover:border-white hover:bg-[rgba(255,255,255,0.1)] transition-all">
             <Share2 className="w-6 h-6 text-white group-hover:text-white transition-all" />
           </div>
@@ -215,10 +376,12 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
       </div>
 
       {/* Info Overlay (Bottom Left) */}
-      <div className="absolute left-4 right-20 bottom-8 z-20 pointer-events-auto">
+      <div className="absolute left-4 right-20 bottom-8 z-20 pointer-events-auto" onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()}>
         <Link
           href={`/studio/${flare.users?.handle}`}
-          className="flex items-center gap-2 mb-3.5 hover:opacity-80 transition-all inline-flex"
+          className="flex items-center gap-2 mb-3 hover:opacity-80 transition-all inline-flex"
+          onMouseDown={e => e.stopPropagation()}
+          onTouchStart={e => e.stopPropagation()}
         >
           {flare.users?.avatar_url ? (
             <img
@@ -241,6 +404,29 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
           </div>
         </Link>
 
+        {/* Follow button — only shown if viewing another creator's flare */}
+        {currentUserId && currentUserId !== flare.user_id && (
+          <button
+            onMouseDown={e => e.stopPropagation()}
+            onTouchStart={e => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); handleFollowToggle(); }}
+            disabled={followLoading}
+            className={`mb-3 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all duration-200 ${
+              following
+                ? 'bg-[rgba(255,255,255,0.08)] border-[rgba(255,255,255,0.15)] text-white hover:border-red-400 hover:text-red-300'
+                : 'bg-[var(--accent-primary)] border-[var(--accent-primary)] text-white shadow-[0_0_12px_rgba(108,92,231,0.4)] hover:bg-[#5b4bc4]'
+            }`}
+          >
+            {followLoading ? (
+              <Loader2 className="w-3 h-3 animate-spin" />
+            ) : following ? (
+              <><UserCheck className="w-3 h-3" /> Following</>
+            ) : (
+              <><UserPlus className="w-3 h-3" /> Follow</>
+            )}
+          </button>
+        )}
+
         {flare.caption && (
           <p className="text-sm text-[rgba(255,255,255,0.95)] line-clamp-3 leading-relaxed mb-3">
             {flare.caption}
@@ -259,6 +445,15 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
           ))}
         </div>
       </div>
+
+      <CommentDrawer
+        isOpen={commentDrawerOpen}
+        onClose={() => setCommentDrawerOpen(false)}
+        postId={flare.id}
+        postOwnerId={flare.user_id}
+        targetType="flare"
+        onCommentAdded={() => setCommentCount(c => c + 1)}
+      />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bookmark, Sparkles, Share2, MoreHorizontal, Eye, AlertCircle, MessageSquare, Flag, Loader2 } from "lucide-react";
 import type { FeedPostData } from "@/types";
@@ -9,6 +9,8 @@ import NeonBadge from "@/components/ui/NeonBadge";
 import { createClient } from "@/utils/supabase/client";
 import { RevealEffect } from "@/components/ui/RevealEffect";
 import CommentDrawer from "./CommentDrawer";
+import MediaPlayer from "@/components/ui/MediaPlayer";
+import BugReportLog from "@/components/cards/BugReportLog";
 
 interface FeedPostProps {
   post: FeedPostData;
@@ -39,12 +41,55 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
   const [reportSubmitting, setReportSubmitting] = useState(false);
   const [reportSuccess, setReportSuccess] = useState(false);
 
+  const articleRef = useRef<HTMLDivElement>(null);
+
   // Load auth user
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUser(user);
     });
   }, []);
+
+  // Intersection Observer for 60% visibility for 1s
+  useEffect(() => {
+    const observerElement = articleRef.current;
+    if (!observerElement) return;
+
+    let timer: any = null;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            timer = setTimeout(async () => {
+              const { data: { user: authUser } } = await supabase.auth.getUser();
+              if (authUser) {
+                await supabase.from("post_impressions").upsert({
+                  user_id: authUser.id,
+                  post_id: post.id
+                }, { onConflict: "user_id,post_id" });
+              }
+            }, 1000);
+          } else {
+            if (timer) {
+              clearTimeout(timer);
+              timer = null;
+            }
+          }
+        });
+      },
+      {
+        threshold: 0.6
+      }
+    );
+
+    observer.observe(observerElement);
+
+    return () => {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, [post.id]);
 
   // Load real spark + save counts and user state
   useEffect(() => {
@@ -61,7 +106,8 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
       const { count: svCount } = await supabase
         .from("saves")
         .select("*", { count: "exact", head: true })
-        .eq("post_id", post.id);
+        .eq("target_type", "post")
+        .eq("target_id", post.id);
       setSaveCount(svCount ?? 0);
 
       // Count comments
@@ -86,7 +132,8 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
           supabase
             .from("saves")
             .select("id")
-            .eq("post_id", post.id)
+            .eq("target_type", "post")
+            .eq("target_id", post.id)
             .eq("user_id", authUser.id)
             .maybeSingle(),
         ]);
@@ -165,7 +212,8 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
       const { error } = await supabase
         .from("saves")
         .delete()
-        .eq("post_id", post.id)
+        .eq("target_type", "post")
+        .eq("target_id", post.id)
         .eq("user_id", user.id);
       if (error) {
         setSaved(wasSaved);
@@ -174,7 +222,8 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
     } else {
       const { error } = await supabase.from("saves").insert({
         user_id: user.id,
-        post_id: post.id,
+        target_type: "post",
+        target_id: post.id,
       });
       if (error) {
         setSaved(wasSaved);
@@ -217,6 +266,7 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
 
   return (
     <motion.article
+      ref={articleRef}
       className="border rounded-2xl overflow-hidden shadow-2xl mb-8 relative group"
       style={{ backgroundColor: "var(--bg-surface)", borderColor: "var(--glass-border)" }}
       initial={{ opacity: 0, y: 30 }}
@@ -280,7 +330,26 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
       </div>
 
       {/* Media */}
-      {post.category === "Code" && (
+      {post.category === "Gaming" && post.bug_details ? (
+        <div className="w-full p-4" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
+          <BugReportLog
+            title={post.bug_details.title}
+            severity={post.bug_details.severity}
+            platforms={post.bug_details.platforms}
+            steps={post.bug_details.steps}
+            stackTrace={post.bug_details.stackTrace}
+            screenshotUrl={post.bug_details.screenshotUrl || post.mediaUrl}
+          />
+        </div>
+      ) : (post.category === "Video" || post.category === "Film") && post.mediaUrl ? (
+        <div className="w-full p-4" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
+          <MediaPlayer mediaUrl={post.mediaUrl} category="Video" title={post.title} artistName={post.creator.name} />
+        </div>
+      ) : post.category === "Music" && post.mediaUrl ? (
+        <div className="w-full p-4" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
+          <MediaPlayer mediaUrl={post.mediaUrl} category="Music" title={post.title} artistName={post.creator.name} />
+        </div>
+      ) : post.category === "Code" ? (
         <div className="w-full p-6 relative overflow-hidden" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
           <div className="absolute inset-0 opacity-20 pointer-events-none" style={{ background: "radial-gradient(circle at 80% 20%, var(--accent-primary) 0%, transparent 40%)" }} />
           <div className="rounded-xl overflow-hidden shadow-2xl relative" style={{ backgroundColor: "#1e1e1e", border: "1px solid var(--border-subtle)" }}>
@@ -311,20 +380,18 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
             </pre>
           </div>
         </div>
-      )}
-
-      {post.category === "Writing" && (
+      ) : post.category === "Writing" ? (
         <div className="w-full p-8 md:p-12 relative overflow-hidden" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
           <blockquote className="border-l-4 pl-6 italic text-xl md:text-2xl font-serif leading-relaxed relative z-10" style={{ borderColor: "var(--accent-primary)", color: "var(--text-primary)" }}>
             "{post.caption.length > 200 ? post.caption.substring(0, 200) + '...' : post.caption}"
           </blockquote>
         </div>
-      )}
-
-      {(!post.category || ["UI Design", "3D", "Film", "Music", "All"].includes(post.category)) && post.mediaUrl && (
-        <div className="w-full aspect-square md:aspect-video relative overflow-hidden group/media" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
-          <img src={post.mediaUrl} alt={post.title || "Post media"} className="w-full h-full object-cover transition-transform duration-700 group-hover/media:scale-105" />
-        </div>
+      ) : (
+        post.mediaUrl && (
+          <div className="w-full aspect-square md:aspect-video relative overflow-hidden group/media" style={{ backgroundColor: "var(--bg-deep)", borderTop: "1px solid var(--glass-border)", borderBottom: "1px solid var(--glass-border)" }}>
+            <img src={post.mediaUrl} alt={post.title || "Post media"} className="w-full h-full object-cover transition-transform duration-700 group-hover/media:scale-105" />
+          </div>
+        )
       )}
 
       {/* Content */}

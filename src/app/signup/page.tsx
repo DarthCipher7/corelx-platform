@@ -22,6 +22,7 @@ export default function SignupPage() {
 
   // Step 2 State
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState("All");
 
   // Step 3 State
   const [tagline, setTagline] = useState("");
@@ -30,6 +31,64 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const SKILL_CATEGORIES: Record<string, string[]> = {
+    "All": SKILLS_ALL,
+    "Design": [
+      "UI Design", "UX Research", "UX Writing", "Product Design", "Interaction Design",
+      "Visual Design", "Graphic Design", "Brand Identity", "Logo Design", "Poster Design",
+      "Typography", "Color Theory", "Print Design", "Packaging Design", "Icon Design",
+      "Illustration", "Digital Painting", "Concept Art", "Character Design", "Storyboarding",
+      "Comic Art", "Manga Art", "Pixel Art", "Infographic Design", "Presentation Design",
+      "Figma", "Adobe XD", "Photoshop", "Illustrator", "InDesign", "Sketch", "Procreate",
+      "3D Art", "Blender", "Cinema4D", "Maya", "ZBrush", "Houdini", "AR/VR Design", "Game Assets",
+      "Product Rendering", "Architectural Viz", "3D Typography"
+    ],
+    "Film & Video": [
+      "Motion Design", "Video Editing", "Film Editing", "Color Grading", "VFX",
+      "After Effects", "Premiere Pro", "DaVinci Resolve", "Final Cut Pro", "CapCut",
+      "Cinematography", "Videography", "Drone Videography", "Documentary Filmmaking", "Short Films",
+      "Short Film Making", "YouTube Content", "Reel Editing", "Subtitling & Captions", "Green Screen",
+      "Animation", "2D Animation", "3D Animation", "Rigging", "Storyboard Animation"
+    ],
+    "Music": [
+      "Music Production", "Beat Making", "Sound Design", "Mixing & Mastering",
+      "Ableton", "FL Studio", "Logic Pro", "GarageBand", "Podcast Production",
+      "Voice Over", "Jingle Writing", "Music Composition", "DJ / Electronic Music",
+      "Audio Branding"
+    ],
+    "Photography": [
+      "Photography", "Portrait Photography", "Product Photography", "Fashion Photography",
+      "Event Photography", "Photo Retouching", "Photo Editing", "Street Photography"
+    ],
+    "Code": [
+      "React", "Next.js", "Vue", "Angular", "TypeScript", "JavaScript",
+      "Python", "Rust", "Go", "Swift", "Kotlin", "Flutter", "React Native",
+      "Node.js", "FastAPI", "GraphQL", "REST APIs", "Database Design",
+      "DevOps", "AWS", "Docker", "Kubernetes", "Web3", "Solidity", "Three.js",
+      "WebGL", "GLSL", "Framer", "Webflow", "WordPress", "Shopify"
+    ],
+    "AI": [
+      "AI/ML", "Stable Diffusion", "LLMs", "PyTorch", "TensorFlow", "Data Science"
+    ],
+    "Gaming": [
+      "Game Design", "Game Testing / QA", "Level Design", "Narrative Design",
+      "Pixel Art", "Game Assets", "Unity", "Unreal Engine", "Godot",
+      "Gameplay Programming", "Mod Development", "Game Trailer Editing",
+      "Playtesting", "Speedrunning / Streaming"
+    ],
+    "Art": [
+      "Illustration", "Digital Painting", "Concept Art", "Character Design",
+      "Comic Art", "Manga Art", "Pixel Art", "Oil Painting", "Watercolor",
+      "Acrylic Painting", "Mural Art", "Graffiti / Street Art", "Printmaking", "Collage Art",
+      "Fashion Design", "Textile Art", "Jewellery Design", "Ceramics", "Sculpture"
+    ],
+    "Freelance": [
+      "Freelance Consulting", "Project Management", "Client Management",
+      "Virtual Assistance", "Data Entry", "Market Research", "Business Strategy",
+      "Pitch Decks", "Financial Modeling", "Legal Writing"
+    ]
+  };
 
   // Load user
   useEffect(() => {
@@ -41,20 +100,24 @@ export default function SignupPage() {
       }
       setUser(authUser);
 
-      // Pre-fill if they already have a row
+      // Check if this user has already completed onboarding
+      // A user is considered onboarded once they have a handle AND a display_name set
       const { data: profile } = await supabase
         .from('users')
-        .select('handle, tagline, avatar_url')
+        .select('handle, display_name, tagline, avatar_url')
         .eq('id', authUser.id)
         .maybeSingle();
 
       if (profile) {
+        // Pre-fill form fields in case they want to edit later
         if (profile.handle) setHandle(profile.handle);
         if (profile.tagline) setTagline(profile.tagline);
         if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
         
-        // Let's assume if they have a tagline, they already onboarded
-        if (profile.tagline && profile.tagline.length > 0) {
+        // The DB trigger sets tagline to '' (empty string) on signup.
+        // Once the user completes Step 3, tagline is written as a real value.
+        // So: tagline non-empty = onboarding was completed → skip to feed.
+        if (profile.tagline && profile.tagline.trim().length > 0) {
           router.push("/feed");
           return;
         }
@@ -80,12 +143,18 @@ export default function SignupPage() {
         return;
       }
 
-      const { data } = await supabase
+      // Check uniqueness: find any OTHER user with this handle
+      let uniqueQuery = supabase
         .from('users')
         .select('id')
-        .eq('handle', handle)
-        .neq('id', user?.id)
-        .maybeSingle();
+        .eq('handle', handle.toLowerCase().trim());
+
+      // Exclude the current user's own row if they already have one
+      if (user?.id) {
+        uniqueQuery = uniqueQuery.neq('id', user.id);
+      }
+
+      const { data } = await uniqueQuery.maybeSingle();
 
       setHandleAvailable(!data);
       setCheckingHandle(false);
@@ -99,14 +168,19 @@ export default function SignupPage() {
     if (!handleAvailable || !handle || handle.length < 3 || !user) return;
     
     setIsSubmitting(true);
-    // Upsert the user row just to lock in the handle
+    // Normalise handle to lowercase before saving
+    const normalizedHandle = handle.toLowerCase().trim();
+    // Upsert the user row to lock in the handle
     const { error } = await supabase.from('users').upsert({
       id: user.id,
-      handle: handle,
+      handle: normalizedHandle,
+      display_name: normalizedHandle,
     }, { onConflict: 'id' });
 
+    if (!error) setHandle(normalizedHandle);
     setIsSubmitting(false);
     if (!error) setCurrentStep(2);
+    else console.error('Handle save error:', error);
   };
 
   const handleStep2Submit = async () => {
@@ -152,8 +226,12 @@ export default function SignupPage() {
     }
 
     // Final profile update
+    // Always write a non-empty tagline so it acts as the onboarding-complete signal
+    // (The DB trigger initialises tagline as '' so empty = not yet onboarded)
+    const finalTagline = tagline.trim().length > 0 ? tagline.trim() : handle || 'Creator';
+
     const { error } = await supabase.from('users').update({
-      tagline: tagline,
+      tagline: finalTagline,
       display_name: handle || user.email?.split('@')[0] || 'Creator',
       ...(finalAvatarUrl && { avatar_url: finalAvatarUrl })
     }).eq('id', user.id);
@@ -204,7 +282,7 @@ export default function SignupPage() {
       </div>
 
       {/* Main Container */}
-      <div className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+      <div className="w-full max-w-2xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative overflow-hidden">
         
         <AnimatePresence mode="wait">
           {/* STEP 1: IDENTITY */}
@@ -214,7 +292,7 @@ export default function SignupPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col h-full"
+              className="flex flex-col h-full max-w-md mx-auto"
             >
               <h2 className="text-2xl font-display font-bold text-white mb-2">Claim your identity</h2>
               <p className="text-[var(--text-secondary)] mb-8">This is how the network will find you. Choose wisely.</p>
@@ -256,16 +334,41 @@ export default function SignupPage() {
               exit={{ opacity: 0, x: -20 }}
               className="flex flex-col h-full"
             >
-              <h2 className="text-2xl font-display font-bold text-white mb-2">Build your arsenal</h2>
-              <p className="text-[var(--text-secondary)] mb-6">Select the skills that define your craft.</p>
+              <h2 className="text-2xl font-display font-bold text-white mb-2 text-center">Build your arsenal</h2>
+              <p className="text-[var(--text-secondary)] mb-6 text-center">Select the skills that define your craft.</p>
+
+              {/* Horizontally scrolling tab bar */}
+              <div className="flex overflow-x-auto no-scrollbar gap-8 mb-6 pb-2 border-b border-[var(--border-subtle)] w-full max-w-2xl mx-auto">
+                {Object.keys(SKILL_CATEGORIES).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`text-sm font-medium whitespace-nowrap px-1 pb-2 relative cursor-pointer transition-colors ${
+                      activeTab === tab
+                        ? "text-[var(--text-primary)] font-bold"
+                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {tab}
+                    {activeTab === tab && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--accent-primary)] rounded-t-full shadow-[0_-2px_8px_rgba(108,92,231,0.5)]"
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
 
               <div className="flex-1 overflow-y-auto max-h-[300px] custom-scrollbar pr-2 mb-8 -mx-2 px-2">
                 <div className="flex flex-wrap gap-2">
-                  {SKILLS_ALL.slice(0, 30).map(skill => (
+                  {(SKILL_CATEGORIES[activeTab] || []).map(skill => (
                     <button
                       key={skill}
+                      type="button"
                       onClick={() => toggleSkill(skill)}
-                      className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+                      className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1.5"
                       style={{
                         background: selectedSkills.includes(skill)
                           ? "var(--text-primary)"
@@ -277,6 +380,7 @@ export default function SignupPage() {
                         boxShadow: selectedSkills.includes(skill) ? "var(--shadow-glow-sm)" : "none",
                       }}
                     >
+                      {selectedSkills.includes(skill) && <Check className="w-3.5 h-3.5 text-[var(--bg-void)] font-bold" />}
                       {skill}
                     </button>
                   ))}
@@ -306,7 +410,7 @@ export default function SignupPage() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col h-full"
+              className="flex flex-col h-full max-w-md mx-auto"
             >
               <h2 className="text-2xl font-display font-bold text-white mb-2">Initialize your proxy</h2>
               <p className="text-[var(--text-secondary)] mb-8">Set your face to the network.</p>

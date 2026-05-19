@@ -43,15 +43,17 @@ export async function middleware(request: NextRequest) {
                         request.nextUrl.pathname === '/login' ||
                         request.nextUrl.pathname === '/signup';
 
-  // If user is authenticated, check if they exist in public.users
+  // If user is authenticated, check they've completed onboarding (tagline is set)
+  // The DB trigger creates the row with tagline = '' — Step 3 of signup writes a real value.
   if (user && request.nextUrl.pathname !== '/signup' && !request.nextUrl.pathname.startsWith('/auth') && !request.nextUrl.pathname.startsWith('/api')) {
     const { data: publicUser } = await supabase
       .from('users')
-      .select('id')
+      .select('id, tagline')
       .eq('id', user.id)
       .maybeSingle()
 
-    if (!publicUser) {
+    // Redirect to /signup only if no row exists OR tagline is still empty
+    if (!publicUser || !publicUser.tagline || publicUser.tagline.trim() === '') {
       const url = request.nextUrl.clone()
       url.pathname = '/signup'
       return NextResponse.redirect(url)

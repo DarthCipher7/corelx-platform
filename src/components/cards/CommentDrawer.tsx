@@ -11,10 +11,11 @@ interface CommentDrawerProps {
   onClose: () => void;
   postId: string;
   postOwnerId: string;
+  targetType?: "post" | "flare";
   onCommentAdded?: () => void;
 }
 
-export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, onCommentAdded }: CommentDrawerProps) {
+export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, targetType = "post", onCommentAdded }: CommentDrawerProps) {
   const supabase = createClient();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [comments, setComments] = useState<any[]>([]);
@@ -38,7 +39,7 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, on
     const { data } = await supabase
       .from('comments')
       .select('*, users(handle, display_name, avatar_url)')
-      .eq('target_type', 'post')
+      .eq('target_type', targetType)
       .eq('target_id', postId)
       .order('created_at', { ascending: true });
       
@@ -56,7 +57,7 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, on
     setIsSubmitting(true);
     const { error } = await supabase.from('comments').insert({
       user_id: currentUser.id,
-      target_type: 'post',
+      target_type: targetType,
       target_id: postId,
       content: content.trim()
     });

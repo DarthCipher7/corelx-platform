@@ -63,7 +63,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
       let profileData: any = null;
       const { data: fullProfile, error: profileError } = await supabase
         .from('users')
-        .select('*, skills(*), feed_posts(*)')
+        .select('*, skills(*), feed_posts(*, qa_reports(*))')
         .eq('handle', targetHandle)
         .maybeSingle();
 
@@ -325,6 +325,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
               {profile.feed_posts?.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6">
                   {profile.feed_posts.map((post: any) => {
+                    const qaReport = Array.isArray(post.qa_reports) ? post.qa_reports[0] : post.qa_reports;
                     const postData: FeedPostData = {
                       id: post.id,
                       type: "work_post",
@@ -342,7 +343,13 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
                       mediaUrl: post.media_url,
                       tags: [],
                       saves: 0,
-                      category: post.category
+                      category: post.category,
+                      bug_details: qaReport ? {
+                        title: qaReport.bug_title,
+                        severity: qaReport.severity as "critical" | "high" | "medium" | "low",
+                        platforms: qaReport.platform || [],
+                        steps: qaReport.steps || []
+                      } : undefined
                     };
                     return <FeedPost key={post.id} post={postData} />;
                   })}
