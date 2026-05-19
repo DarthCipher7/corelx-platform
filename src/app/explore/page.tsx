@@ -7,6 +7,7 @@ import { MOCK_CREATORS, SKILLS_ALL, MOCK_FLARES } from "@/lib/data";
 import CreatorCard from "@/components/cards/CreatorCard";
 import FlareCard from "@/components/cards/FlareCard";
 import FlaresViewer from "@/components/explore/FlaresViewer";
+import UploadFlareModal from "@/components/explore/UploadFlareModal";
 import NeonBadge from "@/components/ui/NeonBadge";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
@@ -31,115 +32,117 @@ export default function ExplorePage() {
   const [creators, setCreators] = useState<any[]>([]);
   const [flares, setFlares] = useState<Flare[]>([]);
   const [selectedFlareIndex, setSelectedFlareIndex] = useState<number | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   
   const supabase = createClient();
 
   // Load creators and flares
-  useEffect(() => {
-    async function loadData() {
-      try {
-        // Load creators
-        const { data: userData } = await supabase
-          .from("users")
-          .select(`
-            id,
-            handle,
+  async function loadData() {
+    try {
+      // Load creators
+      const { data: userData } = await supabase
+        .from("users")
+        .select(`
+          id,
+          handle,
+          display_name,
+          avatar_url,
+          tagline,
+          availability_status,
+          created_at,
+          skills (
+            skill_name
+          )
+        `);
+      
+      if (userData) {
+        setCreators(userData.map(u => ({
+          id: u.id,
+          name: u.display_name || u.handle,
+          handle: u.handle,
+          avatar: u.avatar_url || "",
+          role: u.tagline || "Creator",
+          bio: "",
+          skills: u.skills ? u.skills.map((s: any) => s.skill_name) : [],
+          followers: 0,
+          following: 0,
+          projects: 0,
+          verified: false,
+          online: u.availability_status === 'Available for work',
+          coverGradient: "linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #00d2ff 100%)",
+          location: "",
+          joinedYear: new Date(u.created_at).getFullYear(),
+          socialLinks: {}
+        })));
+      }
+
+      // Load flares
+      const { data: flareData } = await supabase
+        .from("flares")
+        .select(`
+          id,
+          user_id,
+          media_url,
+          thumbnail_url,
+          caption,
+          tags,
+          duration_seconds,
+          created_at,
+          users (
             display_name,
-            avatar_url,
-            tagline,
-            availability_status,
-            created_at,
-            skills (
-              skill_name
-            )
-          `);
-        
-        if (userData) {
-          setCreators(userData.map(u => ({
-            id: u.id,
-            name: u.display_name || u.handle,
-            handle: u.handle,
-            avatar: u.avatar_url || "",
-            role: u.tagline || "Creator",
-            bio: "",
-            skills: u.skills ? u.skills.map((s: any) => s.skill_name) : [],
-            followers: 0,
-            following: 0,
-            projects: 0,
-            verified: false,
-            online: u.availability_status === 'Available for work',
-            coverGradient: "linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #00d2ff 100%)",
-            location: "",
-            joinedYear: new Date(u.created_at).getFullYear(),
-            socialLinks: {}
-          })));
-        }
+            handle,
+            avatar_url
+          )
+        `)
+        .order("created_at", { ascending: false });
 
-        // Load flares
-        const { data: flareData } = await supabase
-          .from("flares")
-          .select(`
-            id,
-            user_id,
-            media_url,
-            thumbnail_url,
-            caption,
-            tags,
-            duration_seconds,
-            created_at,
-            users (
-              display_name,
-              handle,
-              avatar_url
-            )
-          `)
-          .order("created_at", { ascending: false });
+      let sparkCounts: Record<string, number> = {};
+      if (flareData && flareData.length > 0) {
+        const flareIds = flareData.map(f => f.id);
+        const { data: flareSparks } = await supabase
+          .from('sparks')
+          .select('target_id')
+          .in('target_id', flareIds)
+          .eq('target_type', 'flare');
+          
+        flareSparks?.forEach(s => {
+          sparkCounts[s.target_id] = (sparkCounts[s.target_id] || 0) + 1;
+        });
+      }
 
-        let sparkCounts: Record<string, number> = {};
-        if (flareData && flareData.length > 0) {
-          const flareIds = flareData.map(f => f.id);
-          const { data: flareSparks } = await supabase
-            .from('sparks')
-            .select('target_id')
-            .in('target_id', flareIds)
-            .eq('target_type', 'flare');
-            
-          flareSparks?.forEach(s => {
-            sparkCounts[s.target_id] = (sparkCounts[s.target_id] || 0) + 1;
-          });
-        }
-
-        if (flareData && flareData.length > 0) {
-          // Format with correct user typing
-          const formattedFlares: Flare[] = flareData.map((f: any) => {
-            const authorUser = Array.isArray(f.users) ? f.users[0] : f.users;
-            return {
-              id: f.id,
-              user_id: f.user_id,
-              media_url: f.media_url,
-              thumbnail_url: f.thumbnail_url || undefined,
-              caption: f.caption || undefined,
-              tags: f.tags || [],
-              duration_seconds: f.duration_seconds || undefined,
-              created_at: f.created_at,
-              spark_count: sparkCounts[f.id] || 0,
-              users: authorUser ? {
-                display_name: authorUser.display_name || undefined,
-                handle: authorUser.handle,
-                avatar_url: authorUser.avatar_url || undefined
-              } : undefined
-            };
-          });
-          setFlares(formattedFlares);
-        } else {
-          // Fallback to beautiful mock flares
-          setFlares(MOCK_FLARES);
-        }
-      } catch (e) {
-        console.error("Error loading explore data:", e);
+      if (flareData && flareData.length > 0) {
+        // Format with correct user typing
+        const formattedFlares: Flare[] = flareData.map((f: any) => {
+          const authorUser = Array.isArray(f.users) ? f.users[0] : f.users;
+          return {
+            id: f.id,
+            user_id: f.user_id,
+            media_url: f.media_url,
+            thumbnail_url: f.thumbnail_url || undefined,
+            caption: f.caption || undefined,
+            tags: f.tags || [],
+            duration_seconds: f.duration_seconds || undefined,
+            created_at: f.created_at,
+            spark_count: sparkCounts[f.id] || 0,
+            users: authorUser ? {
+              display_name: authorUser.display_name || undefined,
+              handle: authorUser.handle,
+              avatar_url: authorUser.avatar_url || undefined
+            } : undefined
+          };
+        });
+        setFlares(formattedFlares);
+      } else {
+        // Fallback to beautiful mock flares
         setFlares(MOCK_FLARES);
       }
+    } catch (e) {
+      console.error("Error loading explore data:", e);
+      setFlares(MOCK_FLARES);
     }
+  }
+
+  useEffect(() => {
     loadData();
   }, [supabase]);
 
@@ -199,34 +202,52 @@ export default function ExplorePage() {
             </h1>
           </motion.div>
           
-          {/* Glassmorphic Selector */}
-          <motion.div
-            className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md self-start md:self-auto"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-          >
-            <button
-              onClick={() => setViewMode("flares")}
-              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
-                viewMode === "flares"
-                  ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
-                  : "text-[var(--text-secondary)] hover:text-white"
-              }`}
+          {/* Glassmorphic Selector and Post Flare trigger */}
+          <div className="flex items-center gap-3 self-start md:self-auto">
+            <motion.div
+              className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
             >
-              Flares 🔥
-            </button>
-            <button
-              onClick={() => setViewMode("creators")}
-              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
-                viewMode === "creators"
-                  ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
-                  : "text-[var(--text-secondary)] hover:text-white"
-              }`}
-            >
-              Creators 👥
-            </button>
-          </motion.div>
+              <button
+                type="button"
+                onClick={() => setViewMode("flares")}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
+                  viewMode === "flares"
+                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                    : "text-[var(--text-secondary)] hover:text-white"
+                }`}
+              >
+                Flares 🔥
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("creators")}
+                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
+                  viewMode === "creators"
+                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                    : "text-[var(--text-secondary)] hover:text-white"
+                }`}
+              >
+                Creators 👥
+              </button>
+            </motion.div>
+
+            {viewMode === "flares" && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setIsUploadModalOpen(true)}
+                className="px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:opacity-90 shadow-[0_0_15px_rgba(108,92,231,0.3)] shrink-0 cursor-pointer"
+              >
+                <Flame className="w-4 h-4 fill-current" />
+                Post Flare
+              </motion.button>
+            )}
+          </div>
         </div>
 
         {/* Search + filter bar */}
@@ -393,6 +414,13 @@ export default function ExplorePage() {
             onClose={() => setSelectedFlareIndex(null)}
           />
         )}
+
+        {/* Upload Flare Modal */}
+        <UploadFlareModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onSuccess={loadData}
+        />
       </div>
     </div>
   );
