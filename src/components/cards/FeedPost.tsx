@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bookmark, Sparkles, Share2, MoreHorizontal, Eye, AlertCircle } from "lucide-react";
+import { Bookmark, Sparkles, Share2, MoreHorizontal, Eye, AlertCircle, MessageSquare, Flag, Loader2 } from "lucide-react";
 import type { FeedPostData } from "@/types";
 import Link from "next/link";
 import NeonBadge from "@/components/ui/NeonBadge";
 import { createClient } from "@/utils/supabase/client";
 import { RevealEffect } from "@/components/ui/RevealEffect";
+import CommentDrawer from "./CommentDrawer";
 
 interface FeedPostProps {
   post: FeedPostData;
@@ -26,8 +27,17 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
   const [saved, setSaved] = useState(false);
   const [saveCount, setSaveCount] = useState(0);
   const [viewCount, setViewCount] = useState(post.views ?? 0);
+  const [commentCount, setCommentCount] = useState(0);
   const [isSparkLoading, setIsSparkLoading] = useState(false);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+
+  const [commentDrawerOpen, setCommentDrawerOpen] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState("spam");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reportSuccess, setReportSuccess] = useState(false);
 
   // Load auth user
   useEffect(() => {
@@ -53,6 +63,14 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
         .select("*", { count: "exact", head: true })
         .eq("post_id", post.id);
       setSaveCount(svCount ?? 0);
+
+      // Count comments
+      const { count: cCount } = await supabase
+        .from("comments")
+        .select("*", { count: "exact", head: true })
+        .eq("target_type", "post")
+        .eq("target_id", post.id);
+      setCommentCount(cCount ?? 0);
 
       // Check if current user has sparked / saved
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -172,6 +190,31 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
     navigator.clipboard.writeText(url);
   };
 
+  const handleReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || reportSubmitting) return;
+    setReportSubmitting(true);
+    
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: user.id,
+      target_type: 'post',
+      target_id: post.id,
+      reason: reportReason,
+      details: reportDetails
+    });
+    
+    setReportSubmitting(false);
+    if (!error) {
+      setReportSuccess(true);
+      setTimeout(() => {
+        setReportSuccess(false);
+        setReportModalOpen(false);
+        setReportDetails("");
+      }, 2000);
+    }
+  };
+
+
   return (
     <motion.article
       className="border rounded-2xl overflow-hidden shadow-2xl mb-8 relative group"
@@ -210,9 +253,29 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
           {post.type === "collab_call" && (
             <NeonBadge variant="cyan" size="sm">Collab</NeonBadge>
           )}
-          <button className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-black/5" style={{ color: "var(--text-muted)" }}>
-            <MoreHorizontal className="w-4 h-4" />
-          </button>
+          <div className="relative">
+            <button onClick={() => setDropdownOpen(!dropdownOpen)} className="w-8 h-8 rounded-full flex items-center justify-center transition-all hover:bg-black/5" style={{ color: "var(--text-muted)" }}>
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            <AnimatePresence>
+              {dropdownOpen && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                  className="absolute right-0 mt-2 w-36 bg-[var(--bg-deep)] border border-[var(--glass-border)] rounded-xl overflow-hidden shadow-2xl z-20"
+                >
+                  <button 
+                    onClick={() => { setDropdownOpen(false); requireAuth(() => setReportModalOpen(true)); }}
+                    className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-[var(--bg-surface)] transition-colors flex items-center gap-2"
+                  >
+                    <Flag className="w-4 h-4" />
+                    Report
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 
@@ -327,13 +390,21 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
             </span>
           </div>
 
-          {/* Right: Share + Spark */}
+          {/* Right: Share + Comment + Spark */}
           <div className="flex items-center gap-3">
             <button
               onClick={handleShare}
               className="w-9 h-9 rounded-full flex items-center justify-center text-white/50 hover:text-white hover:bg-white/5 transition-all"
             >
               <Share2 className="w-4 h-4" />
+            </button>
+            
+            <button
+              onClick={() => setCommentDrawerOpen(true)}
+              className="flex items-center gap-1.5 text-white/50 hover:text-white transition-all px-2"
+            >
+              <MessageSquare className="w-4 h-4" />
+              <span className="font-mono text-xs">{commentCount}</span>
             </button>
 
             <div className="relative">
@@ -369,6 +440,81 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
         </div>
       </div>
       </RevealEffect>
+      
+      <CommentDrawer 
+        isOpen={commentDrawerOpen} 
+        onClose={() => setCommentDrawerOpen(false)} 
+        postId={post.id} 
+        postOwnerId={post.creator.id || ''} 
+        onCommentAdded={() => setCommentCount(c => c + 1)} 
+      />
+
+      {/* Report Modal */}
+      <AnimatePresence>
+        {reportModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setReportModalOpen(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 20 }}
+              className="w-full max-w-sm bg-[var(--bg-deep)] border border-[var(--glass-border)] rounded-2xl p-6 shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              {reportSuccess ? (
+                <div className="text-center py-6">
+                  <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-4">
+                    <Flag className="w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">Report Submitted</h3>
+                  <p className="text-sm text-[var(--text-secondary)]">We'll review within 48 hours.</p>
+                </div>
+              ) : (
+                <form onSubmit={handleReport}>
+                  <h3 className="text-lg font-semibold text-white mb-4">Report Post</h3>
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Reason</label>
+                      <select 
+                        value={reportReason}
+                        onChange={e => setReportReason(e.target.value)}
+                        className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[var(--accent-primary)]"
+                      >
+                        <option value="spam">Spam</option>
+                        <option value="stolen_work">Stolen Work</option>
+                        <option value="harmful">Harmful Content</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Details (Optional)</label>
+                      <textarea 
+                        value={reportDetails}
+                        onChange={e => setReportDetails(e.target.value)}
+                        className="w-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-xl p-3 text-sm text-white focus:outline-none focus:border-[var(--accent-primary)] resize-none h-20 custom-scrollbar"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <button type="button" onClick={() => setReportModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-medium text-[var(--text-secondary)] hover:text-white transition-colors">
+                      Cancel
+                    </button>
+                    <button type="submit" disabled={reportSubmitting} className="px-4 py-2 rounded-xl text-sm font-medium bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors flex items-center gap-2">
+                      {reportSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Report"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </motion.article>
   );
 }

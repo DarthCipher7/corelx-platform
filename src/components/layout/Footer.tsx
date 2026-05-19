@@ -5,9 +5,27 @@ import Link from "next/link";
 import { Zap, Globe, Link as LinkIcon, Code2 } from "lucide-react";
 
 const FOOTER_LINKS = {
-  Platform: ["Explore", "Showcase", "Collabs", "Community", "Blog"],
-  Product: ["Features", "Pricing", "Changelog", "Roadmap", "API"],
-  Company: ["About", "Careers", "Press", "Privacy", "Terms"],
+  Platform: [
+    { name: "Explore", href: "/explore" },
+    { name: "Showcase", href: "/showcase" },
+    { name: "Collabs", href: "/collabs" },
+    { name: "Community", href: "#" },
+    { name: "Blog", href: "#" }
+  ],
+  Product: [
+    { name: "Features", href: "#" },
+    { name: "Pricing", href: "#" },
+    { name: "Changelog", href: "#" },
+    { name: "Roadmap", href: "#" },
+    { name: "API", href: "#" }
+  ],
+  Company: [
+    { name: "About", href: "/about" },
+    { name: "Careers", href: "#" },
+    { name: "Contact", href: "/contact" },
+    { name: "Privacy", href: "/privacy" },
+    { name: "Terms", href: "/terms" }
+  ],
 };
 
 export default function Footer() {
@@ -92,21 +110,19 @@ export default function Footer() {
               </p>
               <ul className="flex flex-col gap-3">
                 {links.map((link) => (
-                  <li key={link}>
+                  <li key={link.name}>
                     <Link
-                      href="#"
+                      href={link.href}
                       className="text-sm transition-all duration-150"
                       style={{ color: "var(--text-muted)" }}
                       onMouseEnter={(e) =>
-                        ((e.target as HTMLElement).style.color =
-                          "var(--text-primary)")
+                        ((e.target as HTMLElement).style.color = "var(--text-primary)")
                       }
                       onMouseLeave={(e) =>
-                        ((e.target as HTMLElement).style.color =
-                          "var(--text-muted)")
+                        ((e.target as HTMLElement).style.color = "var(--text-muted)")
                       }
                     >
-                      {link}
+                      {link.name}
                     </Link>
                   </li>
                 ))}

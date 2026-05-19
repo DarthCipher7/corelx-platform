@@ -1,6 +1,5 @@
 "use client";
-
-import { motion, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
@@ -22,6 +21,8 @@ import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { RevealEffect } from "@/components/ui/RevealEffect";
+import SearchOverlay from "./SearchOverlay";
+import { formatDistanceToNow } from "date-fns";
 
 const NAV_LINKS = [
   { label: "Feed", href: "/feed" },
@@ -38,6 +39,12 @@ export default function Navbar() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotifs, setUnreadNotifs] = useState(0);
+
   const [mounted, setMounted] = useState(false);
   
   const { theme, setTheme } = useTheme();
@@ -73,10 +80,36 @@ export default function Navbar() {
           .eq("recipient_id", authUser.id)
           .eq("read", false);
         setUnreadMessages(count || 0);
+
+        // Fetch notifications
+        const fetchNotifs = async () => {
+          const { data } = await supabase
+            .from("notifications")
+            .select("*, from_user:users!notifications_from_user_id_fkey(handle, display_name, avatar_url)")
+            .eq("user_id", authUser.id)
+            .order("created_at", { ascending: false })
+            .limit(20);
+          if (data) {
+            setNotifications(data);
+            setUnreadNotifs(data.filter(n => !n.read).length);
+          }
+        };
+        fetchNotifs();
+
+        const channel = supabase.channel('notifs')
+          .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${authUser.id}` }, () => {
+            fetchNotifs();
+          })
+          .subscribe();
+          
+        return () => supabase.removeChannel(channel);
+
       } else {
         setUser(null);
         setUserProfile(null);
         setUnreadMessages(0);
+        setNotifications([]);
+        setUnreadNotifs(0);
       }
     };
 
@@ -169,6 +202,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-3">
             {/* Search */}
             <button
+              onClick={() => setSearchOpen(true)}
               className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
               style={{
                 color: "var(--text-muted)",
@@ -259,31 +293,95 @@ export default function Navbar() {
             </Link>
 
             {/* Notifications */}
-            <button className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
-              style={{
-                color: "var(--text-muted)",
-                background: "transparent",
-                border: "1px solid var(--glass-border)",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "rgba(108,92,231,0.4)";
-                (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.borderColor = "var(--glass-border)";
-                (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
-              }}
-            >
-              <Bell className="w-4 h-4" />
-              {notifCount > 0 && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
-                  style={{ background: "var(--accent-primary)" }}
-                >
-                  {notifCount}
-                </span>
-              )}
-            </button>
+            <div className="relative">
+              <button 
+                onClick={() => setNotificationsOpen(!notificationsOpen)}
+                className="relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
+                style={{
+                  color: "var(--text-muted)",
+                  background: "transparent",
+                  border: "1px solid var(--glass-border)",
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "rgba(108,92,231,0.4)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.borderColor = "var(--glass-border)";
+                  (e.currentTarget as HTMLElement).style.color = "var(--text-muted)";
+                }}
+              >
+                <Bell className="w-4 h-4" />
+                {unreadNotifs > 0 && (
+                  <span
+                    className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                    style={{ background: "var(--accent-primary)" }}
+                  >
+                    {unreadNotifs > 99 ? '99+' : unreadNotifs}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {notificationsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-2 w-80 bg-[var(--bg-deep)] border border-[var(--glass-border)] rounded-2xl shadow-2xl overflow-hidden z-50 flex flex-col"
+                  >
+                    <div className="p-3 border-b border-[var(--border-subtle)] flex items-center justify-between">
+                      <span className="font-semibold text-white">Notifications</span>
+                      {unreadNotifs > 0 && (
+                        <button 
+                          onClick={async () => {
+                            await supabase.from('notifications').update({ read: true }).eq('user_id', user.id).eq('read', false);
+                            setNotifications(notifications.map(n => ({...n, read: true})));
+                            setUnreadNotifs(0);
+                          }}
+                          className="text-xs text-[var(--accent-primary)] hover:underline"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto custom-scrollbar">
+                      {notifications.length === 0 ? (
+                        <div className="p-6 text-center text-[var(--text-muted)] text-sm">
+                          <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                          No notifications yet.
+                        </div>
+                      ) : (
+                        notifications.map((notif: any) => (
+                          <div key={notif.id} className={`p-3 border-b border-[var(--border-subtle)] hover:bg-[var(--bg-surface)] transition-colors flex gap-3 ${!notif.read ? 'bg-[var(--accent-primary-glow)]/10' : ''}`}>
+                            <div className="w-10 h-10 rounded-full bg-[var(--bg-surface)] overflow-hidden flex-shrink-0">
+                              {notif.from_user?.avatar_url ? (
+                                <img src={notif.from_user.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+                              ) : (
+                                <User className="w-5 h-5 m-2.5 text-[var(--text-muted)]" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-white line-clamp-2">
+                                <span className="font-semibold">{notif.from_user?.display_name || notif.from_user?.handle || 'Someone'}</span>
+                                {' '}
+                                {notif.type === 'spark' && 'sent you a Spark! ✨'}
+                                {notif.type === 'comment' && 'commented on your post.'}
+                                {notif.type === 'follow' && 'started following you.'}
+                                {notif.type === 'collab_request' && 'sent a Collab Request!'}
+                              </p>
+                              <span className="text-xs text-[var(--text-muted)] mt-1 block">
+                                {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                              </span>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
             {user ? (
               <div className="relative">
@@ -381,6 +479,8 @@ export default function Navbar() {
           </Button>
         </div>
       </motion.div>
+
+      <SearchOverlay isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </>
   );
 }
