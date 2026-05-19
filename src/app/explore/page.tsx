@@ -2,16 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, SlidersHorizontal, ChevronDown, Flame } from "lucide-react";
-import { MOCK_CREATORS, SKILLS_ALL, MOCK_FLARES } from "@/lib/data";
+import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import CreatorCard from "@/components/cards/CreatorCard";
-import FlareCard from "@/components/cards/FlareCard";
-import FlaresViewer from "@/components/explore/FlaresViewer";
-import UploadFlareModal from "@/components/explore/UploadFlareModal";
-import NeonBadge from "@/components/ui/NeonBadge";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
-import { Flare } from "@/types";
+import { SKILLS_ALL } from "@/lib/data";
 
 const FILTER_ROLES = [
   "All",
@@ -25,18 +20,14 @@ const FILTER_ROLES = [
 ];
 
 export default function ExplorePage() {
-  const [viewMode, setViewMode] = useState<"flares" | "creators">("flares");
   const [search, setSearch] = useState("");
   const [activeRole, setActiveRole] = useState("All");
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const [creators, setCreators] = useState<any[]>([]);
-  const [flares, setFlares] = useState<Flare[]>([]);
-  const [selectedFlareIndex, setSelectedFlareIndex] = useState<number | null>(null);
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   
   const supabase = createClient();
 
-  // Load creators and flares
+  // Load creators
   async function loadData() {
     try {
       // Load creators
@@ -75,70 +66,8 @@ export default function ExplorePage() {
           socialLinks: {}
         })));
       }
-
-      // Load flares
-      const { data: flareData } = await supabase
-        .from("flares")
-        .select(`
-          id,
-          user_id,
-          media_url,
-          thumbnail_url,
-          caption,
-          tags,
-          duration_seconds,
-          created_at,
-          users (
-            display_name,
-            handle,
-            avatar_url
-          )
-        `)
-        .order("created_at", { ascending: false });
-
-      let sparkCounts: Record<string, number> = {};
-      if (flareData && flareData.length > 0) {
-        const flareIds = flareData.map(f => f.id);
-        const { data: flareSparks } = await supabase
-          .from('sparks')
-          .select('target_id')
-          .in('target_id', flareIds)
-          .eq('target_type', 'flare');
-          
-        flareSparks?.forEach(s => {
-          sparkCounts[s.target_id] = (sparkCounts[s.target_id] || 0) + 1;
-        });
-      }
-
-      if (flareData && flareData.length > 0) {
-        // Format with correct user typing
-        const formattedFlares: Flare[] = flareData.map((f: any) => {
-          const authorUser = Array.isArray(f.users) ? f.users[0] : f.users;
-          return {
-            id: f.id,
-            user_id: f.user_id,
-            media_url: f.media_url,
-            thumbnail_url: f.thumbnail_url || undefined,
-            caption: f.caption || undefined,
-            tags: f.tags || [],
-            duration_seconds: f.duration_seconds || undefined,
-            created_at: f.created_at,
-            spark_count: sparkCounts[f.id] || 0,
-            users: authorUser ? {
-              display_name: authorUser.display_name || undefined,
-              handle: authorUser.handle,
-              avatar_url: authorUser.avatar_url || undefined
-            } : undefined
-          };
-        });
-        setFlares(formattedFlares);
-      } else {
-        // Fallback to beautiful mock flares
-        setFlares(MOCK_FLARES);
-      }
     } catch (e) {
       console.error("Error loading explore data:", e);
-      setFlares(MOCK_FLARES);
     }
   }
 
@@ -162,22 +91,6 @@ export default function ExplorePage() {
     return matchSearch && matchRole && matchSkills;
   });
 
-  // Filter flares
-  const filteredFlares = flares.filter((f) => {
-    const matchSearch =
-      !search ||
-      (f.caption && f.caption.toLowerCase().includes(search.toLowerCase())) ||
-      f.tags.some(t => t.toLowerCase().includes(search.toLowerCase())) ||
-      (f.users?.display_name && f.users.display_name.toLowerCase().includes(search.toLowerCase())) ||
-      f.users?.handle.toLowerCase().includes(search.toLowerCase());
-      
-    const matchSkills =
-      activeSkills.length === 0 ||
-      activeSkills.some((s) => f.tags.some(t => t.toLowerCase() === s.toLowerCase()));
-      
-    return matchSearch && matchSkills;
-  });
-
   const toggleSkill = (skill: string) =>
     setActiveSkills((prev) =>
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
@@ -198,56 +111,9 @@ export default function ExplorePage() {
               <span>✦</span> Discovery Network
             </p>
             <h1 className="display-sm text-white font-bold tracking-tight">
-              {viewMode === "flares" ? "Trending Flares 🔥" : "Explore Creators 👥"}
+              Explore Creators 👥
             </h1>
           </motion.div>
-          
-          {/* Glassmorphic Selector and Post Flare trigger */}
-          <div className="flex items-center gap-3 self-start md:self-auto">
-            <motion.div
-              className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <button
-                type="button"
-                onClick={() => setViewMode("flares")}
-                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
-                  viewMode === "flares"
-                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
-                    : "text-[var(--text-secondary)] hover:text-white"
-                }`}
-              >
-                Flares 🔥
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("creators")}
-                className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
-                  viewMode === "creators"
-                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
-                    : "text-[var(--text-secondary)] hover:text-white"
-                }`}
-              >
-                Creators 👥
-              </button>
-            </motion.div>
-
-            {viewMode === "flares" && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setIsUploadModalOpen(true)}
-                className="px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:opacity-90 shadow-[0_0_15px_rgba(108,92,231,0.3)] shrink-0 cursor-pointer"
-              >
-                <Flame className="w-4 h-4 fill-current" />
-                Post Flare
-              </motion.button>
-            )}
-          </div>
         </div>
 
         {/* Search + filter bar */}
@@ -266,7 +132,7 @@ export default function ExplorePage() {
               id="explore-search"
               className="input-nova pl-11"
               style={{ background: "var(--bg-frosted)", color: "var(--text-primary)", backdropFilter: "blur(8px)" }}
-              placeholder={viewMode === "flares" ? "Search flares by tags, captions, or creator handles..." : "Search creators by name, skill, or role…"}
+              placeholder="Search creators by name, skill, or role…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -286,39 +152,37 @@ export default function ExplorePage() {
           </button>
         </motion.div>
 
-        {/* Role filter pills (only for creators) */}
-        {viewMode === "creators" && (
-          <motion.div
-            className="flex flex-wrap gap-2 mb-6"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.15 }}
-          >
-            {FILTER_ROLES.map((role) => (
-              <button
-                key={role}
-                onClick={() => setActiveRole(role)}
-                className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-                style={{
-                  background:
-                    activeRole === role
-                      ? "var(--text-primary)"
-                      : "var(--bg-frosted)",
-                  backdropFilter: "blur(8px)",
-                  color: activeRole === role ? "var(--bg-void)" : "var(--text-secondary)",
-                  border:
-                    activeRole === role
-                      ? "1px solid var(--text-primary)"
-                      : "1px solid var(--glass-border)",
-                  boxShadow:
-                    activeRole === role ? "var(--shadow-glow-sm)" : "none",
-                }}
-              >
-                {role}
-              </button>
-            ))}
-          </motion.div>
-        )}
+        {/* Role filter pills */}
+        <motion.div
+          className="flex flex-wrap gap-2 mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.15 }}
+        >
+          {FILTER_ROLES.map((role) => (
+            <button
+              key={role}
+              onClick={() => setActiveRole(role)}
+              className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+              style={{
+                background:
+                  activeRole === role
+                    ? "var(--text-primary)"
+                    : "var(--bg-frosted)",
+                backdropFilter: "blur(8px)",
+                color: activeRole === role ? "var(--bg-void)" : "var(--text-secondary)",
+                border:
+                  activeRole === role
+                    ? "1px solid var(--text-primary)"
+                    : "1px solid var(--glass-border)",
+                boxShadow:
+                  activeRole === role ? "var(--shadow-glow-sm)" : "none",
+              }}
+            >
+              {role}
+            </button>
+          ))}
+        </motion.div>
 
         {/* Skill / Tag multi-select */}
         <motion.div
@@ -350,77 +214,31 @@ export default function ExplorePage() {
 
         {/* Results count */}
         <p className="text-sm mb-6 font-mono" style={{ color: "var(--text-muted)" }}>
-          {viewMode === "flares" ? (
-            `${filteredFlares.length} Flare${filteredFlares.length !== 1 ? "s" : ""} circulating`
-          ) : (
-            `${filteredCreators.length} Creator${filteredCreators.length !== 1 ? "s" : ""} connected`
-          )}
+          {`${filteredCreators.length} Creator${filteredCreators.length !== 1 ? "s" : ""} connected`}
         </p>
 
         {/* Dynamic content rendering */}
         <AnimatePresence mode="wait">
-          {viewMode === "flares" ? (
-            <motion.div
-              key="flares-grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
-            >
-              {filteredFlares.length > 0 ? (
-                filteredFlares.map((flare, i) => (
-                  <FlareCard
-                    key={flare.id}
-                    flare={flare}
-                    index={i}
-                    onClick={() => setSelectedFlareIndex(i)}
-                  />
-                ))
-              ) : (
-                <EmptyState onClear={() => {
-                  setSearch("");
-                  setActiveSkills([]);
-                }} />
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="creators-grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-            >
-              {filteredCreators.length > 0 ? (
-                filteredCreators.map((creator, i) => (
-                  <CreatorCard key={creator.id} creator={creator} index={i} />
-                ))
-              ) : (
-                <EmptyState onClear={() => {
-                  setSearch("");
-                  setActiveRole("All");
-                  setActiveSkills([]);
-                }} />
-              )}
-            </motion.div>
-          )}
+          <motion.div
+            key="creators-grid"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+          >
+            {filteredCreators.length > 0 ? (
+              filteredCreators.map((creator, i) => (
+                <CreatorCard key={creator.id} creator={creator} index={i} />
+              ))
+            ) : (
+              <EmptyState onClear={() => {
+                setSearch("");
+                setActiveRole("All");
+                setActiveSkills([]);
+              }} />
+            )}
+          </motion.div>
         </AnimatePresence>
-
-        {/* Immersive Vertical Swipe Viewer Overlay */}
-        {selectedFlareIndex !== null && (
-          <FlaresViewer
-            flares={filteredFlares}
-            initialIndex={selectedFlareIndex}
-            onClose={() => setSelectedFlareIndex(null)}
-          />
-        )}
-
-        {/* Upload Flare Modal */}
-        <UploadFlareModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onSuccess={loadData}
-        />
       </div>
     </div>
   );
@@ -448,4 +266,3 @@ function EmptyState({ onClear }: { onClear: () => void }) {
     </motion.div>
   );
 }
-

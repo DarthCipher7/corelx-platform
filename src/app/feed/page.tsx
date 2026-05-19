@@ -6,6 +6,8 @@ import { MOCK_FEED_POSTS, MOCK_CREATORS } from "@/lib/data";
 import FeedPost from "@/components/cards/FeedPost";
 import CollabCard from "@/components/cards/CollabCard";
 import FlaresViewer from "@/components/explore/FlaresViewer";
+import FlareCard from "@/components/cards/FlareCard";
+import UploadFlareModal from "@/components/explore/UploadFlareModal";
 import Button from "@/components/ui/Button";
 import { createClient } from "@/utils/supabase/client";
 import { X, Image as ImageIcon, Play, Flame, AlertCircle } from "lucide-react";
@@ -28,6 +30,9 @@ export default function FeedPage() {
   const [collabs, setCollabs] = useState<any[]>([]);
   
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
+  const [feedMode, setFeedMode] = useState<"posts" | "flares">("posts");
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  
   const [postTitle, setPostTitle] = useState("");
   const [postCaption, setPostCaption] = useState("");
   const [postMediaUrl, setPostMediaUrl] = useState("");
@@ -463,6 +468,10 @@ export default function FeedPage() {
     }
   });
 
+  const filteredFlares = activeFilter === "All"
+    ? flares
+    : flares.filter(f => f.tags?.some(t => t.toLowerCase() === activeFilter.toLowerCase()));
+
   return (
     <div className="min-h-screen pt-24 pb-32">
       {/* Floating New Posts Pill */}
@@ -484,6 +493,77 @@ export default function FeedPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Main Header with viewMode selector and action buttons */}
+      <div className="max-w-[680px] mx-auto px-4 sm:px-6 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-[var(--border-subtle)] pb-6">
+          <div>
+            <p className="label-mono mb-2 text-[var(--accent-primary)] flex items-center gap-1.5">
+              <span>✦</span> Discovery Network
+            </p>
+            <h1 className="display-sm text-white font-bold tracking-tight">
+              {feedMode === "posts" ? "Discovery Feed 👥" : "Trending Flares 🔥"}
+            </h1>
+          </div>
+          
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Posts / Flares Selector */}
+            <div className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md">
+              <button
+                type="button"
+                onClick={() => setFeedMode("posts")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                  feedMode === "posts"
+                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                    : "text-[var(--text-secondary)] hover:text-white"
+                }`}
+              >
+                Posts
+              </button>
+              <button
+                type="button"
+                onClick={() => setFeedMode("flares")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1 ${
+                  feedMode === "flares"
+                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                    : "text-[var(--text-secondary)] hover:text-white"
+                }`}
+              >
+                Flares 🔥
+              </button>
+            </div>
+
+            {/* Posting actions */}
+            {user ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPostModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--bg-frosted)] text-white hover:bg-[var(--bg-surface)] border border-[var(--glass-border)] active:scale-95 cursor-pointer"
+                >
+                  Post Work
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:opacity-90 shadow-[0_0_15px_rgba(108,92,231,0.3)] active:scale-95 cursor-pointer"
+                >
+                  <Flame className="w-3.5 h-3.5 fill-current" />
+                  Post Flare
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => window.location.href = '/login'}
+                className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 bg-[var(--accent-primary)] text-white hover:opacity-90 active:scale-95 cursor-pointer"
+              >
+                Join to Post
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Sticky Filter Bar */}
       <div className="sticky top-16 z-30 w-full backdrop-blur-md border-b py-4 mb-8" style={{ backgroundColor: "var(--glass-bg)", borderColor: "var(--border-subtle)" }}>
@@ -508,86 +588,110 @@ export default function FeedPage() {
 
       <div className="max-w-[680px] mx-auto px-4 sm:px-6">
         <div className="flex flex-col">
-          {combinedPosts.map((post, i) => {
-            if (post.type === "flare_preview") {
-              return (
-                <div 
-                  key={post.id}
-                  onClick={() => {
-                    const idx = flares.findIndex(f => f.id === post.flareData.id);
-                    if (idx !== -1) setSelectedFlareIndex(idx);
-                  }}
-                  className="relative rounded-2xl overflow-hidden cursor-pointer group mb-8 p-6 border transition-all duration-300 hover:scale-[1.01]"
-                  style={{ 
-                    backgroundColor: "rgba(108, 92, 231, 0.03)", 
-                    borderColor: "rgba(108, 92, 231, 0.2)",
-                    boxShadow: "0 8px 32px 0 rgba(108, 92, 231, 0.05)"
-                  }}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-tr from-[rgba(108,92,231,0.08)] via-transparent to-transparent pointer-events-none" />
-                  
-                  <div className="flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2 text-[var(--accent-primary)] font-mono text-xs font-bold tracking-wider">
-                      <span className="animate-pulse">🔥</span> CORELX FLARES DISCOVERY
-                    </div>
-                    <div className="text-xs font-mono text-[var(--text-muted)] group-hover:text-white transition-colors flex items-center gap-1">
-                      Play Flare <span>→</span>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-4">
-                    <div className="w-20 aspect-[9/16] rounded-xl overflow-hidden relative bg-black/40 border border-white/10 flex-shrink-0">
-                      {post.flareData.thumbnail_url ? (
-                        <img src={post.flareData.thumbnail_url} alt="Flare preview" className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-[var(--accent-primary-glow)]">
-                          <span>🔥</span>
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                        <span className="p-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white">
-                          <Play className="w-3.5 h-3.5 fill-current" />
-                        </span>
+          {feedMode === "posts" ? (
+            combinedPosts.map((post, i) => {
+              if (post.type === "flare_preview") {
+                return (
+                  <div 
+                    key={post.id}
+                    onClick={() => {
+                      const idx = flares.findIndex(f => f.id === post.flareData.id);
+                      if (idx !== -1) setSelectedFlareIndex(idx);
+                    }}
+                    className="relative rounded-2xl overflow-hidden cursor-pointer group mb-8 p-6 border transition-all duration-300 hover:scale-[1.01]"
+                    style={{ 
+                      backgroundColor: "rgba(108, 92, 231, 0.03)", 
+                      borderColor: "rgba(108, 92, 231, 0.2)",
+                      boxShadow: "0 8px 32px 0 rgba(108, 92, 231, 0.05)"
+                    }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-tr from-[rgba(108,92,231,0.08)] via-transparent to-transparent pointer-events-none" />
+                    
+                    <div className="flex justify-between items-center mb-4">
+                      <div className="flex items-center gap-2 text-[var(--accent-primary)] font-mono text-xs font-bold tracking-wider">
+                        <span className="animate-pulse">🔥</span> CORELX FLARES DISCOVERY
+                      </div>
+                      <div className="text-xs font-mono text-[var(--text-muted)] group-hover:text-white transition-colors flex items-center gap-1">
+                        Play Flare <span>→</span>
                       </div>
                     </div>
 
-                    <div className="flex flex-col justify-between py-1">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <img src={post.flareData.users?.avatar_url} alt={post.flareData.users?.display_name} className="w-5 h-5 rounded-full object-cover" />
-                          <span className="text-xs font-semibold text-white">@{post.flareData.users?.handle}</span>
-                        </div>
-                        <p className="text-sm text-[var(--text-secondary)] line-clamp-2 italic mb-2">
-                          "{post.flareData.caption || "Check out my latest flare creation!"}"
-                        </p>
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-1.5">
-                        {post.flareData.tags?.slice(0, 3).map((tag: string) => (
-                          <span key={tag} className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/10 text-white/70">
-                            #{tag}
+                    <div className="flex gap-4">
+                      <div className="w-20 aspect-[9/16] rounded-xl overflow-hidden relative bg-black/40 border border-white/10 flex-shrink-0">
+                        {post.flareData.thumbnail_url ? (
+                          <img src={post.flareData.thumbnail_url} alt="Flare preview" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-[var(--accent-primary-glow)]">
+                            <span>🔥</span>
+                          </div>
+                        )}
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                          <span className="p-1.5 rounded-full bg-white/20 backdrop-blur-sm text-white">
+                            <Play className="w-3.5 h-3.5 fill-current" />
                           </span>
-                        ))}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col justify-between py-1">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <img src={post.flareData.users?.avatar_url} alt={post.flareData.users?.display_name} className="w-5 h-5 rounded-full object-cover" />
+                            <span className="text-xs font-semibold text-white">@{post.flareData.users?.handle}</span>
+                          </div>
+                          <p className="text-sm text-[var(--text-secondary)] line-clamp-2 italic mb-2">
+                            "{post.flareData.caption || "Check out my latest flare creation!"}"
+                          </p>
+                        </div>
+                        
+                        <div className="flex flex-wrap gap-1.5">
+                          {post.flareData.tags?.slice(0, 3).map((tag: string) => (
+                            <span key={tag} className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/10 text-white/70">
+                              #{tag}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            }
+                );
+              }
 
-            if (post.type === "collab_listing") {
-              return (
-                <div key={post.id} className="mb-8">
-                  <div className="flex items-center gap-2 text-[var(--accent-secondary)] font-mono text-xs font-bold tracking-wider mb-3 px-1">
-                    <span>⚡</span> ACTIVE COLLABORATION CALL
+              if (post.type === "collab_listing") {
+                return (
+                  <div key={post.id} className="mb-8">
+                    <div className="flex items-center gap-2 text-[var(--accent-secondary)] font-mono text-xs font-bold tracking-wider mb-3 px-1">
+                      <span>⚡</span> ACTIVE COLLABORATION CALL
+                    </div>
+                    <CollabCard collab={post.collabData} />
                   </div>
-                  <CollabCard collab={post.collabData} />
-                </div>
-              );
-            }
+                );
+              }
 
-            return <FeedPost key={post.id} post={post} index={i} />;
-          })}
+              return <FeedPost key={post.id} post={post} index={i} />;
+            })
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+              {filteredFlares.length > 0 ? (
+                filteredFlares.map((flare, idx) => (
+                  <FlareCard
+                    key={flare.id}
+                    flare={flare}
+                    index={idx}
+                    onClick={() => {
+                      const absoluteIndex = flares.findIndex(f => f.id === flare.id);
+                      if (absoluteIndex !== -1) setSelectedFlareIndex(absoluteIndex);
+                    }}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full py-16 text-center text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] rounded-3xl bg-[var(--bg-frosted)] backdrop-blur-xl">
+                  <Flame className="w-10 h-10 mx-auto mb-3 opacity-40 text-[var(--accent-primary)] animate-pulse" />
+                  <h4 className="text-base font-semibold text-white mb-1">No Flares Found</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Be the first to upload a Flare in this category!</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* End State */}
@@ -627,6 +731,13 @@ export default function FeedPage() {
           onClose={() => setSelectedFlareIndex(null)} 
         />
       )}
+
+      {/* Upload Flare Modal */}
+      <UploadFlareModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={fetchPosts}
+      />
 
       <AnimatePresence>
         {isPostModalOpen && (
