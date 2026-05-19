@@ -146,19 +146,22 @@ export default function SignupPage() {
       if (!uploadError) {
         const { data } = supabase.storage.from('media').getPublicUrl(fileName);
         finalAvatarUrl = data.publicUrl;
+      } else {
+        console.error("Avatar upload error:", uploadError);
       }
     }
 
     // Final profile update
     const { error } = await supabase.from('users').update({
       tagline: tagline,
+      display_name: handle || user.email?.split('@')[0] || 'Creator',
       ...(finalAvatarUrl && { avatar_url: finalAvatarUrl })
     }).eq('id', user.id);
 
+    if (error) console.error("Profile update error:", error);
+
     setIsSubmitting(false);
-    if (!error) {
-      router.push("/feed");
-    }
+    router.push("/feed");
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
