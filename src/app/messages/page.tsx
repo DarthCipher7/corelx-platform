@@ -189,7 +189,49 @@ export default function MessagesPage() {
     // Optimistic UI update
     setMessages(prev => [...prev, newMessage]);
 
-    if (!activeThread.id.startsWith("mock")) {
+    if (activeThread.id.startsWith("mock")) {
+      // Simulate AI bot response
+      setTimeout(() => {
+        let reply = "That's awesome!";
+        const lowerInput = messageText.toLowerCase();
+        
+        if (activeThread.id === "mock-1") { // Aria
+          const ariaReplies = [
+            "I love that! The UI animations are super smooth.",
+            "Have you considered using a slightly darker gradient for the glassmorphism?",
+            "Absolutely. Cyber-minimalism is the way to go!"
+          ];
+          reply = ariaReplies[Math.floor(Math.random() * ariaReplies.length)];
+          if (lowerInput.includes("collab")) reply = "I'm currently full on projects, but I'd love to review your designs anytime!";
+        } else if (activeThread.id === "mock-2") { // Eli
+          const eliReplies = [
+            "Those easing curves could be a bit tighter. Try [0.4, 0, 0.2, 1].",
+            "The motion feels a bit heavy, maybe reduce the stiffness?",
+            "Great physics on that transition!"
+          ];
+          reply = eliReplies[Math.floor(Math.random() * eliReplies.length)];
+          if (lowerInput.includes("help")) reply = "Send over the Framer Motion code and I'll take a look at the variants.";
+        } else if (activeThread.id === "mock-3") { // Luna
+          const lunaReplies = [
+            "The lighting is beautiful. Very cinematic.",
+            "I'd push the neon glow just a bit further on the edges.",
+            "The composition is striking. Love the void black background."
+          ];
+          reply = lunaReplies[Math.floor(Math.random() * lunaReplies.length)];
+          if (lowerInput.includes("3d")) reply = "I mostly use Blender for the base models and then light it up in Unreal Engine 5.";
+        }
+
+        const aiMessage: Message = {
+          id: `ai-${Date.now()}`,
+          sender_id: activeThread.id,
+          recipient_id: currentUser.id,
+          content: reply,
+          is_read: true,
+          created_at: new Date().toISOString()
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      }, 1500);
+    } else {
       const { error } = await supabase.from('messages').insert({
         sender_id: currentUser.id,
         recipient_id: activeThread.id,
