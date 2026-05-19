@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Search, TrendingUp, Clock, Star, Plus } from "lucide-react";
 import { MOCK_PROJECTS } from "@/lib/data";
 import ProjectCard from "@/components/cards/ProjectCard";
 import Button from "@/components/ui/Button";
+import { createClient } from "@/utils/supabase/client";
 
 const SORT_OPTIONS = [
   { label: "Trending", icon: TrendingUp },
@@ -18,13 +19,92 @@ const TAG_FILTERS = [
   "Brand", "Interactive", "TypeScript",
 ];
 
+const GRADIENTS = [
+  "linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #00d2ff 100%)",
+  "linear-gradient(135deg, #fd79a8 0%, #e84393 50%, #ff7675 100%)",
+  "linear-gradient(135deg, #0984e3 0%, #74b9ff 50%, #00cec9 100%)",
+  "linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 50%, #e17055 100%)",
+  "linear-gradient(135deg, #2d3436 0%, #636e72 50%, #b2bec3 100%)",
+];
+
 export default function ShowcasePage() {
+  const supabase = createClient();
   const [activeSort, setActiveSort] = useState("Trending");
   const [activeTag, setActiveTag] = useState("All");
   const [search, setSearch] = useState("");
+  const [dbProjects, setDbProjects] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filtered = MOCK_PROJECTS.filter((p) => {
-    const matchTag = activeTag === "All" || p.tags.some((t) => t.includes(activeTag));
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      // Query feed posts that have a media_url or title
+      const { data, error } = await supabase
+        .from("feed_posts")
+        .select(`
+          id,
+          title,
+          caption,
+          media_url,
+          category,
+          created_at,
+          user_id,
+          users (
+            id,
+            display_name,
+            handle,
+            avatar_url
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!error && data) {
+        setDbProjects(data);
+      } else {
+        console.warn("Could not query DB feed posts for Showcase:", error?.message);
+      }
+    } catch (e) {
+      console.error("Failed fetching live projects for Showcase:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Map database feed posts to Project interface
+  const formattedDbProjects = dbProjects.map((post: any, idx: number) => {
+    // Generate deterministic gradient based on index or title
+    const gradient = GRADIENTS[idx % GRADIENTS.length];
+    
+    return {
+      id: post.id,
+      title: post.title || "Creative Showcase",
+      description: post.caption || "",
+      thumbnail: post.media_url || "",
+      tags: post.category ? [post.category] : ["UI Design"],
+      likes: 12 + (idx * 3), // Simulating engagement numbers
+      views: 140 + (idx * 17), // Simulating view count
+      creator: {
+        id: post.users?.id || post.user_id,
+        name: post.users?.display_name || post.users?.handle || "Creator",
+        handle: post.users?.handle || "creator",
+        avatar: post.users?.avatar_url || "/default-avatar.png",
+        verified: false
+      },
+      featured: idx % 4 === 0, // Deterministically feature every 4th project
+      createdAt: post.created_at,
+      gradient
+    };
+  });
+
+  // Combine live db projects and mock projects
+  const allProjects = [...formattedDbProjects, ...MOCK_PROJECTS];
+
+  const filtered = allProjects.filter((p) => {
+    const matchTag = activeTag === "All" || p.tags.some((t) => t.toLowerCase().includes(activeTag.toLowerCase()));
     const matchSearch =
       !search ||
       p.title.toLowerCase().includes(search.toLowerCase()) ||
