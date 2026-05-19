@@ -1,225 +1,359 @@
 "use client";
 
-import { useState } from "react";
-import { createClient } from "@/utils/supabase/client";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import Button from "@/components/ui/Button";
-import { RevealEffect } from "@/components/ui/RevealEffect";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, X, Upload, ChevronRight, Loader2 } from "lucide-react";
+import { createClient } from "@/utils/supabase/client";
+import { SKILLS_ALL } from "@/lib/data";
 
 export default function SignupPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [handle, setHandle] = useState("");
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
-  
   const router = useRouter();
   const supabase = createClient();
+  
+  const [user, setUser] = useState<any>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [loading, setLoading] = useState(true);
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
+  // Step 1 State
+  const [handle, setHandle] = useState("");
+  const [handleAvailable, setHandleAvailable] = useState<boolean | null>(null);
+  const [checkingHandle, setCheckingHandle] = useState(false);
 
-    // 1. Sign up the user in auth.users
-    const callbackUrl = `${window.location.origin}/auth/callback?handle=${encodeURIComponent(handle)}&display_name=${encodeURIComponent(name || handle)}`;
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: callbackUrl,
-      },
-    });
+  // Step 2 State
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
 
-    if (authError) {
-      setError(authError.message);
+  // Step 3 State
+  const [tagline, setTagline] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load user
+  useEffect(() => {
+    async function loadUser() {
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) {
+        router.push("/login");
+        return;
+      }
+      setUser(authUser);
+
+      // Pre-fill if they already have a row
+      const { data: profile } = await supabase
+        .from('users')
+        .select('handle, tagline, avatar_url')
+        .eq('id', authUser.id)
+        .maybeSingle();
+
+      if (profile) {
+        if (profile.handle) setHandle(profile.handle);
+        if (profile.tagline) setTagline(profile.tagline);
+        if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
+        
+        // Let's assume if they have a tagline, they already onboarded
+        if (profile.tagline && profile.tagline.length > 0) {
+          router.push("/feed");
+          return;
+        }
+      }
       setLoading(false);
+    }
+    loadUser();
+  }, [supabase, router]);
+
+  // Handle Uniqueness Check
+  useEffect(() => {
+    if (!handle || handle.length < 3) {
+      setHandleAvailable(null);
       return;
     }
 
-    if (authData.user) {
-      // If email confirmation is required, session will be null
-      // We cannot insert into public.users until the user confirms their email
-      // and is redirected back via the auth callback
-      if (!authData.session) {
-        setSuccess("Almost there! Check your email to confirm your account. You'll be signed in automatically after.");
-        setLoading(false);
+    const checkHandle = async () => {
+      setCheckingHandle(true);
+      // Ensure it's alphanumeric/underscores
+      if (!/^[a-zA-Z0-9_]+$/.test(handle)) {
+        setHandleAvailable(false);
+        setCheckingHandle(false);
         return;
       }
 
-      // 2. Insert the public user record (only if session is active)
-      const { error: dbError } = await supabase
-        .from("users")
-        .insert({
-          id: authData.user.id,
-          handle: handle,
-          display_name: name || handle,
-          avatar_url: `https://api.dicebear.com/8.x/lorelei/svg?seed=${handle}&backgroundColor=6c5ce7`
-        });
+      const { data } = await supabase
+        .from('users')
+        .select('id')
+        .eq('handle', handle)
+        .neq('id', user?.id)
+        .maybeSingle();
 
-      if (dbError) {
-        setError(dbError.message);
-        setLoading(false);
-        return;
-      }
+      setHandleAvailable(!data);
+      setCheckingHandle(false);
+    };
+
+    const debounceId = setTimeout(checkHandle, 500);
+    return () => clearTimeout(debounceId);
+  }, [handle, supabase, user]);
+
+  const handleStep1Submit = async () => {
+    if (!handleAvailable || !handle || handle.length < 3 || !user) return;
+    
+    setIsSubmitting(true);
+    // Upsert the user row just to lock in the handle
+    const { error } = await supabase.from('users').upsert({
+      id: user.id,
+      handle: handle,
+    }, { onConflict: 'id' });
+
+    setIsSubmitting(false);
+    if (!error) setCurrentStep(2);
+  };
+
+  const handleStep2Submit = async () => {
+    if (selectedSkills.length === 0 || !user) return;
+    
+    setIsSubmitting(true);
+    // Clear old skills
+    await supabase.from('skills').delete().eq('user_id', user.id);
+    
+    // Insert new skills
+    const skillsToInsert = selectedSkills.map(skill => ({
+      user_id: user.id,
+      skill_name: skill
+    }));
+    
+    const { error } = await supabase.from('skills').insert(skillsToInsert);
+
+    setIsSubmitting(false);
+    if (!error) setCurrentStep(3);
+  };
+
+  const handleStep3Submit = async () => {
+    if (!user) return;
+    setIsSubmitting(true);
+
+    let finalAvatarUrl = avatarPreview;
+
+    // Upload avatar if new file exists
+    if (avatarFile) {
+      const fileExt = avatarFile.name.split('.').pop();
+      const fileName = `${user.id}_avatar_${Date.now()}.${fileExt}`;
       
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(fileName, avatarFile);
+
+      if (!uploadError) {
+        const { data } = supabase.storage.from('media').getPublicUrl(fileName);
+        finalAvatarUrl = data.publicUrl;
+      }
+    }
+
+    // Final profile update
+    const { error } = await supabase.from('users').update({
+      tagline: tagline,
+      ...(finalAvatarUrl && { avatar_url: finalAvatarUrl })
+    }).eq('id', user.id);
+
+    setIsSubmitting(false);
+    if (!error) {
       router.push("/feed");
-      router.refresh();
     }
   };
 
-  const handleOAuth = async (provider: 'google' | 'linkedin_oidc') => {
-    setLoading(true);
-    setError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-    if (error) {
-      setError(error.message);
-      setLoading(false);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
     }
   };
+
+  const toggleSkill = (skill: string) => {
+    setSelectedSkills(prev => 
+      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
+    );
+  };
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" /></div>;
+  }
 
   return (
-    <div className="min-h-screen pt-32 pb-24 px-4 flex items-center justify-center relative">
-      <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, var(--accent-primary-glow) 0%, var(--bg-void) 70%)" }} />
-      
-      <div className="w-full max-w-md glass-card rounded-2xl p-8 relative z-10 animate-fade-in-up">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-display font-bold mb-2" style={{ color: "var(--text-primary)" }}>Join CORELX</h1>
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Create your creator identity.</p>
+    <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4">
+      {/* Onboarding Step Indicator */}
+      <div className="w-full max-w-md mx-auto mb-12">
+        <div className="flex gap-2">
+          {[1, 2, 3].map((step) => (
+            <div key={step} className="h-1 flex-1 rounded-full overflow-hidden bg-[var(--bg-deep)] border border-[var(--border-subtle)]">
+              <motion.div 
+                className={`h-full rounded-full ${
+                  currentStep === step ? 'bg-[var(--accent-primary)] shadow-[0_0_8px_var(--accent-primary)]' : 
+                  currentStep > step ? 'bg-[var(--text-primary)]' : 'bg-transparent'
+                }`}
+                initial={{ width: 0 }}
+                animate={{ width: currentStep >= step ? '100%' : '0%' }}
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+              />
+            </div>
+          ))}
         </div>
+      </div>
 
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="mb-6 p-3 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-sm">
-            ✉️ {success}
-          </div>
-        )}
-
-        <form onSubmit={handleSignup} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Email</label>
-            <input
-              type="email"
-              required
-              className="w-full rounded-xl px-4 py-3 focus:outline-none focus:border-cyan-400 transition-colors"
-              style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Password</label>
-            <input
-              type="password"
-              required
-              className="w-full rounded-xl px-4 py-3 focus:outline-none focus:border-cyan-400 transition-colors"
-              style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Unique Handle</label>
-            <input
-              type="text"
-              required
-              className="w-full rounded-xl px-4 py-3 focus:outline-none focus:border-cyan-400 transition-colors"
-              style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
-              placeholder="e.g. aria.creates"
-              value={handle}
-              onChange={(e) => setHandle(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5" style={{ color: "var(--text-muted)" }}>Display Name</label>
-            <input
-              type="text"
-              required
-              className="w-full rounded-xl px-4 py-3 focus:outline-none focus:border-cyan-400 transition-colors"
-              style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
-              placeholder="e.g. Aria Chen"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          <Button variant="primary" className="w-full justify-center mt-6" disabled={loading}>
-            {loading ? "Creating..." : "Sign Up"}
-          </Button>
-        </form>
-
-        <div className="flex items-center my-6">
-          <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-subtle)" }} />
-          <span className="px-3 text-[10px] font-semibold uppercase tracking-wider" style={{ color: "var(--text-muted)" }}>Or continue with</span>
-          <div className="flex-1 h-px" style={{ backgroundColor: "var(--border-subtle)" }} />
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <RevealEffect className="rounded-xl overflow-hidden">
-            <button
-              onClick={() => handleOAuth('google')}
-              disabled={loading}
-              type="button"
-              className="w-full py-3 px-4 flex items-center justify-center gap-2 text-xs font-medium transition-all cursor-pointer"
-              style={{
-                backgroundColor: "var(--bg-frosted)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-                backdropFilter: "blur(8px)",
-              }}
+      {/* Main Container */}
+      <div className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        
+        <AnimatePresence mode="wait">
+          {/* STEP 1: IDENTITY */}
+          {currentStep === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col h-full"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.6 14.8 1 12 1 7.3 1 3.4 3.7 1.6 7.6l3.7 2.9C6.2 7.2 8.9 5 12 5z"/>
-                <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.3 3.7l3.6 2.8c2.1-2 3.7-5 3.7-8.7z"/>
-                <path fill="#FBBC05" d="M5.3 14.8c-.2-.7-.3-1.5-.3-2.3s.1-1.6.3-2.3L1.6 7.3C.6 9.2 0 11.5 0 12.5s.6 3.3 1.6 5.2l3.7-2.9z"/>
-                <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.6-2.8c-1.1.7-2.5 1.2-4.4 1.2-3.1 0-5.8-2.2-6.7-5.5L1.6 15.8C3.4 19.8 7.3 23 12 23z"/>
-              </svg>
-              Google
-            </button>
-          </RevealEffect>
+              <h2 className="text-2xl font-display font-bold text-white mb-2">Claim your identity</h2>
+              <p className="text-[var(--text-secondary)] mb-8">This is how the network will find you. Choose wisely.</p>
 
-          <RevealEffect className="rounded-xl overflow-hidden">
-            <button
-              onClick={() => handleOAuth('linkedin_oidc')}
-              disabled={loading}
-              type="button"
-              className="w-full py-3 px-4 flex items-center justify-center gap-2 text-xs font-medium transition-all cursor-pointer"
-              style={{
-                backgroundColor: "var(--bg-frosted)",
-                border: "1px solid var(--glass-border)",
-                color: "var(--text-primary)",
-                backdropFilter: "blur(8px)",
-              }}
+              <div className="relative mb-8">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-mono">@</span>
+                <input
+                  type="text"
+                  value={handle}
+                  onChange={(e) => setHandle(e.target.value.toLowerCase())}
+                  placeholder="username"
+                  className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl py-4 pl-10 pr-12 text-white font-mono placeholder-[var(--text-muted)] outline-none transition-colors"
+                />
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                  {checkingHandle && <Loader2 className="w-4 h-4 animate-spin text-[var(--text-muted)]" />}
+                  {!checkingHandle && handleAvailable === true && <Check className="w-5 h-5 text-emerald-400" />}
+                  {!checkingHandle && handleAvailable === false && <X className="w-5 h-5 text-red-400" />}
+                </div>
+              </div>
+              
+              <div className="mt-auto pt-4">
+                <button
+                  onClick={handleStep1Submit}
+                  disabled={!handleAvailable || isSubmitting}
+                  className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[#5b4bc4] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Continue"}
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 2: ARSENAL */}
+          {currentStep === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col h-full"
             >
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#0A66C2">
-                <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5V9h3v10zM6.5 7.8A1.8 1.8 0 118.3 6a1.8 1.8 0 01-1.8 1.8zM19 19h-3v-5.4c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V19h-3V9h2.9v1.4h.1c.4-.8 1.4-1.6 3-1.6 3.2 0 3.8 2.1 3.8 4.8V19z"/>
-              </svg>
-              LinkedIn
-            </button>
-          </RevealEffect>
-        </div>
+              <h2 className="text-2xl font-display font-bold text-white mb-2">Build your arsenal</h2>
+              <p className="text-[var(--text-secondary)] mb-6">Select the skills that define your craft.</p>
 
-        <p className="text-center text-sm mt-6" style={{ color: "var(--text-secondary)" }}>
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium" style={{ color: "var(--accent-cyan)" }}>
-            Log in
-          </Link>
-        </p>
+              <div className="flex-1 overflow-y-auto max-h-[300px] custom-scrollbar pr-2 mb-8 -mx-2 px-2">
+                <div className="flex flex-wrap gap-2">
+                  {SKILLS_ALL.slice(0, 30).map(skill => (
+                    <button
+                      key={skill}
+                      onClick={() => toggleSkill(skill)}
+                      className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+                      style={{
+                        background: selectedSkills.includes(skill)
+                          ? "var(--text-primary)"
+                          : "var(--bg-deep)",
+                        color: selectedSkills.includes(skill) ? "var(--bg-void)" : "var(--text-secondary)",
+                        border: selectedSkills.includes(skill)
+                          ? "1px solid var(--text-primary)"
+                          : "1px solid var(--border-subtle)",
+                        boxShadow: selectedSkills.includes(skill) ? "var(--shadow-glow-sm)" : "none",
+                      }}
+                    >
+                      {skill}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-auto pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
+                <span className="text-sm text-[var(--text-muted)] font-mono">
+                  {selectedSkills.length} selected
+                </span>
+                <button
+                  onClick={handleStep2Submit}
+                  disabled={selectedSkills.length === 0 || isSubmitting}
+                  className="py-3 px-8 rounded-xl font-semibold text-white bg-[var(--text-primary)] !text-[var(--bg-void)] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Next Step"}
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* STEP 3: AVATAR */}
+          {currentStep === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="flex flex-col h-full"
+            >
+              <h2 className="text-2xl font-display font-bold text-white mb-2">Initialize your proxy</h2>
+              <p className="text-[var(--text-secondary)] mb-8">Set your face to the network.</p>
+
+              <div className="flex flex-col items-center mb-8">
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-28 h-28 rounded-full bg-[var(--bg-deep)] border-2 border-dashed border-[var(--border-subtle)] hover:border-[var(--accent-primary)] flex items-center justify-center cursor-pointer relative overflow-hidden group transition-all"
+                >
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <Upload className="w-8 h-8 text-[var(--text-muted)] group-hover:text-[var(--accent-primary)] transition-colors" />
+                  )}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-xs font-semibold text-white">Change</span>
+                  </div>
+                </div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="image/jpeg,image/png,image/webp" 
+                  className="hidden" 
+                />
+              </div>
+
+              <div className="mb-8">
+                <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Tagline</label>
+                <input
+                  type="text"
+                  value={tagline}
+                  onChange={(e) => setTagline(e.target.value)}
+                  placeholder="Senior Motion Designer @ Void"
+                  className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                />
+              </div>
+
+              <div className="mt-auto pt-4">
+                <button
+                  onClick={handleStep3Submit}
+                  disabled={isSubmitting || !tagline}
+                  className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[#5b4bc4] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2"
+                >
+                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Complete Profile"}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -43,6 +43,21 @@ export async function middleware(request: NextRequest) {
                         request.nextUrl.pathname === '/login' ||
                         request.nextUrl.pathname === '/signup';
 
+  // If user is authenticated, check if they exist in public.users
+  if (user && request.nextUrl.pathname !== '/signup' && !request.nextUrl.pathname.startsWith('/auth') && !request.nextUrl.pathname.startsWith('/api')) {
+    const { data: publicUser } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (!publicUser) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/signup'
+      return NextResponse.redirect(url)
+    }
+  }
+
   // Protect all other routes
   if (!user && !isPublicRoute) {
     const url = request.nextUrl.clone()
