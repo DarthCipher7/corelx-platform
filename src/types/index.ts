@@ -76,3 +76,20 @@ export interface FeedPostData {
   saves: number;
   category?: string;
 }
+
+export interface Flare {
+  id: string;
+  user_id: string;
+  media_url: string;
+  thumbnail_url?: string;
+  caption?: string;
+  tags: string[];
+  duration_seconds?: number;
+  created_at: string;
+  spark_count?: number;
+  users?: {
+    display_name?: string;
+    handle: string;
+    avatar_url?: string;
+  };
+}

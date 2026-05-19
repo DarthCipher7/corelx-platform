@@ -1,4 +1,4 @@
-import { Creator, Project, CollabRequest } from "@/types";
+import { Creator, Project, CollabRequest, Flare } from "@/types";
 
 export const MOCK_CREATORS: Creator[] = [
   {
@@ -290,6 +290,89 @@ export const MOCK_FEED_POSTS = [
     tags: ["AI", "Stable Diffusion", "Beta"],
     saves: 567,
     category: "UI Design",
+  }
+];
+
+export const MOCK_FLARES: Flare[] = [
+  {
+    id: "f1",
+    user_id: "1",
+    media_url: "https://assets.mixkit.co/videos/preview/mixkit-abstract-laser-lights-background-loop-41851-large.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
+    caption: "Nebula OS Shimmer Effect. Tinkering with custom CSS backdrop filters and radial glows for the window headers. Let me know what you think of this animation! ✦",
+    tags: ["UI Design", "CSS", "Motion"],
+    duration_seconds: 12,
+    created_at: new Date(Date.now() - 3600000 * 2).toISOString(), // 2h ago
+    spark_count: 42,
+    users: {
+      display_name: "Aria Chen",
+      handle: "aria.creates",
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria&backgroundColor=6c5ce7"
+    }
+  },
+  {
+    id: "f2",
+    user_id: "5",
+    media_url: "https://assets.mixkit.co/videos/preview/mixkit-tunnel-of-futuristic-blue-neon-lights-42283-large.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2670&auto=format&fit=crop",
+    caption: "Warp Tunnel. Rendered entirely in WebGL with Three.js. Standard GLSL shader running on a customized cylinder geometry. Highly responsive to scroll inputs.",
+    tags: ["WebGL", "Three.js", "GLSL"],
+    duration_seconds: 15,
+    created_at: new Date(Date.now() - 3600000 * 5).toISOString(), // 5h ago
+    spark_count: 128,
+    users: {
+      display_name: "Eli Ramos",
+      handle: "eli.motion",
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli&backgroundColor=a29bfe"
+    }
+  },
+  {
+    id: "f3",
+    user_id: "3",
+    media_url: "https://assets.mixkit.co/videos/preview/mixkit-rotating-cube-with-neon-edges-42277-large.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=2564&auto=format&fit=crop",
+    caption: "Hypercube. Playing with neon wireframe reflections in Octane Render. The glass refraction index is key here. What's your go-to render engine for glass?",
+    tags: ["3D Art", "Blender", "Octane"],
+    duration_seconds: 10,
+    created_at: new Date(Date.now() - 3600000 * 12).toISOString(), // 12h ago
+    spark_count: 95,
+    users: {
+      display_name: "Luna Voss",
+      handle: "lunavisuals",
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=luna&backgroundColor=fd79a8"
+    }
+  },
+  {
+    id: "f4",
+    user_id: "4",
+    media_url: "https://assets.mixkit.co/videos/preview/mixkit-retro-futuristic-grid-background-42284-large.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1678324424699-4c12513fdf1b?q=80&w=2670&auto=format&fit=crop",
+    caption: "AI Audio-Reactive Grid. Generating landscapes dynamically using Stable Diffusion ControlNet based on real-time FFT frequency analysis. Super smooth 60fps.",
+    tags: ["AI", "Stable Diffusion", "Python"],
+    duration_seconds: 20,
+    created_at: new Date(Date.now() - 3600000 * 24).toISOString(), // 1d ago
+    spark_count: 67,
+    users: {
+      display_name: "Kira Nakamura",
+      handle: "kira.dev",
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira&backgroundColor=fdcb6e"
+    }
+  },
+  {
+    id: "f5",
+    user_id: "2",
+    media_url: "https://assets.mixkit.co/videos/preview/mixkit-flying-through-a-futuristic-neon-grid-42285-large.mp4",
+    thumbnail_url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2670&auto=format&fit=crop",
+    caption: "Cyber Grid Journey. Developing a procedural canvas shader path with Canvas 2D API for lightweight 2D neon loops. Weighing in at only 12KB gzip.",
+    tags: ["Code", "Creative", "Canvas"],
+    duration_seconds: 14,
+    created_at: new Date(Date.now() - 3600000 * 48).toISOString(), // 2d ago
+    spark_count: 88,
+    users: {
+      display_name: "Zane Okafor",
+      handle: "zanecode",
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=zane&backgroundColor=00cec9"
+    }
   }
 ];
 

@@ -3,12 +3,15 @@
 import { use, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { notFound, useRouter } from "next/navigation";
-import { MapPin, Users, FolderOpen, CheckCircle, ArrowRight, X, Send } from "lucide-react";
+import { MapPin, Users, FolderOpen, CheckCircle, ArrowRight, X, Send, Flame } from "lucide-react";
 import FeedPost from "@/components/cards/FeedPost";
+import FlareCard from "@/components/cards/FlareCard";
+import FlaresViewer from "@/components/explore/FlaresViewer";
 import Button from "@/components/ui/Button";
 import NeonBadge from "@/components/ui/NeonBadge";
 import { createClient } from "@/utils/supabase/client";
-import { FeedPostData } from "@/types";
+import { FeedPostData, Flare } from "@/types";
+import { MOCK_FLARES } from "@/lib/data";
 
 export default function StudioPage({ params }: { params: Promise<{ handle: string }> }) {
   const resolvedParams = use(params);
@@ -27,6 +30,9 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
   const [sending, setSending] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"projects" | "flares">("projects");
+  const [creatorFlares, setCreatorFlares] = useState<Flare[]>([]);
+  const [selectedFlareIndex, setSelectedFlareIndex] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -44,7 +50,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
         const { data: userMeta } = await supabase.from('users').select('handle').eq('id', user.id).single();
         if (userMeta?.handle) {
           targetHandle = userMeta.handle;
-          // Optionally redirect to the canonical URL
+          // Redirect to canonical URL
           router.replace(`/studio/${targetHandle}`);
           return;
         } else {
@@ -53,7 +59,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
         }
       }
 
-      // Fetch the profile gracefully handling missing foreign tables if they aren't created yet
+      // Fetch the profile gracefully
       let profileData: any = null;
       const { data: fullProfile, error: profileError } = await supabase
         .from('users')
@@ -109,6 +115,63 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
         console.warn("Follows relation check skipped:", e);
       }
 
+      // Fetch creator's flares
+      try {
+        const { data: dbFlares } = await supabase
+          .from("flares")
+          .select("*")
+          .eq("user_id", profileData.id)
+          .order("created_at", { ascending: false });
+
+        if (dbFlares && dbFlares.length > 0) {
+          const formatted: Flare[] = dbFlares.map((f: any) => ({
+            id: f.id,
+            user_id: f.user_id,
+            media_url: f.media_url,
+            thumbnail_url: f.thumbnail_url || undefined,
+            caption: f.caption || undefined,
+            tags: f.tags || [],
+            duration_seconds: f.duration_seconds || undefined,
+            created_at: f.created_at,
+            spark_count: Math.floor(Math.random() * 45) + 12,
+            users: {
+              display_name: profileData.display_name || undefined,
+              handle: profileData.handle,
+              avatar_url: profileData.avatar_url || undefined
+            }
+          }));
+          setCreatorFlares(formatted);
+        } else {
+          // Fallback to MOCK_FLARES for this creator
+          const matchedMock = MOCK_FLARES.filter(f => f.users?.handle === profileData.handle);
+          if (matchedMock.length > 0) {
+            setCreatorFlares(matchedMock);
+          } else {
+            // Generate customized fallback flares so they aren't empty
+            setCreatorFlares([
+              {
+                id: `f-mock-${profileData.id}-1`,
+                user_id: profileData.id,
+                media_url: "https://assets.mixkit.co/videos/preview/mixkit-abstract-laser-lights-background-loop-41851-large.mp4",
+                thumbnail_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
+                caption: `Tinkering with the future of creators at CORELX. High-fidelity dynamic environments are coming next! ✦`,
+                tags: ["UI Design", "Creative", "WIP"],
+                duration_seconds: 12,
+                created_at: new Date().toISOString(),
+                spark_count: 32,
+                users: {
+                  display_name: profileData.display_name || undefined,
+                  handle: profileData.handle,
+                  avatar_url: profileData.avatar_url || undefined
+                }
+              }
+            ]);
+          }
+        }
+      } catch (e) {
+        console.warn("Flares load failed:", e);
+      }
+
       setLoading(false);
     }
     loadData();
@@ -137,7 +200,6 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
     if (!currentUser) return router.push("/login");
     router.push(`/messages?with=${profile.id}`);
   };
-
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -218,47 +280,120 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
           </div>
         </div>
 
-        {/* Posts Grid */}
-        <div className="mb-12">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-2xl font-display font-semibold" style={{ color: "var(--text-primary)" }}>Posts</h2>
-          </div>
-          
-          {profile.feed_posts?.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6">
-              {profile.feed_posts.map((post: any) => {
-                const postData: FeedPostData = {
-                  id: post.id,
-                  type: "work_post",
-                  creator: {
-                    id: profile.id,
-                    name: profile.display_name || profile.handle,
-                    handle: profile.handle,
-                    avatar: profile.avatar_url || "",
-                    verified: false,
-                    role: profile.tagline || "Creator"
-                  },
-                  timestamp: new Date(post.created_at).toLocaleDateString(),
-                  title: post.title,
-                  caption: post.caption,
-                  mediaUrl: post.media_url,
-                  tags: [],
-                  saves: 0,
-                  category: post.category
-                };
-                return <FeedPost key={post.id} post={postData} />;
-              })}
-            </div>
-          ) : (
-            <div className="text-center py-24 rounded-2xl" style={{ backgroundColor: "var(--bg-frosted)", border: "1px dashed var(--border-subtle)" }}>
-              <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" style={{ color: "var(--text-muted)" }} />
-              <h3 className="text-xl font-medium mb-2" style={{ color: "var(--text-primary)" }}>No posts yet</h3>
-              <p style={{ color: "var(--text-secondary)" }}>When {profile.handle} posts their work, it will appear here.</p>
-            </div>
-          )}
+        {/* Dual Tab Controller: Projects vs Flares */}
+        <div className="border-b border-[var(--border-subtle)] mb-8 flex gap-6">
+          <button
+            onClick={() => setActiveTab("projects")}
+            className={`pb-4 text-lg font-medium relative transition-all ${
+              activeTab === "projects" ? "text-white" : "text-[var(--text-secondary)] hover:text-white"
+            }`}
+          >
+            Projects ({profile.feed_posts?.length || 0})
+            {activeTab === "projects" && (
+              <motion.div
+                layoutId="activeTabUnderline"
+                className="absolute bottom-0 inset-x-0 h-0.5 bg-white"
+              />
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab("flares")}
+            className={`pb-4 text-lg font-medium relative transition-all flex items-center gap-1.5 ${
+              activeTab === "flares" ? "text-white" : "text-[var(--text-secondary)] hover:text-white"
+            }`}
+          >
+            Flares 🔥 ({creatorFlares.length})
+            {activeTab === "flares" && (
+              <motion.div
+                layoutId="activeTabUnderline"
+                className="absolute bottom-0 inset-x-0 h-0.5 bg-white"
+              />
+            )}
+          </button>
         </div>
-      </div>
 
+        {/* Tab content */}
+        <AnimatePresence mode="wait">
+          {activeTab === "projects" ? (
+            <motion.div
+              key="projects-tab"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {profile.feed_posts?.length > 0 ? (
+                <div className="grid grid-cols-1 gap-6">
+                  {profile.feed_posts.map((post: any) => {
+                    const postData: FeedPostData = {
+                      id: post.id,
+                      type: "work_post",
+                      creator: {
+                        id: profile.id,
+                        name: profile.display_name || profile.handle,
+                        handle: profile.handle,
+                        avatar: profile.avatar_url || "",
+                        verified: false,
+                        role: profile.tagline || "Creator"
+                      },
+                      timestamp: new Date(post.created_at).toLocaleDateString(),
+                      title: post.title,
+                      caption: post.caption,
+                      mediaUrl: post.media_url,
+                      tags: [],
+                      saves: 0,
+                      category: post.category
+                    };
+                    return <FeedPost key={post.id} post={postData} />;
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-24 rounded-2xl bg-[var(--bg-frosted)] border border-dashed border-[var(--border-subtle)]">
+                  <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" style={{ color: "var(--text-muted)" }} />
+                  <h3 className="text-xl font-medium mb-2 text-white">No posts yet</h3>
+                  <p style={{ color: "var(--text-secondary)" }}>When {profile.handle} posts their work, it will appear here.</p>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="flares-tab"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+            >
+              {creatorFlares.length > 0 ? (
+                creatorFlares.map((flare, idx) => (
+                  <FlareCard
+                    key={flare.id}
+                    flare={flare}
+                    index={idx}
+                    onClick={() => setSelectedFlareIndex(idx)}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full text-center py-24 rounded-2xl bg-[var(--bg-frosted)] border border-dashed border-[var(--border-subtle)]">
+                  <Flame className="w-12 h-12 mx-auto mb-4 opacity-50 text-[var(--accent-primary)]" />
+                  <h3 className="text-xl font-medium mb-2 text-white">No Flares yet</h3>
+                  <p style={{ color: "var(--text-secondary)" }}>When {profile.handle} uploads a creative Flare loop, it will light up here.</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Studio Restricted Flares Viewer Overlay */}
+        {selectedFlareIndex !== null && (
+          <FlaresViewer
+            flares={creatorFlares}
+            initialIndex={selectedFlareIndex}
+            onClose={() => setSelectedFlareIndex(null)}
+          />
+        )}
+
+      </div>
     </div>
   );
 }

@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { motion } from "framer-motion";
-import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
-import { MOCK_CREATORS, SKILLS_ALL } from "@/lib/data";
+import { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Search, SlidersHorizontal, ChevronDown, Flame } from "lucide-react";
+import { MOCK_CREATORS, SKILLS_ALL, MOCK_FLARES } from "@/lib/data";
 import CreatorCard from "@/components/cards/CreatorCard";
+import FlareCard from "@/components/cards/FlareCard";
+import FlaresViewer from "@/components/explore/FlaresViewer";
 import NeonBadge from "@/components/ui/NeonBadge";
 import { createClient } from "@/utils/supabase/client";
-import { useEffect } from "react";
 import Button from "@/components/ui/Button";
+import { Flare } from "@/types";
 
 const FILTER_ROLES = [
   "All", "Designer", "Engineer", "3D Artist", "Motion Designer",
@@ -16,16 +18,22 @@ const FILTER_ROLES = [
 ];
 
 export default function ExplorePage() {
+  const [viewMode, setViewMode] = useState<"flares" | "creators">("flares");
   const [search, setSearch] = useState("");
   const [activeRole, setActiveRole] = useState("All");
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
   const [creators, setCreators] = useState<any[]>([]);
+  const [flares, setFlares] = useState<Flare[]>([]);
+  const [selectedFlareIndex, setSelectedFlareIndex] = useState<number | null>(null);
+  
   const supabase = createClient();
 
+  // Load creators and flares
   useEffect(() => {
-    async function load() {
+    async function loadData() {
       try {
-        const { data } = await supabase
+        // Load creators
+        const { data: userData } = await supabase
           .from("users")
           .select(`
             id,
@@ -39,8 +47,9 @@ export default function ExplorePage() {
               skill_name
             )
           `);
-        if (data) {
-          setCreators(data.map(u => ({
+        
+        if (userData) {
+          setCreators(userData.map(u => ({
             id: u.id,
             name: u.display_name || u.handle,
             handle: u.handle,
@@ -59,14 +68,60 @@ export default function ExplorePage() {
             socialLinks: {}
           })));
         }
+
+        // Load flares
+        const { data: flareData } = await supabase
+          .from("flares")
+          .select(`
+            id,
+            user_id,
+            media_url,
+            thumbnail_url,
+            caption,
+            tags,
+            duration_seconds,
+            created_at,
+            users (
+              display_name,
+              handle,
+              avatar_url
+            )
+          `)
+          .order("created_at", { ascending: false });
+
+        if (flareData && flareData.length > 0) {
+          // Format with correct user typing
+          const formattedFlares: Flare[] = flareData.map((f: any) => ({
+            id: f.id,
+            user_id: f.user_id,
+            media_url: f.media_url,
+            thumbnail_url: f.thumbnail_url || undefined,
+            caption: f.caption || undefined,
+            tags: f.tags || [],
+            duration_seconds: f.duration_seconds || undefined,
+            created_at: f.created_at,
+            spark_count: Math.floor(Math.random() * 80) + 15, // Mock count for now
+            users: f.users ? {
+              display_name: f.users.display_name || undefined,
+              handle: f.users.handle,
+              avatar_url: f.users.avatar_url || undefined
+            } : undefined
+          }));
+          setFlares(formattedFlares);
+        } else {
+          // Fallback to beautiful mock flares
+          setFlares(MOCK_FLARES);
+        }
       } catch (e) {
-        console.error(e);
+        console.error("Error loading explore data:", e);
+        setFlares(MOCK_FLARES);
       }
     }
-    load();
+    loadData();
   }, [supabase]);
 
-  const filtered = creators.filter((c) => {
+  // Filter creators
+  const filteredCreators = creators.filter((c) => {
     const matchSearch =
       !search ||
       c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -81,6 +136,22 @@ export default function ExplorePage() {
     return matchSearch && matchRole && matchSkills;
   });
 
+  // Filter flares
+  const filteredFlares = flares.filter((f) => {
+    const matchSearch =
+      !search ||
+      (f.caption && f.caption.toLowerCase().includes(search.toLowerCase())) ||
+      f.tags.some(t => t.toLowerCase().includes(search.toLowerCase())) ||
+      (f.users?.display_name && f.users.display_name.toLowerCase().includes(search.toLowerCase())) ||
+      f.users?.handle.toLowerCase().includes(search.toLowerCase());
+      
+    const matchSkills =
+      activeSkills.length === 0 ||
+      activeSkills.some((s) => f.tags.some(t => t.toLowerCase() === s.toLowerCase()));
+      
+    return matchSearch && matchSkills;
+  });
+
   const toggleSkill = (skill: string) =>
     setActiveSkills((prev) =>
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
@@ -89,21 +160,51 @@ export default function ExplorePage() {
   return (
     <div className="min-h-screen pt-24 pb-24 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        {/* Page header */}
-        <motion.div
-          className="mb-10"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <p className="label-mono mb-3">Creator Network</p>
-          <h1 className="display-lg mb-4" style={{ color: "var(--text-primary)" }}>
-            Explore creators
-          </h1>
-          <p style={{ color: "var(--text-secondary)" }} className="text-base max-w-lg">
-            Discover designers, engineers, artists, and builders from around the world.
-          </p>
-        </motion.div>
+        
+        {/* Dual Mode View Controller header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 border-b border-[var(--border-subtle)] pb-6">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <p className="label-mono mb-2 text-[var(--accent-primary)] flex items-center gap-1.5">
+              <span>✦</span> Discovery Network
+            </p>
+            <h1 className="display-sm text-white font-bold tracking-tight">
+              {viewMode === "flares" ? "Trending Flares 🔥" : "Explore Creators 👥"}
+            </h1>
+          </motion.div>
+          
+          {/* Glassmorphic Selector */}
+          <motion.div
+            className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md self-start md:self-auto"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.3 }}
+          >
+            <button
+              onClick={() => setViewMode("flares")}
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
+                viewMode === "flares"
+                  ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                  : "text-[var(--text-secondary)] hover:text-white"
+              }`}
+            >
+              Flares 🔥
+            </button>
+            <button
+              onClick={() => setViewMode("creators")}
+              className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1.5 ${
+                viewMode === "creators"
+                  ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                  : "text-[var(--text-secondary)] hover:text-white"
+              }`}
+            >
+              Creators 👥
+            </button>
+          </motion.div>
+        </div>
 
         {/* Search + filter bar */}
         <motion.div
@@ -121,7 +222,7 @@ export default function ExplorePage() {
               id="explore-search"
               className="input-nova pl-11"
               style={{ background: "var(--bg-frosted)", color: "var(--text-primary)", backdropFilter: "blur(8px)" }}
-              placeholder="Search creators by name, skill, or role…"
+              placeholder={viewMode === "flares" ? "Search flares by tags, captions, or creator handles..." : "Search creators by name, skill, or role…"}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -141,39 +242,41 @@ export default function ExplorePage() {
           </button>
         </motion.div>
 
-        {/* Role filter pills */}
-        <motion.div
-          className="flex flex-wrap gap-2 mb-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-        >
-          {FILTER_ROLES.map((role) => (
-            <button
-              key={role}
-              onClick={() => setActiveRole(role)}
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
-              style={{
-                background:
-                  activeRole === role
-                    ? "var(--text-primary)"
-                    : "var(--bg-frosted)",
-                backdropFilter: "blur(8px)",
-                color: activeRole === role ? "var(--bg-void)" : "var(--text-secondary)",
-                border:
-                  activeRole === role
-                    ? "1px solid var(--text-primary)"
-                    : "1px solid var(--glass-border)",
-                boxShadow:
-                  activeRole === role ? "var(--shadow-glow-sm)" : "none",
-              }}
-            >
-              {role}
-            </button>
-          ))}
-        </motion.div>
+        {/* Role filter pills (only for creators) */}
+        {viewMode === "creators" && (
+          <motion.div
+            className="flex flex-wrap gap-2 mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15 }}
+          >
+            {FILTER_ROLES.map((role) => (
+              <button
+                key={role}
+                onClick={() => setActiveRole(role)}
+                className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200"
+                style={{
+                  background:
+                    activeRole === role
+                      ? "var(--text-primary)"
+                      : "var(--bg-frosted)",
+                  backdropFilter: "blur(8px)",
+                  color: activeRole === role ? "var(--bg-void)" : "var(--text-secondary)",
+                  border:
+                    activeRole === role
+                      ? "1px solid var(--text-primary)"
+                      : "1px solid var(--glass-border)",
+                  boxShadow:
+                    activeRole === role ? "var(--shadow-glow-sm)" : "none",
+                }}
+              >
+                {role}
+              </button>
+            ))}
+          </motion.div>
+        )}
 
-        {/* Skill multi-select */}
+        {/* Skill / Tag multi-select */}
         <motion.div
           className="flex flex-wrap gap-1.5 mb-10"
           initial={{ opacity: 0 }}
@@ -202,45 +305,96 @@ export default function ExplorePage() {
         </motion.div>
 
         {/* Results count */}
-        <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>
-          {filtered.length} creator{filtered.length !== 1 ? "s" : ""} found
+        <p className="text-sm mb-6 font-mono" style={{ color: "var(--text-muted)" }}>
+          {viewMode === "flares" ? (
+            `${filteredFlares.length} Flare${filteredFlares.length !== 1 ? "s" : ""} circulating`
+          ) : (
+            `${filteredCreators.length} Creator${filteredCreators.length !== 1 ? "s" : ""} connected`
+          )}
         </p>
 
-        {/* Grid */}
-        {filtered.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((creator, i) => (
-              <CreatorCard key={creator.id} creator={creator} index={i} />
-            ))}
-          </div>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center p-12 mt-8 rounded-2xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-xl text-center"
-          >
-            <div className="w-16 h-16 rounded-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(108,92,231,0.2)]">
-              <span className="text-2xl">📡</span>
-            </div>
-            <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2 tracking-tight">
-              Signal lost.
-            </h3>
-            <p className="text-[var(--text-secondary)] mb-8 max-w-sm">
-              We couldn't find anyone matching those exact frequencies.
-            </p>
-            <Button 
-              variant="ghost" 
-              onClick={() => {
-                setSearch("");
-                setActiveRole("All");
-                setActiveSkills([]);
-              }}
+        {/* Dynamic content rendering */}
+        <AnimatePresence mode="wait">
+          {viewMode === "flares" ? (
+            <motion.div
+              key="flares-grid"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
             >
-              Clear Filters
-            </Button>
-          </motion.div>
+              {filteredFlares.length > 0 ? (
+                filteredFlares.map((flare, i) => (
+                  <FlareCard
+                    key={flare.id}
+                    flare={flare}
+                    index={i}
+                    onClick={() => setSelectedFlareIndex(i)}
+                  />
+                ))
+              ) : (
+                <EmptyState onClear={() => {
+                  setSearch("");
+                  setActiveSkills([]);
+                }} />
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="creators-grid"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            >
+              {filteredCreators.length > 0 ? (
+                filteredCreators.map((creator, i) => (
+                  <CreatorCard key={creator.id} creator={creator} index={i} />
+                ))
+              ) : (
+                <EmptyState onClear={() => {
+                  setSearch("");
+                  setActiveRole("All");
+                  setActiveSkills([]);
+                }} />
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Immersive Vertical Swipe Viewer Overlay */}
+        {selectedFlareIndex !== null && (
+          <FlaresViewer
+            flares={filteredFlares}
+            initialIndex={selectedFlareIndex}
+            onClose={() => setSelectedFlareIndex(null)}
+          />
         )}
       </div>
     </div>
   );
 }
+
+function EmptyState({ onClear }: { onClear: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="col-span-full flex flex-col items-center justify-center p-12 mt-8 rounded-2xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-xl text-center"
+    >
+      <div className="w-16 h-16 rounded-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(108,92,231,0.2)]">
+        <span className="text-2xl">📡</span>
+      </div>
+      <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2 tracking-tight">
+        Signal lost.
+      </h3>
+      <p className="text-[var(--text-secondary)] mb-8 max-w-sm">
+        We couldn't find anything matching those exact frequencies.
+      </p>
+      <Button variant="ghost" onClick={onClear}>
+        Clear Filters
+      </Button>
+    </motion.div>
+  );
+}
+
