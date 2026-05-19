@@ -35,6 +35,8 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifCount] = useState(3);
   const [user, setUser] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [unreadMessages, setUnreadMessages] = useState(0);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   
@@ -53,14 +55,37 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setUser(user);
+    const fetchUserData = async (authUser: any) => {
+      if (authUser) {
+        setUser(authUser);
+        // Fetch user profile
+        const { data: profile } = await supabase
+          .from("users")
+          .select("handle, display_name, avatar_url")
+          .eq("id", authUser.id)
+          .single();
+        if (profile) setUserProfile(profile);
+
+        // Fetch unread messages
+        const { count } = await supabase
+          .from("messages")
+          .select("*", { count: "exact", head: true })
+          .eq("recipient_id", authUser.id)
+          .eq("read", false);
+        setUnreadMessages(count || 0);
+      } else {
+        setUser(null);
+        setUserProfile(null);
+        setUnreadMessages(0);
       }
+    };
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      fetchUserData(user);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
+      fetchUserData(session?.user ?? null);
     });
 
     return () => {
@@ -223,6 +248,14 @@ export default function Navbar() {
               }}
             >
               <MessageSquare className="w-4 h-4" />
+              {unreadMessages > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center text-white"
+                  style={{ background: "var(--accent-primary)" }}
+                >
+                  {unreadMessages}
+                </span>
+              )}
             </Link>
 
             {/* Notifications */}
@@ -255,13 +288,20 @@ export default function Navbar() {
             {user ? (
               <div className="relative">
                 <button 
-                  className="w-9 h-9 rounded-full overflow-hidden transition-colors p-0.5"
+                  className="h-9 flex items-center gap-2 rounded-full overflow-hidden transition-colors p-0.5 pr-3"
                   style={{ backgroundColor: "var(--bg-surface)", border: "1px solid var(--border-subtle)" }}
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
                 >
-                  <div className="w-full h-full rounded-full flex items-center justify-center font-semibold text-xs" style={{ backgroundColor: "var(--accent-primary)", color: "var(--bg-void)" }}>
-                    {user.email?.charAt(0).toUpperCase()}
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs overflow-hidden" style={{ backgroundColor: "var(--accent-primary)", color: "var(--bg-void)" }}>
+                    {userProfile?.avatar_url ? (
+                      <img src={userProfile.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                    ) : (
+                      (userProfile?.display_name || userProfile?.handle || user.email)?.charAt(0).toUpperCase()
+                    )}
                   </div>
+                  {userProfile?.handle && (
+                    <span className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>@{userProfile.handle}</span>
+                  )}
                 </button>
                 
                 {profileDropdownOpen && (

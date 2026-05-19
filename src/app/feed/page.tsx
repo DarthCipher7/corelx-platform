@@ -52,7 +52,8 @@ export default function FeedPage() {
           tagline
         )
       `)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(20);
 
     if (activeFilter !== "All") {
       query = query.eq('category', activeFilter);
@@ -71,25 +72,31 @@ export default function FeedPage() {
     
     setIsPosting(true);
     
-    const { error } = await supabase.from('feed_posts').insert({
+    const { data, error } = await supabase.from('feed_posts').insert({
       user_id: user.id,
       title: postTitle,
       caption: postCaption,
       media_url: postMediaUrl,
       category: postCategory
-    });
+    }).select(`
+      id, title, caption, media_url, category, created_at, user_id,
+      users ( handle, display_name, avatar_url, tagline )
+    `).single();
     
     setIsPosting(false);
     
-    if (!error) {
+    if (!error && data) {
       setIsPostModalOpen(false);
       setPostTitle("");
       setPostCaption("");
       setPostMediaUrl("");
       setPostCategory("UI Design");
-      fetchPosts();
+      // Optimistically prepend
+      if (activeFilter === "All" || activeFilter === postCategory) {
+        setDbPosts(prev => [data, ...prev]);
+      }
     } else {
-      alert(error.message);
+      alert(error?.message || "Error posting");
     }
   };
 

@@ -25,11 +25,7 @@ function AnimatedNumber({ target }: { target: number }) {
   return <span ref={ref}>0</span>;
 }
 
-const STATS = [
-  { label: "Creators", value: 48200, icon: Users },
-  { label: "Projects Shared", value: 312000, icon: Star },
-  { label: "Collabs Formed", value: 9400, icon: Briefcase },
-];
+// We'll dynamically construct this inside the component now
 
 // Floating orbs component
 function Orbs() {
@@ -151,7 +147,21 @@ const item: Variants = {
   show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
 };
 
-export default function HeroSection() {
+export default function HeroSection({ 
+  usersCount = 0, 
+  postsCount = 0, 
+  followsCount = 0 
+}: { 
+  usersCount?: number; 
+  postsCount?: number; 
+  followsCount?: number; 
+}) {
+  const STATS = [
+    { label: "Creators", value: usersCount || 48200, icon: Users },
+    { label: "Projects Shared", value: postsCount || 312000, icon: Star },
+    { label: "Connections Made", value: followsCount || 9400, icon: Briefcase },
+  ];
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16">
       <GridLines />

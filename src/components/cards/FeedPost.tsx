@@ -17,6 +17,8 @@ interface FeedPostProps {
 
 export default function FeedPost({ post, index = 0 }: FeedPostProps) {
   const [sparkOpen, setSparkOpen] = useState(false);
+  const [sparked, setSparked] = useState(false);
+  const [sparkCount, setSparkCount] = useState(0);
   const [saved, setSaved] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [showToast, setShowToast] = useState(false);
@@ -200,42 +202,32 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
             <div className="relative">
               <motion.button 
                 className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all"
-                style={{ backgroundColor: "var(--glass-hover)", border: "1px solid var(--border-subtle)", color: "var(--accent-primary)" }}
-                whileHover={{ scale: 1.02, backgroundColor: "var(--glass-bg)" }}
+                style={{ 
+                  backgroundColor: sparked ? "var(--accent-primary-glow)" : "var(--glass-hover)", 
+                  border: "1px solid",
+                  borderColor: sparked ? "var(--accent-primary)" : "var(--border-subtle)", 
+                  color: sparked ? "var(--text-primary)" : "var(--accent-primary)" 
+                }}
+                whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => requireAuth(() => setSparkOpen(!sparkOpen))}
+                onClick={() => requireAuth(() => {
+                  setSparked(!sparked);
+                  setSparkCount(prev => sparked ? prev - 1 : prev + 1);
+                })}
               >
-                <Sparkles className="w-4 h-4" />
-                Spark
-              </motion.button>
-              
-              <AnimatePresence>
-                {sparkOpen && (
-                  <motion.div 
-                    className="absolute bottom-full right-0 mb-3 w-56 rounded-xl p-2 shadow-2xl z-20"
-                    style={{ backgroundColor: "var(--bg-elevated)", border: "1px solid var(--glass-border)" }}
-                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
+                <Sparkles className={`w-4 h-4 ${sparked ? "fill-current" : ""}`} />
+                <AnimatePresence mode="popLayout">
+                  <motion.span
+                    key={sparkCount}
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 20, opacity: 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                   >
-                    <div className="flex flex-col gap-1">
-                      <button className="flex items-center gap-3 w-full text-left p-2.5 rounded-lg text-sm transition-all" style={{ color: "var(--text-primary)" }} onClick={() => setSparkOpen(false)}>
-                        <MessageSquare className="w-4 h-4" style={{ color: "var(--accent-cyan)" }} />
-                        Quick Chat
-                      </button>
-                      <button className="flex items-center gap-3 w-full text-left p-2.5 rounded-lg text-sm transition-all" style={{ color: "var(--text-primary)" }} onClick={() => setSparkOpen(false)}>
-                        <Briefcase className="w-4 h-4" style={{ color: "var(--accent-primary)" }} />
-                        Pitch Project
-                      </button>
-                      <button className="flex items-center gap-3 w-full text-left p-2.5 rounded-lg text-sm transition-all" style={{ color: "var(--text-primary)" }} onClick={() => setSparkOpen(false)}>
-                        <Sparkles className="w-4 h-4" style={{ color: "var(--accent-amber)" }} />
-                        Remix This
-                      </button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                    {sparkCount > 0 ? sparkCount : "Spark"}
+                  </motion.span>
+                </AnimatePresence>
+              </motion.button>
             </div>
           </div>
         </div>

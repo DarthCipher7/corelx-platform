@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, TrendingUp, Clock, Star } from "lucide-react";
+import { Search, TrendingUp, Clock, Star, Plus } from "lucide-react";
 import { MOCK_PROJECTS } from "@/lib/data";
 import ProjectCard from "@/components/cards/ProjectCard";
+import Button from "@/components/ui/Button";
 
 const SORT_OPTIONS = [
   { label: "Trending", icon: TrendingUp },
@@ -124,12 +125,28 @@ export default function ShowcasePage() {
         </div>
 
         {filtered.length === 0 && (
-          <div className="text-center py-24">
-            <p className="text-4xl mb-4" style={{ filter: "grayscale(1) opacity(0.4)" }}>
-              🎨
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center p-12 mt-8 rounded-2xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-xl text-center"
+          >
+            <div className="w-16 h-16 rounded-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(108,92,231,0.2)]">
+              <span className="text-2xl">🧊</span>
+            </div>
+            <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2 tracking-tight">
+              A blank canvas awaits.
+            </h3>
+            <p className="text-[var(--text-secondary)] mb-8 max-w-sm">
+              Drop your best work here to establish your identity in the network.
             </p>
-            <p style={{ color: "var(--text-muted)" }}>No projects match your search.</p>
-          </div>
+            <Button 
+              variant="primary" 
+              iconRight={<Plus className="w-4 h-4" />}
+              onClick={() => window.location.href = "/feed"}
+            >
+              Upload Project
+            </Button>
+          </motion.div>
         )}
       </div>
     </div>

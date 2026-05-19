@@ -6,6 +6,9 @@ import { Search, SlidersHorizontal, ChevronDown } from "lucide-react";
 import { MOCK_CREATORS, SKILLS_ALL } from "@/lib/data";
 import CreatorCard from "@/components/cards/CreatorCard";
 import NeonBadge from "@/components/ui/NeonBadge";
+import { createClient } from "@/utils/supabase/client";
+import { useEffect } from "react";
+import Button from "@/components/ui/Button";
 
 const FILTER_ROLES = [
   "All", "Designer", "Engineer", "3D Artist", "Motion Designer",
@@ -16,8 +19,54 @@ export default function ExplorePage() {
   const [search, setSearch] = useState("");
   const [activeRole, setActiveRole] = useState("All");
   const [activeSkills, setActiveSkills] = useState<string[]>([]);
+  const [creators, setCreators] = useState<any[]>([]);
+  const supabase = createClient();
 
-  const filtered = MOCK_CREATORS.filter((c) => {
+  useEffect(() => {
+    async function load() {
+      try {
+        const { data } = await supabase
+          .from("users")
+          .select(`
+            id,
+            handle,
+            display_name,
+            avatar_url,
+            tagline,
+            availability_status,
+            created_at,
+            skills (
+              skill_name
+            )
+          `);
+        if (data) {
+          setCreators(data.map(u => ({
+            id: u.id,
+            name: u.display_name || u.handle,
+            handle: u.handle,
+            avatar: u.avatar_url || "",
+            role: u.tagline || "Creator",
+            bio: "",
+            skills: u.skills ? u.skills.map((s: any) => s.skill_name) : [],
+            followers: 0,
+            following: 0,
+            projects: 0,
+            verified: false,
+            online: u.availability_status === 'Available for work',
+            coverGradient: "linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #00d2ff 100%)",
+            location: "",
+            joinedYear: new Date(u.created_at).getFullYear(),
+            socialLinks: {}
+          })));
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    load();
+  }, [supabase]);
+
+  const filtered = creators.filter((c) => {
     const matchSearch =
       !search ||
       c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -165,17 +214,31 @@ export default function ExplorePage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-24">
-            <p
-              className="text-5xl mb-4"
-              style={{ filter: "grayscale(1) opacity(0.4)" }}
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex flex-col items-center justify-center p-12 mt-8 rounded-2xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-xl text-center"
+          >
+            <div className="w-16 h-16 rounded-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(108,92,231,0.2)]">
+              <span className="text-2xl">📡</span>
+            </div>
+            <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2 tracking-tight">
+              Signal lost.
+            </h3>
+            <p className="text-[var(--text-secondary)] mb-8 max-w-sm">
+              We couldn't find anyone matching those exact frequencies.
+            </p>
+            <Button 
+              variant="ghost" 
+              onClick={() => {
+                setSearch("");
+                setActiveRole("All");
+                setActiveSkills([]);
+              }}
             >
-              🔍
-            </p>
-            <p style={{ color: "var(--text-muted)" }}>
-              No creators match your filters. Try broadening your search.
-            </p>
-          </div>
+              Clear Filters
+            </Button>
+          </motion.div>
         )}
       </div>
     </div>

@@ -133,35 +133,11 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
     }
   };
 
-  const openMessages = async () => {
+  const handleMessageRedirect = () => {
     if (!currentUser) return router.push("/login");
-    setIsMessageDrawerOpen(true);
-    fetchMessages();
+    router.push(`/messages?with=${profile.id}`);
   };
 
-  const fetchMessages = async () => {
-    if (!profile || !currentUser) return;
-    const { data } = await supabase
-      .from('messages')
-      .select('*')
-      .or(`and(sender_id.eq.${currentUser.id},recipient_id.eq.${profile.id}),and(sender_id.eq.${profile.id},recipient_id.eq.${currentUser.id})`)
-      .order('created_at', { ascending: true });
-    if (data) setMessages(data);
-  };
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!messageText.trim() || !currentUser || !profile) return;
-    setSending(true);
-    await supabase.from('messages').insert({
-      sender_id: currentUser.id,
-      recipient_id: profile.id,
-      content: messageText
-    });
-    setMessageText("");
-    setSending(false);
-    fetchMessages();
-  };
 
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" /></div>;
@@ -213,7 +189,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
                 >
                   {isFollowing ? "Unfollow" : "Follow"}
                 </Button>
-                <Button variant="ghost" onClick={openMessages}>Message</Button>
+                <Button variant="ghost" onClick={handleMessageRedirect}>Message</Button>
               </>
             )}
           </div>
@@ -283,73 +259,6 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
         </div>
       </div>
 
-      {/* Message Drawer */}
-      <AnimatePresence>
-        {isMessageDrawerOpen && (
-          <>
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsMessageDrawerOpen(false)}
-              className="fixed inset-0 z-40 backdrop-blur-sm"
-              style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 left-0 right-0 z-50 md:left-auto md:right-8 md:w-96 h-[80vh] md:h-[600px] rounded-t-3xl md:rounded-t-3xl shadow-2xl flex flex-col"
-              style={{ backgroundColor: "var(--bg-elevated)", border: "1px solid var(--glass-border)", borderBottom: "none" }}
-            >
-              <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: "var(--border-subtle)", backgroundColor: "var(--bg-deep)" }}>
-                <h3 className="font-semibold" style={{ color: "var(--text-primary)" }}>Chat with @{profile.handle}</h3>
-                <button onClick={() => setIsMessageDrawerOpen(false)} className="p-2 rounded-full hover:bg-black/10 transition-colors">
-                  <X className="w-5 h-5" style={{ color: "var(--text-muted)" }} />
-                </button>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-                {messages.length === 0 && (
-                  <div className="flex-1 flex flex-col items-center justify-center opacity-50">
-                    <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Say hi to {profile.display_name || profile.handle}!</p>
-                  </div>
-                )}
-                {messages.map(msg => {
-                  const isMine = msg.sender_id === currentUser.id;
-                  return (
-                    <div key={msg.id} className={`max-w-[80%] p-3 rounded-2xl shadow-sm ${isMine ? 'rounded-br-sm self-end' : 'rounded-bl-sm self-start'}`}
-                      style={{ 
-                        backgroundColor: isMine ? "var(--accent-primary)" : "var(--bg-frosted)",
-                        color: isMine ? "#fff" : "var(--text-primary)",
-                        border: isMine ? "none" : "1px solid var(--border-subtle)"
-                      }}>
-                      {msg.content}
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="p-4 border-t" style={{ borderColor: "var(--border-subtle)", backgroundColor: "var(--bg-deep)" }}>
-                <form onSubmit={sendMessage} className="flex gap-2">
-                  <input 
-                    type="text" 
-                    placeholder="Message..." 
-                    className="flex-1 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                    style={{ backgroundColor: "var(--bg-frosted)", color: "var(--text-primary)", border: "1px solid var(--border-subtle)" }}
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                  />
-                  <button type="submit" disabled={sending} className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-105 active:scale-95" style={{ backgroundColor: "var(--accent-primary)", color: "#fff" }}>
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
     </div>
   );
 }
