@@ -29,6 +29,17 @@ export default function SignupPage() {
   const [emailGate, setEmailGate] = useState<EmailGateState>('checking');
   const [detectedCollege, setDetectedCollege] = useState<CollegeInfo | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchingColleges, setSearchingColleges] = useState(false);
+  const [selectedCollege, setSelectedCollege] = useState<any>(null);
+  const [isCreatingHub, setIsCreatingHub] = useState(false);
+
+  // Custom Hub Form States
+  const [newHubName, setNewHubName] = useState("");
+  const [newHubShortName, setNewHubShortName] = useState("");
+  const [newHubType, setNewHubType] = useState<"college" | "society" | "corporate" | "other">("college");
+  const [newHubCity, setNewHubCity] = useState("");
 
   // Step 1 State
   const [handle, setHandle] = useState("");
@@ -118,7 +129,7 @@ export default function SignupPage() {
       // Check if this user has already completed onboarding
       const { data: profile } = await supabase
         .from('users')
-        .select('handle, display_name, tagline, avatar_url, is_email_verified, college_id')
+        .select('handle, display_name, tagline, avatar_url, is_email_verified, college_id, colleges(*)')
         .eq('id', authUser.id)
         .maybeSingle();
 
@@ -126,6 +137,13 @@ export default function SignupPage() {
         if (profile.handle) setHandle(profile.handle);
         if (profile.tagline) setTagline(profile.tagline);
         if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
+        if (profile.colleges) {
+          const collegeData = Array.isArray(profile.colleges) ? profile.colleges[0] : profile.colleges;
+          if (collegeData) {
+            setSelectedCollege(collegeData);
+            setDetectedCollege(collegeData);
+          }
+        }
         
         // Already onboarded → skip to feed
         if (profile.tagline && profile.tagline.trim().length > 0) {
@@ -142,13 +160,14 @@ export default function SignupPage() {
         // Check domain against colleges table
         const { data: college } = await supabase
           .from('colleges')
-          .select('id, name, short_name, email_domain')
+          .select('id, name, short_name, email_domain, hub_type')
           .eq('email_domain', domain)
           .maybeSingle();
 
         if (college) {
           // Recognised institution — mark as verified in DB
           setDetectedCollege(college);
+          setSelectedCollege(college);
           setEmailGate('verified');
           await supabase
             .from('users')
@@ -207,6 +226,84 @@ export default function SignupPage() {
     const debounceId = setTimeout(checkHandle, 500);
     return () => clearTimeout(debounceId);
   }, [handle, supabase, user]);
+
+  // Search Colleges/Hubs
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const searchHubs = async () => {
+      setSearchingColleges(true);
+      const { data } = await supabase
+        .from("colleges")
+        .select("id, name, short_name, hub_type, email_domain")
+        .or(`name.ilike.%${searchQuery.trim()}%,short_name.ilike.%${searchQuery.trim()}%`)
+        .limit(5);
+      setSearchResults(data || []);
+      setSearchingColleges(false);
+    };
+    const debounceId = setTimeout(searchHubs, 300);
+    return () => clearTimeout(debounceId);
+  }, [searchQuery, supabase]);
+
+  const handleSelectHub = async (college: any) => {
+    setSelectedCollege(college);
+    if (user) {
+      await supabase
+        .from('users')
+        .update({ 
+          college_id: college.id,
+          // mark as verified if domain matches user email domain
+          is_email_verified: college.email_domain ? (user.email?.toLowerCase().endsWith(college.email_domain.toLowerCase()) ?? false) : false
+        })
+        .eq('id', user.id);
+    }
+  };
+
+  const handleCreateHub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHubName.trim() || !user) return;
+    setIsSubmitting(true);
+    
+    // Check if name already exists
+    const { data: existing } = await supabase
+      .from('colleges')
+      .select('id, name, short_name, hub_type, email_domain')
+      .eq('name', newHubName.trim())
+      .maybeSingle();
+
+    if (existing) {
+      await handleSelectHub(existing);
+      setIsCreatingHub(false);
+      setIsSubmitting(false);
+      return;
+    }
+
+    const { data: newCollege, error } = await supabase
+      .from('colleges')
+      .insert({
+        name: newHubName.trim(),
+        short_name: newHubShortName.trim() || null,
+        hub_type: newHubType,
+        city: newHubCity.trim() || null,
+        is_verified: true
+      })
+      .select()
+      .single();
+
+    if (!error && newCollege) {
+      await handleSelectHub(newCollege);
+      setIsCreatingHub(false);
+      setNewHubName("");
+      setNewHubShortName("");
+      setNewHubCity("");
+    } else {
+      console.error("Hub creation error:", error);
+      alert(error?.message || "Failed to create hub");
+    }
+    setIsSubmitting(false);
+  };
 
   const handleStep1Submit = async () => {
     if (!handleAvailable || !handle || handle.length < 3 || !user) return;
@@ -308,85 +405,254 @@ export default function SignupPage() {
     );
   }
 
-  // ── Email Gate Screen ──────────────────────────────────────────
+  // ── Unified Hub Selection Screen ──────────────────────────────
   if (!showOnboarding) {
     return (
       <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4">
         <AnimatePresence mode="wait">
-          {emailGate === 'verified' && (
-            <motion.div
-              key="verified"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center"
-            >
-              {/* Verified icon */}
-              <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
-                <ShieldCheck className="w-10 h-10 text-emerald-400" />
-              </div>
-              <h2 className="text-2xl font-display font-bold text-white mb-2">
-                College verified ✓
-              </h2>
-              <p className="text-[var(--text-secondary)] mb-1">
-                You're joining as a student of
-              </p>
-              <p className="text-white font-semibold text-lg mb-6">
-                {detectedCollege?.name || 'Your Institution'}
-              </p>
-              <div className="flex items-center gap-2 justify-center text-xs text-[var(--text-muted)] mb-8">
-                <GraduationCap className="w-3.5 h-3.5" />
-                <span>{detectedCollege?.email_domain}</span>
-              </div>
-              <button
-                onClick={() => setShowOnboarding(true)}
-                className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2 active:scale-95"
-              >
-                Set up your profile
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </motion.div>
-          )}
-
-          {emailGate === 'unrecognised' && (
-            <motion.div
-              key="unrecognised"
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-              className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center"
-            >
-              <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-6">
-                <AlertTriangle className="w-10 h-10 text-amber-400" />
-              </div>
-              <h2 className="text-2xl font-display font-bold text-white mb-2">
-                Institution not found
-              </h2>
-              <p className="text-[var(--text-secondary)] mb-6">
-                Your email domain isn't in our college list yet. You can still set up your creator profile — campus features will unlock when your institution is added.
-              </p>
-              <button
-                onClick={() => { setEmailGate('skipped'); setShowOnboarding(true); }}
-                className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2 active:scale-95 mb-3"
-              >
-                Continue as creator
-                <ChevronRight className="w-4 h-4" />
-              </button>
-              <p className="text-xs text-[var(--text-muted)]">
-                We'll notify you when your college is added
-              </p>
-            </motion.div>
-          )}
-
-          {emailGate === 'checking' && (
+          {emailGate === 'checking' ? (
             <motion.div
               key="checking"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               className="flex flex-col items-center gap-4"
             >
               <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" />
               <p className="text-[var(--text-muted)] text-sm">Verifying your institution...</p>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="hub-selector"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              className="w-full max-w-lg bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl"
+            >
+              {!isCreatingHub ? (
+                <>
+                  <div className="text-center mb-6">
+                    <div className="w-16 h-16 rounded-full bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 flex items-center justify-center mx-auto mb-4">
+                      <GraduationCap className="w-8 h-8 text-[var(--accent-primary)]" />
+                    </div>
+                    <h2 className="text-2xl font-display font-bold text-white mb-2">
+                      Join a Campus or Community Hub
+                    </h2>
+                    <p className="text-sm text-[var(--text-secondary)]">
+                      Connect with peers, access local pods, tournaments, and events.
+                    </p>
+                  </div>
+
+                  {/* Auto-detected College Alert */}
+                  {detectedCollege && (
+                    <div className="mb-6 p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-center">
+                      <div className="flex items-center gap-2 justify-center mb-2">
+                        <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                        <span className="text-sm font-semibold text-emerald-400">Verified Institution Found</span>
+                      </div>
+                      <p className="text-white font-medium text-sm mb-3">
+                        {detectedCollege.name} ({detectedCollege.short_name})
+                      </p>
+                      <div className="flex gap-2 justify-center">
+                        <button
+                          onClick={() => { handleSelectHub(detectedCollege); setShowOnboarding(true); }}
+                          className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold transition-colors active:scale-95"
+                        >
+                          Join & Continue
+                        </button>
+                        <button
+                          onClick={() => setDetectedCollege(null)}
+                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white/70 rounded-lg text-xs font-medium transition-colors"
+                        >
+                          Choose another
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {!detectedCollege && (
+                    <div className="space-y-4">
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search colleges, societies,RWAs..."
+                          className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl py-3.5 pl-4 pr-10 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                        />
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center">
+                          {searchingColleges ? (
+                            <Loader2 className="w-4 h-4 animate-spin text-[var(--text-muted)]" />
+                          ) : null}
+                        </div>
+                      </div>
+
+                      {/* Search Results */}
+                      {searchResults.length > 0 ? (
+                        <div className="rounded-xl overflow-hidden border border-[var(--border-subtle)] bg-[var(--bg-deep)] divide-y divide-[var(--border-subtle)]">
+                          {searchResults.map((hub) => (
+                            <button
+                              key={hub.id}
+                              type="button"
+                              onClick={() => handleSelectHub(hub)}
+                              className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors hover:bg-white/5 ${
+                                selectedCollege?.id === hub.id ? "bg-white/10" : ""
+                              }`}
+                            >
+                              <div>
+                                <div className="text-white font-medium text-sm">{hub.name}</div>
+                                <div className="text-xs text-[var(--text-muted)] font-mono uppercase tracking-wider mt-0.5">
+                                  {hub.hub_type === "society" ? "🏡 Society Hub" : hub.hub_type === "corporate" ? "🏢 Corporate Space" : "🏫 Campus Hub"}
+                                  {hub.short_name && ` • ${hub.short_name}`}
+                                </div>
+                              </div>
+                              {selectedCollege?.id === hub.id && (
+                                <Check className="w-4 h-4 text-[var(--accent-primary)]" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      ) : searchQuery.trim().length > 2 && !searchingColleges ? (
+                        <div className="text-center py-4 text-xs text-[var(--text-muted)]">
+                          No hubs match your search.
+                        </div>
+                      ) : null}
+
+                      {/* Selected Hub Card */}
+                      {selectedCollege && !detectedCollege && (
+                        <div className="p-4 rounded-xl border border-[var(--accent-primary)]/30 bg-[var(--accent-primary)]/5 flex items-center justify-between">
+                          <div>
+                            <span className="text-[var(--text-muted)] text-xs block">Selected Hub</span>
+                            <span className="text-white font-semibold text-sm">
+                              {selectedCollege.name}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setSelectedCollege(null)}
+                            className="text-xs text-red-400 hover:text-red-300 underline"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="pt-2 flex flex-col gap-3">
+                        <button
+                          onClick={() => setShowOnboarding(true)}
+                          className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2 active:scale-95"
+                        >
+                          {selectedCollege ? "Continue to Profile" : "Continue as Independent Creator"}
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setIsCreatingHub(true);
+                            setNewHubName(searchQuery);
+                          }}
+                          className="text-sm font-semibold text-[var(--text-muted)] hover:text-white transition-colors"
+                        >
+                          Can't find your institution? <span className="text-[var(--accent-primary)] underline">Create a new hub</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Create custom hub form */
+                <form onSubmit={handleCreateHub} className="space-y-4">
+                  <div>
+                    <h2 className="text-2xl font-display font-bold text-white mb-1">
+                      Create Custom Hub
+                    </h2>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      Create a manual hub tag so you and others can map your community.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">
+                        Hub Name (e.g. VIT Chennai)
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newHubName}
+                        onChange={(e) => setNewHubName(e.target.value)}
+                        placeholder="e.g. Sherwood Residential Society"
+                        className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl px-4 py-3 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">
+                          Short Name / Badge
+                        </label>
+                        <input
+                          type="text"
+                          value={newHubShortName}
+                          onChange={(e) => setNewHubShortName(e.target.value)}
+                          placeholder="e.g. Sherwood"
+                          className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl px-4 py-3 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">
+                          City
+                        </label>
+                        <input
+                          type="text"
+                          value={newHubCity}
+                          onChange={(e) => setNewHubCity(e.target.value)}
+                          placeholder="e.g. Bangalore"
+                          className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl px-4 py-3 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)] mb-1">
+                        Hub Type
+                      </label>
+                      <select
+                        value={newHubType}
+                        onChange={(e) => setNewHubType(e.target.value as any)}
+                        className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl px-4 py-3 text-white outline-none transition-colors"
+                      >
+                        <option value="college" className="bg-[var(--bg-deep)]">Campus Hub 🏫</option>
+                        <option value="society" className="bg-[var(--bg-deep)]">Society / RWA 🏡</option>
+                        <option value="corporate" className="bg-[var(--bg-deep)]">Corporate Space 🏢</option>
+                        <option value="other" className="bg-[var(--bg-deep)]">Other Community 🌐</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="pt-2 flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingHub(false)}
+                      className="flex-1 py-3.5 rounded-xl font-semibold text-white bg-white/5 hover:bg-white/10 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || !newHubName.trim()}
+                      className="flex-1 py-3.5 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2 active:scale-95 disabled:opacity-50"
+                    >
+                      {isSubmitting ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        "Create & Join"
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
             </motion.div>
           )}
         </AnimatePresence>

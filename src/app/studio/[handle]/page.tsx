@@ -63,7 +63,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
       let profileData: any = null;
       const { data: fullProfile, error: profileError } = await supabase
         .from('users')
-        .select('*, skills(*), feed_posts(*, qa_reports(*))')
+        .select('*, skills(*), feed_posts(*, qa_reports(*)), colleges(*)')
         .eq('handle', targetHandle)
         .maybeSingle();
 
@@ -230,8 +230,13 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
           </div>
           
           <div className="flex-1 pb-2">
-            <div className="flex items-center gap-2 mb-1">
+            <div className="flex flex-wrap items-center gap-2.5 mb-1">
               <h1 className="text-3xl font-display font-bold" style={{ color: "var(--text-primary)" }}>{profile.display_name || profile.handle}</h1>
+              {profile.colleges && (
+                <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center gap-1">
+                  {profile.colleges.hub_type === 'society' ? '🏡' : profile.colleges.hub_type === 'corporate' ? '🏢' : '🏫'} {profile.colleges.short_name || profile.colleges.name}
+                </span>
+              )}
             </div>
             <p className="font-medium text-lg mb-2" style={{ color: "var(--accent-primary)" }}>@{profile.handle}</p>
             <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: "var(--text-muted)" }}>

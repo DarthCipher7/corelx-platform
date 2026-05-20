@@ -20,6 +20,12 @@ export interface Creator {
     dribbble?: string;
     linkedin?: string;
   };
+  college?: {
+    id: string;
+    name: string;
+    short_name?: string;
+    hub_type?: 'college' | 'society' | 'corporate';
+  } | null;
 }
 
 export interface Project {
@@ -67,7 +73,7 @@ export type NavItem = {
 export interface FeedPostData {
   id: string;
   type: "work_post" | "collab_call" | "trending_creator_spotlight";
-  creator: Pick<Creator, "id" | "name" | "handle" | "avatar" | "verified" | "role">;
+  creator: Pick<Creator, "id" | "name" | "handle" | "avatar" | "verified" | "role" | "college">;
   timestamp: string;
   title?: string;
   caption: string;

@@ -170,7 +170,13 @@ export default function FeedPage() {
           display_name,
           avatar_url,
           tagline,
-          intent_status
+          intent_status,
+          colleges (
+            id,
+            name,
+            short_name,
+            hub_type
+          )
         ),
         qa_reports (
           id,
@@ -482,7 +488,13 @@ export default function FeedPage() {
         handle: authorUser?.handle || "unknown",
         avatar: authorUser?.avatar_url || "",
         verified: false,
-        role: authorUser?.tagline || "Creator"
+        role: authorUser?.tagline || "Creator",
+        college: authorUser?.colleges ? {
+          id: authorUser.colleges.id,
+          name: authorUser.colleges.name,
+          short_name: authorUser.colleges.short_name || undefined,
+          hub_type: authorUser.colleges.hub_type || undefined
+        } : null
       },
       timestamp: new Date(p.created_at).toLocaleDateString(),
       title: p.title,

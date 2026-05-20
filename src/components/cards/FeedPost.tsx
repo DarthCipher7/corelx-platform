@@ -282,11 +282,16 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
             <img src={post.creator.avatar} alt={post.creator.name} className="w-full h-full object-cover" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
               <span className="font-semibold text-sm font-display transition-colors" style={{ color: "var(--text-primary)" }}>
                 {post.creator.name}
               </span>
               <span className="text-xs" style={{ color: "var(--text-secondary)" }}>@{post.creator.handle}</span>
+              {post.creator.college && (
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center gap-0.5">
+                  {post.creator.college.hub_type === 'society' ? '🏡' : post.creator.college.hub_type === 'corporate' ? '🏢' : '🏫'} {post.creator.college.short_name || post.creator.college.name}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-xs" style={{ color: "var(--text-secondary)" }}>{post.creator.role.split("&")[0].trim()}</span>
