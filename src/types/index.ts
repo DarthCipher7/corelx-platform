@@ -97,9 +97,74 @@ export interface Flare {
   duration_seconds?: number;
   created_at: string;
   spark_count?: number;
+  views?: number;
   users?: {
     display_name?: string;
     handle: string;
     avatar_url?: string;
   };
+}
+
+// ── Campus Layer Types ──────────────────────────────────────────
+
+export type TrustTier = 'open' | 'checked' | 'guarded';
+export type EventCategory = 'sports' | 'music' | 'academic' | 'social' | 'misc' | 'hackathon';
+export type RsvpStatus = 'none' | 'pending' | 'attending' | 'declined' | 'waitlist';
+export type PodType = 'hackathon' | 'class' | 'club' | 'project';
+
+export interface CollegeInfo {
+  id: string;
+  name: string;
+  short_name?: string;
+  email_domain: string;
+  city?: string;
+  country?: string;
+}
+
+export interface CampusEvent {
+  id: string;
+  title: string;
+  description?: string;
+  category: EventCategory;
+  trust_tier: TrustTier;
+  location_name?: string;
+  starts_at: string;
+  ends_at: string;
+  expires_at: string;
+  min_headcount?: number;
+  max_headcount?: number;
+  current_headcount?: number;
+  is_active: boolean;
+  require_mutual?: boolean;
+  require_face?: boolean;
+  organiser_id: string;
+  college_id?: string;
+  created_at: string;
+  organiser?: {
+    handle: string;
+    display_name: string;
+    avatar_url?: string;
+  };
+  rsvp_status?: RsvpStatus;
+}
+
+export interface Pod {
+  id: string;
+  name: string;
+  pod_type: PodType;
+  description?: string;
+  visibility: 'open' | 'invite';
+  max_members?: number;
+  role_tags: string[];
+  is_active: boolean;
+  creator_id: string;
+  college_id?: string;
+  created_at: string;
+  creator?: {
+    handle: string;
+    display_name: string;
+    avatar_url?: string;
+  };
+  member_count?: number;
+  is_member?: boolean;
 }

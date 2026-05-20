@@ -28,6 +28,7 @@ const NAV_LINKS = [
   { label: "Feed", href: "/feed" },
   { label: "Explore", href: "/explore" },
   { label: "Collab Board", href: "/collabs" },
+  { label: "Pods", href: "/pods" },
   { label: "Showcase", href: "/showcase" },
 ];
 

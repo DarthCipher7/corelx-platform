@@ -3,9 +3,19 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Upload, ChevronRight, Loader2 } from "lucide-react";
+import { Check, X, Upload, ChevronRight, Loader2, GraduationCap, ShieldCheck, AlertTriangle } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { SKILLS_ALL } from "@/lib/data";
+
+// ── Email Gate Types ──────────────────────────────────────────
+type EmailGateState = 'checking' | 'verified' | 'unrecognised' | 'skipped';
+
+interface CollegeInfo {
+  id: string;
+  name: string;
+  short_name?: string;
+  email_domain: string;
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -14,6 +24,11 @@ export default function SignupPage() {
   const [user, setUser] = useState<any>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(true);
+
+  // Email Gate State
+  const [emailGate, setEmailGate] = useState<EmailGateState>('checking');
+  const [detectedCollege, setDetectedCollege] = useState<CollegeInfo | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Step 1 State
   const [handle, setHandle] = useState("");
@@ -90,7 +105,7 @@ export default function SignupPage() {
     ]
   };
 
-  // Load user
+  // ── Load user + check college email domain ──────────────────
   useEffect(() => {
     async function loadUser() {
       const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -101,27 +116,56 @@ export default function SignupPage() {
       setUser(authUser);
 
       // Check if this user has already completed onboarding
-      // A user is considered onboarded once they have a handle AND a display_name set
       const { data: profile } = await supabase
         .from('users')
-        .select('handle, display_name, tagline, avatar_url')
+        .select('handle, display_name, tagline, avatar_url, is_email_verified, college_id')
         .eq('id', authUser.id)
         .maybeSingle();
 
       if (profile) {
-        // Pre-fill form fields in case they want to edit later
         if (profile.handle) setHandle(profile.handle);
         if (profile.tagline) setTagline(profile.tagline);
         if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
         
-        // The DB trigger sets tagline to '' (empty string) on signup.
-        // Once the user completes Step 3, tagline is written as a real value.
-        // So: tagline non-empty = onboarding was completed → skip to feed.
+        // Already onboarded → skip to feed
         if (profile.tagline && profile.tagline.trim().length > 0) {
           router.push("/feed");
           return;
         }
       }
+
+      // ── College Email Gate ────────────────────────────────────
+      const email = authUser.email || '';
+      const domain = email.split('@')[1]?.toLowerCase() || '';
+
+      if (domain) {
+        // Check domain against colleges table
+        const { data: college } = await supabase
+          .from('colleges')
+          .select('id, name, short_name, email_domain')
+          .eq('email_domain', domain)
+          .maybeSingle();
+
+        if (college) {
+          // Recognised institution — mark as verified in DB
+          setDetectedCollege(college);
+          setEmailGate('verified');
+          await supabase
+            .from('users')
+            .update({ 
+              email_domain: domain, 
+              college_id: college.id, 
+              is_email_verified: true 
+            })
+            .eq('id', authUser.id);
+        } else {
+          // Not in our colleges list
+          setEmailGate('unrecognised');
+        }
+      } else {
+        setEmailGate('unrecognised');
+      }
+
       setLoading(false);
     }
     loadUser();
@@ -257,7 +301,97 @@ export default function SignupPage() {
   };
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" /></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" />
+      </div>
+    );
+  }
+
+  // ── Email Gate Screen ──────────────────────────────────────────
+  if (!showOnboarding) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4">
+        <AnimatePresence mode="wait">
+          {emailGate === 'verified' && (
+            <motion.div
+              key="verified"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center"
+            >
+              {/* Verified icon */}
+              <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
+                <ShieldCheck className="w-10 h-10 text-emerald-400" />
+              </div>
+              <h2 className="text-2xl font-display font-bold text-white mb-2">
+                College verified ✓
+              </h2>
+              <p className="text-[var(--text-secondary)] mb-1">
+                You're joining as a student of
+              </p>
+              <p className="text-white font-semibold text-lg mb-6">
+                {detectedCollege?.name || 'Your Institution'}
+              </p>
+              <div className="flex items-center gap-2 justify-center text-xs text-[var(--text-muted)] mb-8">
+                <GraduationCap className="w-3.5 h-3.5" />
+                <span>{detectedCollege?.email_domain}</span>
+              </div>
+              <button
+                onClick={() => setShowOnboarding(true)}
+                className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2 active:scale-95"
+              >
+                Set up your profile
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+
+          {emailGate === 'unrecognised' && (
+            <motion.div
+              key="unrecognised"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center"
+            >
+              <div className="w-20 h-20 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-6">
+                <AlertTriangle className="w-10 h-10 text-amber-400" />
+              </div>
+              <h2 className="text-2xl font-display font-bold text-white mb-2">
+                Institution not found
+              </h2>
+              <p className="text-[var(--text-secondary)] mb-6">
+                Your email domain isn't in our college list yet. You can still set up your creator profile — campus features will unlock when your institution is added.
+              </p>
+              <button
+                onClick={() => { setEmailGate('skipped'); setShowOnboarding(true); }}
+                className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[var(--accent-primary-hover)] transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2 active:scale-95 mb-3"
+              >
+                Continue as creator
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <p className="text-xs text-[var(--text-muted)]">
+                We'll notify you when your college is added
+              </p>
+            </motion.div>
+          )}
+
+          {emailGate === 'checking' && (
+            <motion.div
+              key="checking"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center gap-4"
+            >
+              <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" />
+              <p className="text-[var(--text-muted)] text-sm">Verifying your institution...</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
   }
 
   return (

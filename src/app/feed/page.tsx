@@ -8,10 +8,12 @@ import CollabCard from "@/components/cards/CollabCard";
 import FlaresViewer from "@/components/explore/FlaresViewer";
 import FlareCard from "@/components/cards/FlareCard";
 import UploadFlareModal from "@/components/explore/UploadFlareModal";
+import EventCard from "@/components/cards/EventCard";
+import CreateEventModal from "@/components/cards/CreateEventModal";
 import Button from "@/components/ui/Button";
 import { createClient } from "@/utils/supabase/client";
-import { X, Image as ImageIcon, Play, Flame, AlertCircle } from "lucide-react";
-import { FeedPostData, Flare } from "@/types";
+import { X, Image as ImageIcon, Play, Flame, AlertCircle, Calendar } from "lucide-react";
+import { FeedPostData, Flare, CampusEvent } from "@/types";
 
 const FILTERS = [
   "All",
@@ -30,8 +32,11 @@ export default function FeedPage() {
   const [collabs, setCollabs] = useState<any[]>([]);
   
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
-  const [feedMode, setFeedMode] = useState<"posts" | "flares">("posts");
+  const [feedMode, setFeedMode] = useState<"posts" | "flares" | "events">("posts");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isEventModalOpen, setIsEventModalOpen] = useState(false);
+  const [events, setEvents] = useState<CampusEvent[]>([]);
+  const [rsvpMap, setRsvpMap] = useState<Record<string, 'none' | 'pending' | 'attending' | 'declined'>>({});
   
   const [postTitle, setPostTitle] = useState("");
   const [postCaption, setPostCaption] = useState("");
@@ -56,6 +61,70 @@ export default function FeedPage() {
   useEffect(() => {
     fetchPosts();
   }, [activeFilter]);
+
+  // Fetch events when switching to Events tab
+  useEffect(() => {
+    if (feedMode === 'events') fetchEvents();
+  }, [feedMode]);
+
+  const fetchEvents = async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    
+    const { data: eventsData } = await supabase
+      .from('events')
+      .select(`
+        id, title, description, category, trust_tier,
+        location_name, starts_at, ends_at, expires_at,
+        min_headcount, max_headcount, is_active,
+        require_mutual, require_face, organiser_id,
+        college_id, created_at,
+        organiser:users!events_organiser_id_fkey(handle, display_name, avatar_url)
+      `)
+      .eq('is_active', true)
+      .order('starts_at', { ascending: true })
+      .limit(50);
+
+    if (!eventsData) return;
+
+    // Fetch headcounts
+    const eventIds = eventsData.map(e => e.id);
+    const { data: rsvpData } = await supabase
+      .from('event_rsvps')
+      .select('event_id, user_id, status')
+      .in('event_id', eventIds)
+      .in('status', ['attending', 'pending', 'approved']);
+
+    const headcounts: Record<string, number> = {};
+    const myRsvps: Record<string, 'none' | 'pending' | 'attending' | 'declined'> = {};
+
+    rsvpData?.forEach(r => {
+      if (r.status === 'attending') {
+        headcounts[r.event_id] = (headcounts[r.event_id] || 0) + 1;
+      }
+      if (currentUser && r.user_id === currentUser.id) {
+        myRsvps[r.event_id] = r.status as any;
+      }
+    });
+
+    const mapped: CampusEvent[] = eventsData.map(e => ({
+      ...e,
+      current_headcount: headcounts[e.id] || 0,
+      organiser: Array.isArray(e.organiser) ? e.organiser[0] : e.organiser,
+    }));
+
+    setEvents(mapped);
+    setRsvpMap(myRsvps);
+  };
+
+  const handleRsvp = async (eventId: string, trustTier: string) => {
+    if (!user) { window.location.href = '/login'; return; }
+    const status = trustTier === 'guarded' ? 'pending' : 'attending';
+    await supabase.from('event_rsvps').upsert(
+      { event_id: eventId, user_id: user.id, status },
+      { onConflict: 'event_id,user_id' }
+    );
+    setRsvpMap(prev => ({ ...prev, [eventId]: status as any }));
+  };
 
   // Silently poll the backend every 90 seconds
   useEffect(() => {
@@ -502,12 +571,12 @@ export default function FeedPage() {
               <span>✦</span> Discovery Network
             </p>
             <h1 className="display-sm text-white font-bold tracking-tight">
-              {feedMode === "posts" ? "Discovery Feed 👥" : "Trending Flares 🔥"}
+              {feedMode === "posts" ? "Discovery Feed 👥" : feedMode === "flares" ? "Trending Flares 🔥" : "Campus Events 🗓️"}
             </h1>
           </div>
           
           <div className="flex flex-wrap items-center gap-3">
-            {/* Posts / Flares Selector */}
+            {/* Posts / Flares / Events Selector */}
             <div className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md">
               <button
                 type="button"
@@ -531,26 +600,51 @@ export default function FeedPage() {
               >
                 Flares 🔥
               </button>
+              <button
+                type="button"
+                onClick={() => setFeedMode("events")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1 ${
+                  feedMode === "events"
+                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                    : "text-[var(--text-secondary)] hover:text-white"
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5" />
+                Events
+              </button>
             </div>
 
             {/* Posting actions */}
             {user ? (
               <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPostModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--bg-frosted)] text-white hover:bg-[var(--bg-surface)] border border-[var(--glass-border)] active:scale-95 cursor-pointer"
-                >
-                  Post Work
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:opacity-90 shadow-[0_0_15px_rgba(108,92,231,0.3)] active:scale-95 cursor-pointer"
-                >
-                  <Flame className="w-3.5 h-3.5 fill-current" />
-                  Post Flare
-                </button>
+                {feedMode !== "events" && (
+                  <button
+                    type="button"
+                    onClick={() => setIsPostModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--bg-frosted)] text-white hover:bg-[var(--bg-surface)] border border-[var(--glass-border)] active:scale-95 cursor-pointer"
+                  >
+                    Post Work
+                  </button>
+                )}
+                {feedMode === "events" ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsEventModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:opacity-90 shadow-[0_0_15px_rgba(108,92,231,0.3)] active:scale-95 cursor-pointer"
+                  >
+                    <Calendar className="w-3.5 h-3.5" />
+                    Post Event
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsUploadModalOpen(true)}
+                    className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:opacity-90 shadow-[0_0_15px_rgba(108,92,231,0.3)] active:scale-95 cursor-pointer"
+                  >
+                    <Flame className="w-3.5 h-3.5 fill-current" />
+                    Post Flare
+                  </button>
+                )}
               </div>
             ) : (
               <button
@@ -669,7 +763,7 @@ export default function FeedPage() {
 
               return <FeedPost key={post.id} post={post} index={i} />;
             })
-          ) : (
+          ) : feedMode === "flares" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
               {filteredFlares.length > 0 ? (
                 filteredFlares.map((flare, idx) => (
@@ -688,6 +782,54 @@ export default function FeedPage() {
                   <Flame className="w-10 h-10 mx-auto mb-3 opacity-40 text-[var(--accent-primary)] animate-pulse" />
                   <h4 className="text-base font-semibold text-white mb-1">No Flares Found</h4>
                   <p className="text-xs text-[var(--text-secondary)]">Be the first to upload a Flare in this category!</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* ── Events Feed ─────────────────────────────────────── */
+            <div className="flex flex-col gap-4 mb-8">
+              {events.length > 0 ? (
+                events.map((event, i) => (
+                  <motion.div
+                    key={event.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                  >
+                    <EventCard
+                      id={event.id}
+                      title={event.title}
+                      category={event.category}
+                      trustTier={event.trust_tier}
+                      locationName={event.location_name}
+                      startsAt={event.starts_at}
+                      endsAt={event.ends_at}
+                      expiresAt={event.expires_at}
+                      currentHeadcount={event.current_headcount || 0}
+                      maxHeadcount={event.max_headcount ?? undefined}
+                      organiser={{
+                        handle: event.organiser?.handle || 'unknown',
+                        displayName: event.organiser?.display_name || 'Organiser',
+                        avatarUrl: event.organiser?.avatar_url,
+                      }}
+                      rsvpStatus={rsvpMap[event.id] || 'none'}
+                      onRsvp={(id) => handleRsvp(id, event.trust_tier)}
+                    />
+                  </motion.div>
+                ))
+              ) : (
+                <div className="py-20 text-center border border-dashed border-[var(--border-subtle)] rounded-3xl bg-[var(--bg-frosted)] backdrop-blur-xl">
+                  <Calendar className="w-10 h-10 mx-auto mb-3 opacity-40 text-[var(--accent-primary)]" />
+                  <h4 className="text-base font-semibold text-white mb-2">No events yet</h4>
+                  <p className="text-xs text-[var(--text-secondary)] mb-6">Be the first to post something on campus!</p>
+                  {user && (
+                    <button
+                      onClick={() => setIsEventModalOpen(true)}
+                      className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-[var(--accent-primary)] text-white hover:opacity-90 transition-all active:scale-95"
+                    >
+                      Post an Event
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -738,6 +880,16 @@ export default function FeedPage() {
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={fetchPosts}
       />
+
+      {/* Create Event Modal */}
+      {user && (
+        <CreateEventModal
+          isOpen={isEventModalOpen}
+          onClose={() => setIsEventModalOpen(false)}
+          onSuccess={fetchEvents}
+          userId={user.id}
+        />
+      )}
 
       <AnimatePresence>
         {isPostModalOpen && (

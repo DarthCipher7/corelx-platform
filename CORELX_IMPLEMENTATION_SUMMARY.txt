@@ -1,0 +1,112 @@
+================================================================================
+CORELX PLATFORM — MVP IMPLEMENTATION SUMMARY
+================================================================================
+Date: 2026-05-19
+Status: PROVISIONED, HARDENED, & COMPILED CLEANLY (Exit Code 0)
+================================================================================
+
+This document details all backend architectures, frontend interfaces, algorithms,
+and interaction features implemented to date for the CORELX (formerly Nova)
+creator platform.
+
+--------------------------------------------------------------------------------
+1. CORE DATA SCHEMA & SECURITY
+--------------------------------------------------------------------------------
+- Provisioned a unified polymorphic Supabase schema supporting real-time sync, 
+  analytics, and strict Row Level Security (RLS).
+- Managed Tables & Relations:
+  * public.users: Main profiles, verified badges, tagline, availability states,
+    intent state ('hiring', 'available', 'building', etc.), and strike checks.
+  * public.skills: Direct relational user skill mapping.
+  * public.feed_posts: Core project media posts.
+  * public.flares: Immersive vertical loop videos with tag metadata.
+  * public.collab_calls: Active community opportunities and time commitments.
+  * public.saves: Polymorphic bookmarking for posts, flares, and collabs.
+  * public.sparks: Interaction points, Category-based pitches ('creative',
+    'reliable', etc.) and status tracking.
+  * public.follows: Bidirectional user relationship mappings.
+  * public.messages: Real-time chat grouping and sender/recipient tracking.
+  * public.comments: Polymorphic comments supporting parent-child reply nesting.
+  * public.notifications: Real-time user alert records.
+  * public.reports: Moderation compliance records matching the platform Content Policy.
+  * public.post_impressions: Tracking for feed seen logs.
+  * public.flare_views: Duration and completion tracking for vertical videos.
+  * public.collab_requests: Application logs for open collaborator calls.
+- Automated Triggers & Procedures:
+  * handle_new_user(): Automatic insert on auth.users sign-up with email handles.
+  * notify_on_spark(), notify_on_follow(), notify_on_comment(): Procedures firing
+    instant entries in the notifications table.
+
+--------------------------------------------------------------------------------
+2. ONBOARDING & CREATOR PROFILES
+--------------------------------------------------------------------------------
+- 3-Step Onboarding Flow (src/app/signup/page.tsx):
+  * Step 1 (Identity): Dynamic handle checker checking availability against 
+    public.users.
+  * Step 2 (Arsenal): Multi-pill skill tag selector mapping to public.skills.
+  * Step 3 (Face & Tagline): Drag-and-drop avatar upload zone linking to
+    Supabase Storage bucket, profile tagline, and automatic feed routing.
+- Profile Settings (src/app/settings/page.tsx):
+  * Multi-field profile editor mapping to user handles and availability states.
+- Creator Studio (src/app/studio/[handle]/page.tsx):
+  * Glassmorphic profile dashboard rendering creator statistics, projects, 
+    follows, and a direct messages composer slideout.
+
+--------------------------------------------------------------------------------
+3. ALGORITHMIC FEED & DISCOVERY SUITE
+--------------------------------------------------------------------------------
+- Composite Feed Ranking Algorithm (src/app/feed/page.tsx):
+  * Rank Score formula: (Recency × 0.30) + (SparkVelocity × 0.25) + 
+    (NetworkBoost × 0.20) + (SkillRelevance × 0.15) + (IntentMatch × 0.10) - (SeenPenalty).
+  * Recency decays by 15% hourly after 2 hours; floors at 48 hours.
+  * Spark Velocity computes spark count divided by impression logs.
+  * Network Boost adds +0.20 for direct follows and +0.10 for mutual follows.
+  * Skill Relevance calculates overlap between post tags and viewer disciplines.
+  * Intent Match maps professional alignment (e.g. Hiring Creator and Available Creator).
+  * Seen Penalty multiplies final score by 0.05 if impression entry exists.
+- 70/30 Feed Curation Mix Ratio:
+  * Segregates posts into network-follows and discovery content, merging them 
+    automatically in a 7:3 sequence.
+- Structural Feed Card Injections:
+  * Injects 1 Flare Preview Card every 8 posts (direct playback preview triggering
+    the FlaresViewer on click).
+  * Injects 1 Open Collab card listing every 12 posts.
+- Client Background Polling:
+  * 90-second client-side interval checking for new posts. If new content is 
+    detected, displays a floating pill alert that smoothly scrolls and refreshes the feed.
+- Algorithmic Flares Sorting:
+  * Prioritizes flares using: (CompletionRate × 0.35) + (SparkRate × 0.25) +
+    (CollabRequestRate × 0.15) + (SkillRelevance × 0.15) + (Freshness × 0.10).
+
+--------------------------------------------------------------------------------
+4. VERTICAL FLARES MECHANICS
+--------------------------------------------------------------------------------
+- Interactive TikTok-Style Viewer (src/components/explore/FlaresViewer.tsx):
+  * Gestures: Mouse-down or touch-start triggers slo-mo playback (0.5x speed)
+    with a HUD indicator; resets on mouse-up/touch-end.
+  * 80% Viewport Completion Tracker: intersection observer triggers a logged
+    Supabase view marked 'completed = true' when a user watches >= 80% of a video.
+  * real-time buttons connected directly to DB mutations for Sparks and Comments.
+
+--------------------------------------------------------------------------------
+5. COMMUNITY INTERACTION SUITE
+--------------------------------------------------------------------------------
+- Global Search Overlay (src/components/layout/SearchOverlay.tsx):
+  * Glassmorphic search drawer with a 300ms query debouncer looking up handles 
+    and display names.
+- Notification Dropdown (src/components/layout/Navbar.tsx):
+  * Subscribed to real-time Supabase channels, rendering unread counts and a list 
+    of the 20 most recent messages, follows, comments, and sparks.
+- Polymorphic Comment Drawer (src/components/cards/CommentDrawer.tsx):
+  * Bottom-slide drawer dynamically fetching comments based on whether the 
+    parent container is a post or a vertical flare.
+- Content Policy Compliance (src/components/cards/FeedPost.tsx):
+  * Inline report modal allowing creators to flag posts for spam, stolen work, 
+    harmful content, or fake collabs, writing directly to public.reports.
+- Footer Links & Placeholders (src/app/...):
+  * Replaced dead links with placeholder pages for About, Privacy, Terms, and Contact
+    pages matching the cyber-minimalist color token design system.
+
+================================================================================
+EOF
+================================================================================
