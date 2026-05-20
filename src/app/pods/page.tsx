@@ -11,6 +11,7 @@ import {
   Target,
   Wrench,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
 import PodCard, { PodCardProps } from "@/components/cards/PodCard";
 import { PodType } from "@/types";
@@ -157,12 +158,12 @@ function CreatePodModal({
   onClose,
   onCreated,
   currentUserId,
-  collegeId,
+  userCollege,
 }: {
   onClose: () => void;
   onCreated: (pod: any) => void;
   currentUserId: string | null;
-  collegeId: string | null;
+  userCollege: any;
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -175,6 +176,89 @@ function CreatePodModal({
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Hub states
+  const [selectedCollege, setSelectedCollege] = useState<any>(userCollege);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchingColleges, setSearchingColleges] = useState(false);
+  const [isCreatingHub, setIsCreatingHub] = useState(false);
+
+  // Custom Hub Form States
+  const [newHubName, setNewHubName] = useState("");
+  const [newHubShortName, setNewHubShortName] = useState("");
+  const [newHubType, setNewHubType] = useState<"college" | "society" | "corporate" | "other">("college");
+  const [newHubCity, setNewHubCity] = useState("");
+
+  // Search Colleges/Hubs
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const searchHubs = async () => {
+      setSearchingColleges(true);
+      const { data } = await supabase
+        .from("colleges")
+        .select("id, name, short_name, hub_type, email_domain")
+        .or(`name.ilike.%${searchQuery.trim()}%,short_name.ilike.%${searchQuery.trim()}%`)
+        .limit(5);
+      setSearchResults(data || []);
+      setSearchingColleges(false);
+    };
+    const debounceId = setTimeout(searchHubs, 300);
+    return () => clearTimeout(debounceId);
+  }, [searchQuery, supabase]);
+
+  const handleSelectHub = (college: any) => {
+    setSelectedCollege(college);
+    setSearchQuery("");
+    setSearchResults([]);
+  };
+
+  const handleCreateHub = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newHubName.trim()) return;
+    setSubmitting(true);
+    
+    // Check if name already exists
+    const { data: existing } = await supabase
+      .from('colleges')
+      .select('id, name, short_name, hub_type, email_domain')
+      .eq('name', newHubName.trim())
+      .maybeSingle();
+
+    if (existing) {
+      setSelectedCollege(existing);
+      setIsCreatingHub(false);
+      setSubmitting(false);
+      return;
+    }
+
+    const { data: newCollege, error } = await supabase
+      .from('colleges')
+      .insert({
+        name: newHubName.trim(),
+        short_name: newHubShortName.trim() || null,
+        hub_type: newHubType,
+        city: newHubCity.trim() || null,
+        is_verified: true
+      })
+      .select()
+      .single();
+
+    if (!error && newCollege) {
+      setSelectedCollege(newCollege);
+      setIsCreatingHub(false);
+      setNewHubName("");
+      setNewHubShortName("");
+      setNewHubCity("");
+    } else {
+      console.error("Hub creation error:", error);
+      alert(error?.message || "Failed to create hub");
+    }
+    setSubmitting(false);
+  };
 
   const POD_TYPES: { value: PodType; label: string; emoji: string }[] = [
     { value: "meetup", label: "Meetup", emoji: "🤝" },
@@ -202,7 +286,7 @@ function CreatePodModal({
 
     const payload = {
       creator_id: currentUserId,
-      college_id: collegeId,
+      college_id: selectedCollege?.id || null,
       name: podName,
       pod_type: podType,
       description: description || null,
@@ -328,6 +412,178 @@ function CreatePodModal({
                     value={podName}
                     onChange={(e) => setPodName(e.target.value)}
                   />
+                </div>
+
+                {/* Campus / Community Hub Tag */}
+                <div className="rounded-2xl p-4 border border-[var(--border-subtle)] bg-[var(--bg-deep)] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <FieldLabel>Hub Tag (Displays next to Pod name)</FieldLabel>
+                    {!isCreatingHub && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCollege(null);
+                          setSearchQuery("");
+                        }}
+                        className="text-xs font-semibold text-[var(--accent-primary)] hover:underline"
+                      >
+                        {selectedCollege ? "Change" : "Search Hub"}
+                      </button>
+                    )}
+                  </div>
+
+                  {isCreatingHub ? (
+                    <div className="space-y-3 p-3 rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-deep)]">
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">Create Custom Hub Tag</p>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] font-semibold uppercase block mb-1">Hub Name *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. IIT Bombay"
+                            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)]"
+                            value={newHubName}
+                            onChange={(e) => setNewHubName(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] font-semibold uppercase block mb-1">Short Tag *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="e.g. IITB"
+                            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)]"
+                            value={newHubShortName}
+                            onChange={(e) => setNewHubShortName(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] font-semibold uppercase block mb-1">Hub Type</label>
+                          <select
+                            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)]"
+                            value={newHubType}
+                            onChange={(e) => setNewHubType(e.target.value as any)}
+                          >
+                            <option value="college">🏫 College</option>
+                            <option value="society">🏡 Society</option>
+                            <option value="corporate">🏢 Corporate</option>
+                            <option value="other">🌐 Other</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] font-semibold uppercase block mb-1">City</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Mumbai"
+                            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)]"
+                            value={newHubCity}
+                            onChange={(e) => setNewHubCity(e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setIsCreatingHub(false)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-[var(--border-subtle)] text-[var(--text-secondary)]"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateHub}
+                          disabled={submitting || !newHubName.trim()}
+                          className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-[var(--accent-primary)] text-white hover:opacity-90 disabled:opacity-50"
+                        >
+                          {submitting ? "Creating..." : "Apply Tag"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : selectedCollege ? (
+                    <div className="flex items-center gap-3 p-3 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-frosted)]">
+                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl bg-[var(--border-subtle)]">
+                        {selectedCollege.hub_type === "society"
+                          ? "🏡"
+                          : selectedCollege.hub_type === "corporate"
+                          ? "🏢"
+                          : selectedCollege.hub_type === "other"
+                          ? "🌐"
+                          : "🏫"}
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-[var(--text-primary)]">{selectedCollege.name}</p>
+                        <p className="text-xs text-[var(--text-muted)]">
+                          Short Tag: <span className="font-mono text-[var(--accent-primary)]">{selectedCollege.short_name || "None"}</span>
+                        </p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          placeholder="Search colleges, residential societies, corporate spaces..."
+                          className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-3 focus:outline-none text-sm transition-all pr-10"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        {searchingColleges && (
+                          <div className="absolute right-3 top-3.5">
+                            <Loader2 className="w-4 h-4 animate-spin text-[var(--text-muted)]" />
+                          </div>
+                        )}
+                      </div>
+
+                      {searchResults.length > 0 && (
+                        <div className="rounded-xl border border-[var(--border-subtle)] overflow-hidden bg-[var(--bg-deep)] divide-y divide-[var(--border-subtle)]">
+                          {searchResults.map((hub: any) => (
+                            <button
+                              key={hub.id}
+                              type="button"
+                              onClick={() => handleSelectHub(hub)}
+                              className="w-full text-left p-3 hover:bg-[var(--bg-frosted)] flex items-center justify-between text-xs transition-colors"
+                            >
+                              <div>
+                                <span className="font-semibold text-[var(--text-primary)]">{hub.name}</span>
+                                {hub.short_name && (
+                                  <span className="ml-2 font-mono text-[var(--accent-primary)]">({hub.short_name})</span>
+                                )}
+                              </div>
+                              <span className="text-[var(--text-muted)] text-[10px] uppercase font-bold tracking-wider">
+                                {hub.hub_type === "society" ? "Society" : hub.hub_type === "corporate" ? "Corp" : "Campus"}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCollege(null);
+                            setSearchQuery("");
+                          }}
+                          className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                        >
+                          🌐 Keep Global Net (No Tag)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsCreatingHub(true)}
+                          className="text-xs font-semibold text-[var(--accent-primary)] hover:underline"
+                        >
+                          + Create Custom Hub Tag
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Pod Type — radio row */}
@@ -889,7 +1145,7 @@ export default function PodsPage() {
           <CreatePodModal
             onClose={() => setShowCreateModal(false)}
             currentUserId={currentUser?.id ?? null}
-            collegeId={userCollege?.id ?? null}
+            userCollege={userCollege}
             onCreated={(newPod) => {
               setDbPods((prev) => [newPod, ...prev]);
             }}
