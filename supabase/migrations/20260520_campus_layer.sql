@@ -13,22 +13,26 @@ CREATE TABLE IF NOT EXISTS public.colleges (
   city            TEXT,
   country         TEXT DEFAULT 'IN',
   is_verified     BOOLEAN DEFAULT true,
+  hub_type        TEXT DEFAULT 'college', -- 'college' | 'society' | 'corporate'
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Seed with known Indian institutions
-INSERT INTO public.colleges (name, short_name, email_domain, city) VALUES
-  ('Indian Institute of Technology Bombay',     'IIT Bombay',  'iitb.ac.in',     'Mumbai'),
-  ('Indian Institute of Technology Delhi',      'IIT Delhi',   'iitd.ac.in',     'Delhi'),
-  ('Indian Institute of Technology Madras',     'IIT Madras',  'iitm.ac.in',     'Chennai'),
-  ('Indian Institute of Technology Bangalore',  'IISc',        'iisc.ac.in',     'Bangalore'),
-  ('National Institute of Technology Trichy',   'NIT Trichy',  'nitt.edu',       'Tiruchirappalli'),
-  ('BITS Pilani',                               'BITS',        'pilani.bits-pilani.ac.in', 'Pilani'),
-  ('Delhi Technological University',            'DTU',         'dtu.ac.in',      'Delhi'),
-  ('Vellore Institute of Technology',           'VIT',         'vit.ac.in',      'Vellore'),
-  ('Manipal Academy of Higher Education',       'MAHE',        'manipal.edu',    'Manipal'),
-  ('Symbiosis International University',        'SIU',         'siu.edu.in',     'Pune')
+-- Seed with known Indian institutions and community spaces
+INSERT INTO public.colleges (name, short_name, email_domain, city, hub_type) VALUES
+  ('Indian Institute of Technology Bombay',     'IIT Bombay',  'iitb.ac.in',     'Mumbai', 'college'),
+  ('Indian Institute of Technology Delhi',      'IIT Delhi',   'iitd.ac.in',     'Delhi', 'college'),
+  ('Indian Institute of Technology Madras',     'IIT Madras',  'iitm.ac.in',     'Chennai', 'college'),
+  ('Indian Institute of Technology Bangalore',  'IISc',        'iisc.ac.in',     'Bangalore', 'college'),
+  ('National Institute of Technology Trichy',   'NIT Trichy',  'nitt.edu',       'Tiruchirappalli', 'college'),
+  ('BITS Pilani',                               'BITS',        'pilani.bits-pilani.ac.in', 'Pilani', 'college'),
+  ('Delhi Technological University',            'DTU',         'dtu.ac.in',      'Delhi', 'college'),
+  ('Vellore Institute of Technology',           'VIT',         'vit.ac.in',      'Vellore', 'college'),
+  ('Manipal Academy of Higher Education',       'MAHE',        'manipal.edu',    'Manipal', 'college'),
+  ('Symbiosis International University',        'SIU',         'siu.edu.in',     'Pune', 'college'),
+  ('Prestige Palms Residential Society',        'Prestige Palms', 'prestigepalms.com', 'Bangalore', 'society'),
+  ('Sherwood Heights RWA',                      'Sherwood',    'sherwoodheights.res', 'Mumbai', 'society')
 ON CONFLICT (email_domain) DO NOTHING;
+
 
 -- ── 2. EXTEND USERS TABLE ────────────────────────────────────
 ALTER TABLE public.users

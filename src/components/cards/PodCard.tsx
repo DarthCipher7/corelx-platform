@@ -7,7 +7,15 @@ import Button from "@/components/ui/Button";
 export interface PodCardProps {
   id: string;
   name: string;
-  podType: "hackathon" | "class" | "club" | "project";
+  podType:
+    | "hackathon"
+    | "class"
+    | "club"
+    | "project"
+    | "meetup"
+    | "sports"
+    | "gaming"
+    | "tournament";
   description?: string;
   memberCount: number;
   maxMembers?: number;
@@ -21,6 +29,11 @@ export interface PodCardProps {
   isMember?: boolean;
   onJoin?: (podId: string) => void;
   index?: number;
+  hub?: {
+    name: string;
+    shortName?: string;
+    hubType?: "college" | "society" | "corporate";
+  };
 }
 
 /* ─── Pod type config ─────────────────────────────────────────── */
@@ -57,6 +70,38 @@ const POD_TYPE_CONFIG = {
     text: "#fb923c",
     glow: "rgba(249,115,22,0.10)",
   },
+  meetup: {
+    emoji: "🤝",
+    label: "Meetup",
+    color: "rgba(236,72,153,0.15)",
+    border: "rgba(236,72,153,0.35)",
+    text: "#f472b6",
+    glow: "rgba(236,72,153,0.10)",
+  },
+  sports: {
+    emoji: "⚽",
+    label: "Sports",
+    color: "rgba(16,185,129,0.15)",
+    border: "rgba(16,185,129,0.35)",
+    text: "#34d399",
+    glow: "rgba(16,185,129,0.10)",
+  },
+  gaming: {
+    emoji: "🎮",
+    label: "Gaming",
+    color: "rgba(6,182,212,0.15)",
+    border: "rgba(6,182,212,0.35)",
+    text: "#22d3ee",
+    glow: "rgba(6,182,212,0.10)",
+  },
+  tournament: {
+    emoji: "🏆",
+    label: "Tournament",
+    color: "rgba(234,179,8,0.15)",
+    border: "rgba(234,179,8,0.35)",
+    text: "#facc15",
+    glow: "rgba(234,179,8,0.10)",
+  },
 } as const;
 
 /* ─── Avatar initials ─────────────────────────────────────────── */
@@ -81,6 +126,7 @@ export default function PodCard({
   isMember = false,
   onJoin,
   index = 0,
+  hub,
 }: PodCardProps) {
   const typeConf = POD_TYPE_CONFIG[podType];
 
@@ -122,9 +168,27 @@ export default function PodCard({
           {typeConf.emoji} {typeConf.label}
         </span>
 
+        {/* Hub badge (shows if browsing globally or if pod is from a specific hub) */}
+        {hub && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full text-[11px] font-medium px-2.5 py-0.5 border"
+            style={{
+              background: "rgba(255,255,255,0.05)",
+              borderColor: "var(--border-subtle)",
+              color: "var(--text-secondary)",
+            }}
+          >
+            <span>
+              {hub.hubType === "society" ? "🏡" : hub.hubType === "corporate" ? "🏢" : "🏫"}
+            </span>
+            {hub.shortName || hub.name}
+          </span>
+        )}
+
         {/* Visibility badge */}
         <span
           className="inline-flex items-center gap-1 rounded-full text-[11px] font-semibold px-2.5 py-0.5 border ml-auto"
+
           style={{
             background: "rgba(253,203,110,0.10)",
             borderColor: "rgba(253,203,110,0.30)",

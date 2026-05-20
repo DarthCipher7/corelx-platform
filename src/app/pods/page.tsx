@@ -13,6 +13,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import PodCard, { PodCardProps } from "@/components/cards/PodCard";
+import { PodType } from "@/types";
 import Button from "@/components/ui/Button";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
@@ -20,9 +21,13 @@ import { useRouter } from "next/navigation";
 /* ─── Filter tabs ─────────────────────────────────────────────── */
 const FILTER_TABS = [
   { label: "All", value: "all" },
+  { label: "🤝 Meetup", value: "meetup" },
   { label: "⚡ Hackathon", value: "hackathon" },
   { label: "📖 Class", value: "class" },
   { label: "🎯 Club", value: "club" },
+  { label: "⚽ Sports", value: "sports" },
+  { label: "🎮 Gaming", value: "gaming" },
+  { label: "🏆 Tournament", value: "tournament" },
   { label: "🛠️ Project", value: "project" },
 ] as const;
 
@@ -32,20 +37,51 @@ type FilterValue = (typeof FILTER_TABS)[number]["value"];
 const MOCK_PODS: Omit<PodCardProps, "onJoin">[] = [
   {
     id: "mock-1",
-    name: "HackMIT Team 2026",
-    podType: "hackathon",
+    name: "IIT Madras Inter-Hostel Chess Tournament",
+    podType: "tournament",
     description:
-      "Building the next campus-tech app for HackMIT. Looking for generalists who move fast and ship faster.",
-    memberCount: 3,
-    maxMembers: 6,
-    roleTags: ["Backend needed", "ML engineer needed"],
+      "Official campus brackets. Register your hostel team here. Prizes up to 15k INR.",
+    memberCount: 24,
+    maxMembers: 64,
+    roleTags: ["Inter-hostel", "Prizes"],
     visibility: "open",
-    creator: { handle: "arjun_k", displayName: "Arjun Kumar" },
+    creator: { handle: "chess_pres", displayName: "Aravind S" },
     isMember: false,
+    hub: { name: "IIT Madras", shortName: "IIT Madras", hubType: "college" },
     index: 0,
   },
   {
     id: "mock-2",
+    name: "Prestige Palms Tennis Tournament",
+    podType: "tournament",
+    description:
+      "Mixed doubles weekend tournament for Sherwood & Prestige residents at Court A.",
+    memberCount: 8,
+    maxMembers: 16,
+    roleTags: ["Mixed doubles", "Court A"],
+    visibility: "open",
+    creator: { handle: "rohit_g", displayName: "Rohit Goel" },
+    isMember: false,
+    hub: { name: "Prestige Palms Residential Society", shortName: "Prestige Palms", hubType: "society" },
+    index: 1,
+  },
+  {
+    id: "mock-3",
+    name: "VIT FIFA 26 Campus Tournament",
+    podType: "gaming",
+    description:
+      "Gaming pod for registration, matchups and coordination for the VIT FIFA lan event.",
+    memberCount: 18,
+    maxMembers: 32,
+    roleTags: ["FIFA 26", "LAN event"],
+    visibility: "open",
+    creator: { handle: "gamer_vit", displayName: "Varun Nair" },
+    isMember: false,
+    hub: { name: "Vellore Institute of Technology", shortName: "VIT", hubType: "college" },
+    index: 2,
+  },
+  {
+    id: "mock-4",
     name: "CS301 Study Group",
     podType: "class",
     description:
@@ -56,21 +92,8 @@ const MOCK_PODS: Omit<PodCardProps, "onJoin">[] = [
     visibility: "open",
     creator: { handle: "priya_m", displayName: "Priya Mehta" },
     isMember: false,
-    index: 1,
-  },
-  {
-    id: "mock-3",
-    name: "CORELX Campus App",
-    podType: "project",
-    description:
-      "Building the social campus layer. Real product, real users. Join to ship features that matter.",
-    memberCount: 5,
-    maxMembers: 10,
-    roleTags: ["React Native dev", "UI designer"],
-    visibility: "invite",
-    creator: { handle: "nova_dev", displayName: "Nova Dev" },
-    isMember: false,
-    index: 2,
+    hub: { name: "Vellore Institute of Technology", shortName: "VIT", hubType: "college" },
+    index: 3,
   },
 ];
 
@@ -134,17 +157,18 @@ function CreatePodModal({
   onClose,
   onCreated,
   currentUserId,
+  collegeId,
 }: {
   onClose: () => void;
   onCreated: (pod: any) => void;
   currentUserId: string | null;
+  collegeId: string | null;
 }) {
   const supabase = createClient();
   const router = useRouter();
 
   const [podName, setPodName] = useState("");
-  const [podType, setPodType] =
-    useState<"hackathon" | "class" | "club" | "project">("project");
+  const [podType, setPodType] = useState<PodType>("project");
   const [visibility, setVisibility] = useState<"open" | "invite">("open");
   const [maxMembers, setMaxMembers] = useState("");
   const [roleTagsInput, setRoleTagsInput] = useState("");
@@ -152,10 +176,14 @@ function CreatePodModal({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
-  const POD_TYPES: { value: typeof podType; label: string; emoji: string }[] = [
+  const POD_TYPES: { value: PodType; label: string; emoji: string }[] = [
+    { value: "meetup", label: "Meetup", emoji: "🤝" },
     { value: "hackathon", label: "Hackathon", emoji: "⚡" },
     { value: "class", label: "Class", emoji: "📖" },
     { value: "club", label: "Club", emoji: "🎯" },
+    { value: "sports", label: "Sports", emoji: "⚽" },
+    { value: "gaming", label: "Gaming", emoji: "🎮" },
+    { value: "tournament", label: "Tournament", emoji: "🏆" },
     { value: "project", label: "Project", emoji: "🛠️" },
   ];
 
@@ -174,6 +202,7 @@ function CreatePodModal({
 
     const payload = {
       creator_id: currentUserId,
+      college_id: collegeId,
       name: podName,
       pod_type: podType,
       description: description || null,
@@ -304,7 +333,7 @@ function CreatePodModal({
                 {/* Pod Type — radio row */}
                 <div>
                   <FieldLabel>Pod Type *</FieldLabel>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {POD_TYPES.map(({ value, label, emoji }) => (
                       <button
                         key={value}
@@ -448,35 +477,70 @@ export default function PodsPage() {
   const [dbPods, setDbPods] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [userCollege, setUserCollege] = useState<any>(null);
+  const [scopeFilter, setScopeFilter] = useState<"local" | "global">("local");
   const [userMemberships, setUserMemberships] = useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   /* ── Auth + initial fetch ───────────────────────────────────── */
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const initPage = async () => {
+      setLoading(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      let collegeIdToQuery = null;
+      
       if (user) {
-        setCurrentUser(user);
-        fetchMemberships(user.id);
+        // Query full profile including college details
+        const { data: profile } = await supabase
+          .from("users")
+          .select("*, colleges(*)")
+          .eq("id", user.id)
+          .single();
+          
+        if (profile) {
+          setCurrentUser(profile);
+          fetchMemberships(user.id);
+          if (profile.colleges) {
+            setUserCollege(profile.colleges);
+            collegeIdToQuery = profile.colleges.id;
+          }
+        }
       }
-    });
-    fetchPods();
-  }, []);
+      
+      // If user isn't logged in or doesn't have a hub, default to global view
+      const defaultScope = collegeIdToQuery ? scopeFilter : "global";
+      if (!collegeIdToQuery && scopeFilter === "local") {
+        setScopeFilter("global");
+      }
+      
+      await fetchPods(collegeIdToQuery, defaultScope);
+    };
 
-  const fetchPods = async () => {
+    initPage();
+  }, [scopeFilter]);
+
+  const fetchPods = async (collegeId: string | null = null, currentScope: "local" | "global" = "local") => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from("pods")
         .select(
-          "*, creator:users!pods_creator_id_fkey(handle, display_name, avatar_url), pod_members(count)"
+          "*, creator:users!pods_creator_id_fkey(handle, display_name, avatar_url), colleges(*), pod_members(count)"
         )
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
+        .eq("is_active", true);
+
+      const targetCollegeId = collegeId || userCollege?.id;
+      if (currentScope === "local" && targetCollegeId) {
+        query = query.eq("college_id", targetCollegeId);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (!error && data) {
         setDbPods(data);
       } else {
-        console.warn("Pods table not ready yet:", error?.message);
+        console.warn("Pods fetch warning:", error?.message);
         setDbPods([]);
       }
     } catch (err) {
@@ -532,6 +596,11 @@ export default function PodsPage() {
       avatarUrl: pod.creator?.avatar_url ?? undefined,
     },
     isMember: userMemberships.has(pod.id),
+    hub: pod.colleges ? {
+      name: pod.colleges.name,
+      shortName: pod.colleges.short_name,
+      hubType: pod.colleges.hub_type,
+    } : undefined,
     index: idx,
   });
 
@@ -557,7 +626,7 @@ export default function PodsPage() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10"
+          className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8"
         >
           <div>
             {/* Label mono pill */}
@@ -571,36 +640,78 @@ export default function PodsPage() {
               }}
             >
               <Zap className="w-2.5 h-2.5" />
-              Campus Layer · Academic Pods
+              Campus Layer · Community Pods
             </span>
 
             <h1
               className="text-4xl font-bold tracking-tight leading-none mb-3"
               style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
             >
-              Academic Pods 🛠️
+              Community Pods 🏡
             </h1>
             <p className="text-base max-w-md" style={{ color: "var(--text-secondary)" }}>
-              Find your crew. Build something real.
+              Find your crew. Study, play, compete, or build together.
             </p>
           </div>
 
-          <Button
-            variant="primary"
-            icon={<Plus className="w-4 h-4" />}
-            onClick={() => {
-              if (!currentUser) router.push("/login");
-              else setShowCreateModal(true);
-            }}
-            className="flex-shrink-0"
-          >
-            Create Pod
-          </Button>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-shrink-0">
+            {/* Hub Selector Tab Toggle */}
+            {userCollege && (
+              <div
+                className="inline-flex rounded-xl p-1 gap-1"
+                style={{
+                  background: "var(--bg-frosted)",
+                  border: "1px solid var(--glass-border)",
+                }}
+              >
+                <button
+                  onClick={() => setScopeFilter("local")}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+                  style={{
+                    background:
+                      scopeFilter === "local" ? "var(--accent-primary)" : "transparent",
+                    color: scopeFilter === "local" ? "#fff" : "var(--text-muted)",
+                  }}
+                >
+                  <span>
+                    {userCollege.hub_type === "society"
+                      ? "🏡"
+                      : userCollege.hub_type === "corporate"
+                      ? "🏢"
+                      : "🏫"}
+                  </span>
+                  {userCollege.short_name || userCollege.name}
+                </button>
+                <button
+                  onClick={() => setScopeFilter("global")}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+                  style={{
+                    background:
+                      scopeFilter === "global" ? "var(--accent-primary)" : "transparent",
+                    color: scopeFilter === "global" ? "#fff" : "var(--text-muted)",
+                  }}
+                >
+                  🌐 Global Net
+                </button>
+              </div>
+            )}
+
+            <Button
+              variant="primary"
+              icon={<Plus className="w-4 h-4" />}
+              onClick={() => {
+                if (!currentUser) router.push("/login");
+                else setShowCreateModal(true);
+              }}
+            >
+              Create Pod
+            </Button>
+          </div>
         </motion.div>
 
         {/* ── Stats row ───────────────────────────────────────── */}
         <motion.div
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.08 }}
@@ -624,7 +735,7 @@ export default function PodsPage() {
 
         {/* ── Filter tabs (horizontally scrollable) ───────────── */}
         <motion.div
-          className="relative mb-8"
+          className="relative mb-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.12 }}
@@ -778,6 +889,7 @@ export default function PodsPage() {
           <CreatePodModal
             onClose={() => setShowCreateModal(false)}
             currentUserId={currentUser?.id ?? null}
+            collegeId={userCollege?.id ?? null}
             onCreated={(newPod) => {
               setDbPods((prev) => [newPod, ...prev]);
             }}

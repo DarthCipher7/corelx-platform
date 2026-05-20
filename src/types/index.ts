@@ -110,7 +110,7 @@ export interface Flare {
 export type TrustTier = 'open' | 'checked' | 'guarded';
 export type EventCategory = 'sports' | 'music' | 'academic' | 'social' | 'misc' | 'hackathon';
 export type RsvpStatus = 'none' | 'pending' | 'attending' | 'declined' | 'waitlist';
-export type PodType = 'hackathon' | 'class' | 'club' | 'project';
+export type PodType = 'hackathon' | 'class' | 'club' | 'project' | 'meetup' | 'sports' | 'gaming' | 'tournament';
 
 export interface CollegeInfo {
   id: string;
@@ -119,7 +119,9 @@ export interface CollegeInfo {
   email_domain: string;
   city?: string;
   country?: string;
+  hub_type?: 'college' | 'society' | 'corporate';
 }
+
 
 export interface CampusEvent {
   id: string;
