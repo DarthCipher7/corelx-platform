@@ -40,6 +40,9 @@ ALTER TABLE public.users
   ADD COLUMN IF NOT EXISTS events_attended_count INTEGER DEFAULT 0;
 
 -- ── 3. EVENTS ────────────────────────────────────────────────
+-- NOTE: expires_at cannot be a GENERATED column because TIMESTAMPTZ + INTERVAL
+-- is not considered immutable by PostgreSQL (timezone GUC dependency).
+-- We use a BEFORE INSERT OR UPDATE trigger instead.
 CREATE TABLE IF NOT EXISTS public.events (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   organiser_id    UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
@@ -53,19 +56,34 @@ CREATE TABLE IF NOT EXISTS public.events (
   location_name   TEXT,
   starts_at       TIMESTAMPTZ NOT NULL,
   ends_at         TIMESTAMPTZ NOT NULL,
-  expires_at      TIMESTAMPTZ GENERATED ALWAYS AS (ends_at + INTERVAL '1 hour') STORED,
+  expires_at      TIMESTAMPTZ,              -- set by trigger: ends_at + 1 hour
   min_headcount   INTEGER DEFAULT 1,
   max_headcount   INTEGER,
   is_active       BOOLEAN DEFAULT true,
-  require_mutual  BOOLEAN DEFAULT false,  -- Guarded: must share prior event
-  require_face    BOOLEAN DEFAULT false,  -- Guarded: optional face liveness
+  require_mutual  BOOLEAN DEFAULT false,    -- Guarded: must share prior event
+  require_face    BOOLEAN DEFAULT false,    -- Guarded: optional face liveness
   created_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Auto-expiry index
+-- Trigger function: auto-set expires_at = ends_at + 1 hour
+CREATE OR REPLACE FUNCTION set_event_expires_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.expires_at := NEW.ends_at + INTERVAL '1 hour';
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_set_event_expires_at
+  BEFORE INSERT OR UPDATE OF ends_at ON public.events
+  FOR EACH ROW EXECUTE FUNCTION set_event_expires_at();
+
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_events_expires_at ON public.events(expires_at) WHERE is_active = true;
 CREATE INDEX IF NOT EXISTS idx_events_starts_at  ON public.events(starts_at);
 CREATE INDEX IF NOT EXISTS idx_events_college    ON public.events(college_id);
+
+
 
 -- ── 4. EVENT RSVPs ───────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.event_rsvps (
