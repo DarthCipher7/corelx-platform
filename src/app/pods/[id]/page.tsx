@@ -22,6 +22,7 @@ import {
   X,
   Loader2,
   Calendar,
+  ArrowLeft,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
@@ -300,20 +301,22 @@ export default function PodDetailPage() {
     if (!editName.trim()) return;
 
     setSavingEdit(true);
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("pods")
       .update({
         name: editName.trim(),
         description: editDesc.trim() || null,
       })
-      .eq("id", podId);
+      .eq("id", podId)
+      .select()
+      .single();
 
     setSavingEdit(false);
-    if (!error) {
-      setPod((prev: any) => ({ ...prev, name: editName.trim(), description: editDesc.trim() || null }));
+    if (!error && updated) {
+      setPod((prev: any) => ({ ...prev, ...updated }));
       setEditing(false);
     } else {
-      alert(error.message);
+      alert(error?.message || "Update failed. You may not have permission to edit this Pod.");
     }
   };
 
@@ -326,7 +329,7 @@ export default function PodDetailPage() {
     if (!window.confirm(confirmMsg)) return;
 
     const newStatus = isArchived ? "active" : "archived";
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("pods")
       .update({
         pod_status: newStatus,
@@ -336,16 +339,14 @@ export default function PodDetailPage() {
           : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         is_active: isArchived,
       })
-      .eq("id", podId);
+      .eq("id", podId)
+      .select()
+      .single();
 
-    if (!error) {
-      setPod((prev: any) => ({
-        ...prev,
-        pod_status: newStatus,
-        is_active: isArchived,
-      }));
+    if (!error && updated) {
+      setPod((prev: any) => ({ ...prev, ...updated }));
     } else {
-      alert(error.message);
+      alert(error?.message || "Archive failed. You may not have permission.");
     }
   };
 
@@ -479,6 +480,14 @@ export default function PodDetailPage() {
   return (
     <div className="min-h-screen pt-24 pb-28 px-4 sm:px-6 bg-[var(--bg-void)] text-white">
       <div className="max-w-4xl mx-auto flex flex-col gap-6">
+        {/* ── Back Button ─────────────────────────────────────── */}
+        <button
+          onClick={() => router.push("/pods")}
+          className="self-start flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          Back to Pods
+        </button>
         {/* ── Archived Warning Banner ────────────────────────────── */}
         {isArchived && (
           <motion.div
