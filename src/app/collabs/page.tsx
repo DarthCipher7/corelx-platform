@@ -64,6 +64,7 @@ export default function CollabsPage() {
           spots,
           created_at,
           user_id,
+          collab_status,
           users (
             id,
             display_name,
@@ -146,7 +147,8 @@ export default function CollabsPage() {
     type: (collab.type || "collab") as "paid" | "collab" | "open-source",
     budget: collab.budget || undefined,
     deadline: collab.time_commitment || undefined,
-    applicants: 0, // Placeholder
+    applicants: collab.collab_status === 'has_responses' ? 1 : 0,
+    collab_status: collab.collab_status || 'active',
     creator: {
       id: collab.users?.id || collab.user_id,
       name: collab.users?.display_name || "Creator",

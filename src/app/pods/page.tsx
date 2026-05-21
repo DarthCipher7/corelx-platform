@@ -784,7 +784,7 @@ export default function PodsPage() {
         .select(
           "*, creator:users!pods_creator_id_fkey(handle, display_name, avatar_url), colleges(*), pod_members(count)"
         )
-        .eq("is_active", true);
+        .neq("pod_status", "deleted");
 
       const targetCollegeId = collegeId || userCollege?.id;
       if (currentScope === "local" && targetCollegeId) {
@@ -858,6 +858,7 @@ export default function PodsPage() {
       hubType: pod.colleges.hub_type,
     } : undefined,
     index: idx,
+    podStatus: pod.pod_status,
   });
 
   /* ── Combine live + mock; filter ────────────────────────────── */

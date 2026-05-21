@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { DollarSign, Users, Clock, ArrowRight, X, Send, CheckCircle } from "lucide-react";
+import { DollarSign, Users, Clock, ArrowRight, X, Send, CheckCircle, Trash2, Archive } from "lucide-react";
 import type { CollabRequest } from "@/types";
 import NeonBadge from "@/components/ui/NeonBadge";
 import Button from "@/components/ui/Button";
@@ -31,6 +31,39 @@ export default function CollabCard({ collab, index = 0, onApplySuccess }: Collab
   const [portfolioLink, setPortfolioLink] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setCurrentUser(user);
+    });
+  }, []);
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (collab.applicants > 0 || collab.collab_status === 'has_responses') {
+      alert("Cannot delete collaboration request as it already has responses.");
+      return;
+    }
+    if (!window.confirm("Are you sure you want to delete this collab call?")) return;
+    const { error } = await supabase.from('collab_calls').delete().eq('id', collab.id);
+    if (!error) {
+      window.location.reload();
+    } else {
+      alert(error.message);
+    }
+  };
+
+  const handleClose = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!window.confirm("Are you sure you want to close this collab call? No new responses will be allowed.")) return;
+    const { error } = await supabase.from('collab_calls').update({ collab_status: 'closed' }).eq('id', collab.id);
+    if (!error) {
+      window.location.reload();
+    } else {
+      alert(error.message);
+    }
+  };
 
   const handleApplyClick = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -63,6 +96,8 @@ export default function CollabCard({ collab, index = 0, onApplySuccess }: Collab
       sender_id: user.id,
       recipient_id: collab.creator.id,
       intent_type: 'collab',
+      target_id: collab.id,
+      target_type: 'collab',
       message: `Collab Application for: "${collab.title}"\n\nPitch: ${pitch}\n\nPortfolio: ${portfolioLink}`
     });
 
@@ -109,9 +144,21 @@ export default function CollabCard({ collab, index = 0, onApplySuccess }: Collab
             >
               {collab.title}
             </h3>
-            <NeonBadge variant={typeConf.variant} size="sm">
-              {typeConf.label}
-            </NeonBadge>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              {collab.collab_status === 'closed' && (
+                <span className="inline-flex items-center text-[10px] font-semibold uppercase px-2 py-0.5 rounded border border-red-500/30 bg-red-500/10 text-red-400">
+                  Closed
+                </span>
+              )}
+              {collab.collab_status === 'has_responses' && (
+                <span className="inline-flex items-center text-[10px] font-semibold uppercase px-2 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-amber-400">
+                  Active
+                </span>
+              )}
+              <NeonBadge variant={typeConf.variant} size="sm">
+                {typeConf.label}
+              </NeonBadge>
+            </div>
           </div>
 
           <p
@@ -191,23 +238,51 @@ export default function CollabCard({ collab, index = 0, onApplySuccess }: Collab
               </div>
             </div>
 
-            <motion.button
-              type="button"
-              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
-              style={{
-                color: "var(--accent-primary)",
-                background: "rgba(108,92,231,0.1)",
-                border: "1px solid rgba(108,92,231,0.2)",
-              }}
-              whileHover={{
-                background: "rgba(108,92,231,0.2)",
-                borderColor: "rgba(108,92,231,0.5)",
-              }}
-              whileTap={{ scale: 0.97 }}
-              onClick={handleApplyClick}
-            >
-              Apply <ArrowRight className="w-3 h-3" />
-            </motion.button>
+            {currentUser?.id === collab.creator.id ? (
+              <div className="flex gap-2">
+                {(collab.collab_status === 'open' || !collab.collab_status) && (
+                  <button
+                    onClick={handleDelete}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-red-500/30 text-red-400 bg-red-500/5 hover:bg-red-500/15 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Delete
+                  </button>
+                )}
+                {collab.collab_status === 'has_responses' && (
+                  <button
+                    onClick={handleClose}
+                    className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-amber-500/30 text-amber-400 bg-amber-500/5 hover:bg-amber-500/15 transition-all"
+                  >
+                    <Archive className="w-3.5 h-3.5" /> Close Collab
+                  </button>
+                )}
+              </div>
+            ) : collab.collab_status === 'closed' ? (
+              <button
+                disabled
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg opacity-50 cursor-not-allowed border border-[var(--border-subtle)] text-[var(--text-muted)]"
+              >
+                Closed
+              </button>
+            ) : (
+              <motion.button
+                type="button"
+                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all"
+                style={{
+                  color: "var(--accent-primary)",
+                  background: "rgba(108,92,231,0.1)",
+                  border: "1px solid rgba(108,92,231,0.2)",
+                }}
+                whileHover={{
+                  background: "rgba(108,92,231,0.2)",
+                  borderColor: "rgba(108,92,231,0.5)",
+                }}
+                whileTap={{ scale: 0.97 }}
+                onClick={handleApplyClick}
+              >
+                Apply <ArrowRight className="w-3 h-3" />
+              </motion.button>
+            )}
           </div>
         </div>
       </motion.article>

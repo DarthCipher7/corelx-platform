@@ -42,6 +42,8 @@ export interface Project {
   gradient: string;
 }
 
+export type CollabStatus = "open" | "has_responses" | "closed" | "expired";
+
 export interface CollabRequest {
   id: string;
   title: string;
@@ -52,6 +54,9 @@ export interface CollabRequest {
   creator: Pick<Creator, "id" | "name" | "handle" | "avatar" | "verified">;
   deadline?: string;
   applicants: number;
+  collab_status?: CollabStatus;
+  closed_at?: string;
+  response_count?: number;
 }
 
 export interface Notification {
@@ -156,6 +161,9 @@ export interface CampusEvent {
   rsvp_status?: RsvpStatus;
 }
 
+export type PodStatus = 'active' | 'archived' | 'deleted';
+export type PodRole = 'creator' | 'admin' | 'member';
+
 export interface Pod {
   id: string;
   name: string;
@@ -175,4 +183,23 @@ export interface Pod {
   };
   member_count?: number;
   is_member?: boolean;
+  pod_status?: PodStatus;
+  archived_at?: string;
+  auto_purge_at?: string;
+  role?: PodRole;
+}
+
+export interface PodMessage {
+  id: string;
+  pod_id: string;
+  sender_id: string;
+  content: string;
+  is_pinned: boolean;
+  is_system: boolean;
+  created_at: string;
+  sender?: {
+    handle: string;
+    display_name: string;
+    avatar_url?: string;
+  };
 }

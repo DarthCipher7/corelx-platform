@@ -4,6 +4,8 @@ import { motion } from "framer-motion";
 import { Users, Lock, Unlock, CheckCircle } from "lucide-react";
 import Button from "@/components/ui/Button";
 
+import { useRouter } from "next/navigation";
+
 export interface PodCardProps {
   id: string;
   name: string;
@@ -17,6 +19,7 @@ export interface PodCardProps {
     | "gaming"
     | "tournament";
   description?: string;
+  podStatus?: "active" | "archived" | "deleted";
   memberCount: number;
   maxMembers?: number;
   roleTags: string[];
@@ -127,22 +130,26 @@ export default function PodCard({
   onJoin,
   index = 0,
   hub,
+  podStatus = 'active',
 }: PodCardProps) {
-  const typeConf = POD_TYPE_CONFIG[podType];
+  const typeConf = POD_TYPE_CONFIG[podType] || POD_TYPE_CONFIG.project;
+  const router = useRouter();
 
   const handleJoin = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isMember && onJoin) onJoin(id);
+    if (!isMember && onJoin && podStatus !== 'archived') onJoin(id);
   };
 
   return (
     <motion.article
-      className="relative flex flex-col rounded-2xl p-5 backdrop-blur-xl cursor-default"
+      onClick={() => router.push(`/pods/${id}`)}
+      className="relative flex flex-col rounded-2xl p-5 backdrop-blur-xl cursor-pointer"
       style={{
         background: "var(--bg-frosted)",
         border: "1px solid var(--glass-border)",
         boxShadow: "0 4px 24px rgba(0,0,0,0.4)",
         minHeight: "240px",
+        opacity: podStatus === 'archived' ? 0.75 : 1,
       }}
       initial={{ opacity: 0, y: 18 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -150,8 +157,10 @@ export default function PodCard({
       transition={{ duration: 0.45, delay: index * 0.07, ease: [0.4, 0, 0.2, 1] }}
       whileHover={{
         y: -4,
-        borderColor: typeConf.border,
-        boxShadow: `0 8px 32px ${typeConf.glow}, 0 2px 8px rgba(0,0,0,0.5)`,
+        borderColor: podStatus === 'archived' ? "var(--glass-border)" : typeConf.border,
+        boxShadow: podStatus === 'archived'
+          ? "0 4px 24px rgba(0,0,0,0.4)"
+          : `0 8px 32px ${typeConf.glow}, 0 2px 8px rgba(0,0,0,0.5)`,
       }}
     >
       {/* ── Top badges row ─────────────────────────────────────── */}
@@ -185,28 +194,41 @@ export default function PodCard({
           </span>
         )}
 
-        {/* Visibility badge */}
-        <span
-          className="inline-flex items-center gap-1 rounded-full text-[11px] font-semibold px-2.5 py-0.5 border ml-auto"
-
-          style={{
-            background: "rgba(253,203,110,0.10)",
-            borderColor: "rgba(253,203,110,0.30)",
-            color: "#fdcb6e",
-          }}
-        >
-          {visibility === "open" ? (
-            <>
-              <Unlock className="w-2.5 h-2.5" />
-              Open
-            </>
-          ) : (
-            <>
-              <Lock className="w-2.5 h-2.5" />
-              Invite Only
-            </>
-          )}
-        </span>
+        {/* Archived / Visibility badge */}
+        {podStatus === 'archived' ? (
+          <span
+            className="inline-flex items-center gap-1 rounded-full text-[11px] font-semibold px-2.5 py-0.5 border ml-auto"
+            style={{
+              background: "rgba(239, 68, 68, 0.10)",
+              borderColor: "rgba(239, 68, 68, 0.30)",
+              color: "#ef4444",
+            }}
+          >
+            <Lock className="w-2.5 h-2.5" />
+            Archived
+          </span>
+        ) : (
+          <span
+            className="inline-flex items-center gap-1 rounded-full text-[11px] font-semibold px-2.5 py-0.5 border ml-auto"
+            style={{
+              background: "rgba(253,203,110,0.10)",
+              borderColor: "rgba(253,203,110,0.30)",
+              color: "#fdcb6e",
+            }}
+          >
+            {visibility === "open" ? (
+              <>
+                <Unlock className="w-2.5 h-2.5" />
+                Open
+              </>
+            ) : (
+              <>
+                <Lock className="w-2.5 h-2.5" />
+                Invite Only
+              </>
+            )}
+          </span>
+        )}
       </div>
 
       {/* ── Pod name ───────────────────────────────────────────── */}
