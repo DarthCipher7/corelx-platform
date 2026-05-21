@@ -15,8 +15,22 @@ const SORT_OPTIONS = [
 ];
 
 const TAG_FILTERS = [
-  "All", "UI Design", "Motion", "3D Art", "WebGL", "AI", "Open Source",
-  "Brand", "Interactive", "TypeScript",
+  "All",
+  "Design",
+  "Illustration",
+  "Photography",
+  "Video",
+  "Motion",
+  "Music",
+  "Social Media",
+  "Writing",
+  "Code",
+  "AI",
+  "3D",
+  "Gaming",
+  "Art",
+  "Fashion",
+  "Freelance",
 ];
 
 const GRADIENTS = [

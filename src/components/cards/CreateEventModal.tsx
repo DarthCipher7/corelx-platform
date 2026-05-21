@@ -10,11 +10,13 @@ import TrustTierBadge from "@/components/ui/TrustTierBadge";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Category =
+  | "academic"
+  | "competition"
+  | "social"
   | "sports"
   | "music"
-  | "academic"
-  | "social"
-  | "hackathon"
+  | "informal"
+  | "formal"
   | "misc";
 type TrustTier = "open" | "checked" | "guarded";
 
@@ -32,11 +34,13 @@ const CATEGORIES: {
   emoji: string;
   label: string;
 }[] = [
+  { id: "academic", emoji: "📚", label: "Academic" },
+  { id: "competition", emoji: "🏆", label: "Competition" },
+  { id: "social", emoji: "🎉", label: "Fun / Social" },
   { id: "sports", emoji: "🏃", label: "Sports" },
   { id: "music", emoji: "🎵", label: "Music" },
-  { id: "academic", emoji: "📚", label: "Academic" },
-  { id: "social", emoji: "🎉", label: "Social" },
-  { id: "hackathon", emoji: "💡", label: "Hackathon" },
+  { id: "informal", emoji: "🤝", label: "Informal" },
+  { id: "formal", emoji: "👔", label: "Formal" },
   { id: "misc", emoji: "✨", label: "Misc" },
 ];
 

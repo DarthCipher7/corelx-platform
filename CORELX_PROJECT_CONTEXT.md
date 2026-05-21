@@ -10,7 +10,7 @@ This document is designed to be copy-pasted directly into premium LLMs (ChatGPT 
 ### Tech Stack
 * **Framework:** Next.js 16 (App Router, Turbopack, TypeScript)
 * **Backend & Database:** Supabase (PostgreSQL, Real-Time Auth, Row-Level Security)
-* **Hosting:** Vercel (Production URL: `https://nova-platform-rho.vercel.app`)
+* **Hosting:** Vercel (Production URL: `https://corelx-platform.vercel.app`)
 * **Styling:** CSS variables for a hybrid Acrylic / Cyber-Minimalist design system with Tailwind classes for layout.
 * **Icons & Animation:** Lucide React and Framer Motion.
 

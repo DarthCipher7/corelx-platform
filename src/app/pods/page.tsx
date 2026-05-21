@@ -13,6 +13,7 @@ import {
   CheckCircle,
   Loader2,
   Calendar,
+  Clock,
 } from "lucide-react";
 import PodCard, { PodCardProps } from "@/components/cards/PodCard";
 import EventCard from "@/components/cards/EventCard";
@@ -180,6 +181,16 @@ function CreatePodModal({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
 
+  // Duration states
+  const [durationType, setDurationType] = useState<"unlimited" | "window" | "relative">("unlimited");
+  const [startsAt, setStartsAt] = useState(() => {
+    const now = new Date();
+    const pad = (n: number) => (n < 10 ? "0" + n : n);
+    return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  });
+  const [endsAt, setEndsAt] = useState("");
+  const [relativeDuration, setRelativeDuration] = useState("4h");
+
   // Hub states
   const [selectedCollege, setSelectedCollege] = useState<any>(userCollege);
   const [searchQuery, setSearchQuery] = useState("");
@@ -287,6 +298,32 @@ function CreatePodModal({
       .map((t) => t.trim())
       .filter((t) => t.length > 0);
 
+    let finalStartsAt: string | null = null;
+    let finalEndsAt: string | null = null;
+
+    if (durationType === "window") {
+      if (endsAt && new Date(endsAt) <= new Date(startsAt)) {
+        alert("Ends At must be after Starts At");
+        setSubmitting(false);
+        return;
+      }
+      finalStartsAt = new Date(startsAt).toISOString();
+      finalEndsAt = endsAt ? new Date(endsAt).toISOString() : null;
+    } else if (durationType === "relative") {
+      finalStartsAt = new Date().toISOString();
+      const msMap = {
+        "1h": 1 * 60 * 60 * 1000,
+        "4h": 4 * 60 * 60 * 1000,
+        "1d": 24 * 60 * 60 * 1000,
+        "3d": 3 * 24 * 60 * 60 * 1000,
+        "1w": 7 * 24 * 60 * 60 * 1000,
+        "1m": 30 * 24 * 60 * 60 * 1000,
+        "6m": 180 * 24 * 60 * 60 * 1000,
+      } as Record<string, number>;
+      const addedMs = msMap[relativeDuration] || (4 * 60 * 60 * 1000);
+      finalEndsAt = new Date(Date.now() + addedMs).toISOString();
+    }
+
     const payload = {
       creator_id: currentUserId,
       college_id: selectedCollege?.id || null,
@@ -297,6 +334,9 @@ function CreatePodModal({
       max_members: maxMembers ? Number(maxMembers) : null,
       role_tags: parsedTags,
       is_active: true,
+      duration_type: durationType,
+      starts_at: finalStartsAt,
+      ends_at: finalEndsAt,
     };
 
     const { data, error } = await supabase
@@ -683,6 +723,104 @@ function CreatePodModal({
                   />
                 </div>
 
+                {/* Duration Picker */}
+                <div className="rounded-2xl p-4 border border-[var(--border-subtle)] bg-[var(--bg-deep)] space-y-3">
+                  <FieldLabel>Pod Existence / Duration</FieldLabel>
+                  <div
+                    className="flex rounded-xl p-1 gap-1 w-full"
+                    style={{ background: "var(--bg-deep)", border: "1px solid var(--border-subtle)" }}
+                  >
+                    {(
+                      [
+                        { id: "unlimited", label: "🌐 Unlimited", hint: "Exists indefinitely" },
+                        { id: "window", label: "📅 Custom Window", hint: "Start & end times" },
+                        { id: "relative", label: "⏳ Set Duration", hint: "Expires after a set time" },
+                      ] as const
+                    ).map((t) => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => setDurationType(t.id)}
+                        className="relative flex-1 py-2 rounded-lg text-xs font-semibold transition-all text-center"
+                        style={{
+                          color:
+                            durationType === t.id
+                              ? "var(--text-primary)"
+                              : "var(--text-muted)",
+                        }}
+                      >
+                        {durationType === t.id && (
+                          <motion.span
+                            layoutId="duration-pill"
+                            className="absolute inset-0 rounded-lg"
+                            style={{ background: "var(--accent-primary)" }}
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                          />
+                        )}
+                        <span className="relative z-10">{t.label}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    {durationType === "window" && (
+                      <motion.div
+                        key="window-inputs"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2"
+                      >
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] font-semibold uppercase block mb-1">Starts At *</label>
+                          <input
+                            type="datetime-local"
+                            required
+                            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
+                            value={startsAt}
+                            onChange={(e) => setStartsAt(e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-[var(--text-muted)] font-semibold uppercase block mb-1">Ends At *</label>
+                          <input
+                            type="datetime-local"
+                            required
+                            className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
+                            value={endsAt}
+                            onChange={(e) => setEndsAt(e.target.value)}
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+
+                    {durationType === "relative" && (
+                      <motion.div
+                        key="relative-inputs"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="pt-2"
+                      >
+                        <label className="text-[10px] text-[var(--text-muted)] font-semibold uppercase block mb-1">Choose Duration *</label>
+                        <select
+                          className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] transition-all"
+                          value={relativeDuration}
+                          onChange={(e) => setRelativeDuration(e.target.value)}
+                        >
+                          <option value="1h" className="bg-[var(--bg-deep)]">1 Hour</option>
+                          <option value="4h" className="bg-[var(--bg-deep)]">4 Hours</option>
+                          <option value="1d" className="bg-[var(--bg-deep)]">1 Day (24 hrs)</option>
+                          <option value="3d" className="bg-[var(--bg-deep)]">3 Days</option>
+                          <option value="1w" className="bg-[var(--bg-deep)]">1 Week (7 days)</option>
+                          <option value="1m" className="bg-[var(--bg-deep)]">1 Month</option>
+                          <option value="6m" className="bg-[var(--bg-deep)]">6 Months</option>
+                        </select>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
                 {/* Max members + role tags (2-col) */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -748,6 +886,35 @@ export default function PodsPage() {
   const [rsvpMap, setRsvpMap] = useState<Record<string, 'none' | 'pending' | 'attending' | 'declined'>>({});
   const [showCreateEventModal, setShowCreateEventModal] = useState(false);
 
+  /* ── Restore state on mount ─────────────────────────────────── */
+  useEffect(() => {
+    const storedTab = sessionStorage.getItem("pods_page_tab");
+    const storedScope = sessionStorage.getItem("pods_scope_filter");
+    const storedFilter = sessionStorage.getItem("pods_active_filter");
+    if (storedTab === "pods" || storedTab === "events") {
+      setPageTab(storedTab);
+    }
+    if (storedScope === "local" || storedScope === "global") {
+      setScopeFilter(storedScope);
+    }
+    if (storedFilter) {
+      setActiveFilter(storedFilter as any);
+    }
+  }, []);
+
+  /* ── Save state on changes ──────────────────────────────────── */
+  useEffect(() => {
+    sessionStorage.setItem("pods_page_tab", pageTab);
+  }, [pageTab]);
+
+  useEffect(() => {
+    sessionStorage.setItem("pods_scope_filter", scopeFilter);
+  }, [scopeFilter]);
+
+  useEffect(() => {
+    sessionStorage.setItem("pods_active_filter", activeFilter);
+  }, [activeFilter]);
+
   /* ── Auth + initial fetch ───────────────────────────────────── */
   useEffect(() => {
     const initPage = async () => {
@@ -784,6 +951,17 @@ export default function PodsPage() {
     };
 
     initPage();
+
+    // Force reload/refetch when navigating back via BFcache
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        initPage();
+      }
+    };
+    window.addEventListener("pageshow", handlePageShow);
+    return () => {
+      window.removeEventListener("pageshow", handlePageShow);
+    };
   }, [scopeFilter]);
 
   // Fetch events when switching to events tab
@@ -847,12 +1025,14 @@ export default function PodsPage() {
   const fetchPods = async (collegeId: string | null = null, currentScope: "local" | "global" = "local") => {
     setLoading(true);
     try {
+      const nowStr = new Date().toISOString();
       let query = supabase
         .from("pods")
         .select(
           "*, creator:users!pods_creator_id_fkey(handle, display_name, avatar_url), colleges(*), pod_members(count)"
         )
-        .neq("pod_status", "deleted");
+        .neq("pod_status", "deleted")
+        .or(`ends_at.is.null,ends_at.gt.${nowStr}`);
 
       const targetCollegeId = collegeId || userCollege?.id;
       if (currentScope === "local" && targetCollegeId) {
@@ -927,6 +1107,8 @@ export default function PodsPage() {
     } : undefined,
     index: idx,
     podStatus: pod.pod_status,
+    startsAt: pod.starts_at,
+    endsAt: pod.ends_at,
   });
 
   /* ── Combine live + mock; filter ────────────────────────────── */

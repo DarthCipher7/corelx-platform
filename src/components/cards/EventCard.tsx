@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { MapPin, Clock, Users, Check, Shield } from "lucide-react";
 import TrustTierBadge from "@/components/ui/TrustTierBadge";
@@ -10,7 +11,7 @@ import TrustTierBadge from "@/components/ui/TrustTierBadge";
 interface EventCardProps {
   id: string;
   title: string;
-  category: "sports" | "music" | "academic" | "social" | "misc" | "hackathon";
+  category: "sports" | "music" | "academic" | "social" | "misc" | "hackathon" | "competition" | "informal" | "formal";
   trustTier: "open" | "checked" | "guarded";
   locationName?: string;
   startsAt: string; // ISO string
@@ -32,45 +33,66 @@ interface EventCardProps {
 const CATEGORY_CONFIG = {
   sports: {
     label: "Sports",
-    bg: "rgba(255,165,0,0.2)",
-    border: "rgba(255,165,0,0.35)",
-    textClass: "text-orange-400",
-    dot: "#fb923c",
+    bg: "var(--cat-sports-bg)",
+    border: "var(--cat-sports-border)",
+    textClass: "text-[var(--cat-sports-text)]",
+    dot: "var(--cat-sports-dot)",
   },
   music: {
     label: "Music",
-    bg: "rgba(236,72,153,0.2)",
-    border: "rgba(236,72,153,0.35)",
-    textClass: "text-pink-400",
-    dot: "#f472b6",
+    bg: "var(--cat-music-bg)",
+    border: "var(--cat-music-border)",
+    textClass: "text-[var(--cat-music-text)]",
+    dot: "var(--cat-music-dot)",
   },
   academic: {
     label: "Academic",
-    bg: "rgba(59,130,246,0.2)",
-    border: "rgba(59,130,246,0.35)",
-    textClass: "text-blue-400",
-    dot: "#60a5fa",
+    bg: "var(--cat-academic-bg)",
+    border: "var(--cat-academic-border)",
+    textClass: "text-[var(--cat-academic-text)]",
+    dot: "var(--cat-academic-dot)",
   },
   social: {
     label: "Social",
-    bg: "rgba(34,197,94,0.2)",
-    border: "rgba(34,197,94,0.35)",
-    textClass: "text-green-400",
-    dot: "#4ade80",
+    bg: "var(--cat-social-bg)",
+    border: "var(--cat-social-border)",
+    textClass: "text-[var(--cat-social-text)]",
+    dot: "var(--cat-social-dot)",
   },
   misc: {
     label: "Misc",
-    bg: "rgba(255,255,255,0.06)",
-    border: "rgba(255,255,255,0.12)",
-    textClass: "text-white/50",
-    dot: "rgba(255,255,255,0.4)",
+    bg: "var(--cat-misc-bg)",
+    border: "var(--cat-misc-border)",
+    textClass: "text-[var(--cat-misc-text)]",
+    dot: "var(--cat-misc-dot)",
   },
   hackathon: {
     label: "Hackathon",
-    bg: "rgba(108,92,231,0.2)",
-    border: "rgba(108,92,231,0.35)",
-    textClass: "text-purple-400",
-    dot: "#6c5ce7",
+    bg: "var(--cat-hackathon-bg)",
+    border: "var(--cat-hackathon-border)",
+    textClass: "text-[var(--cat-hackathon-text)]",
+    dot: "var(--cat-hackathon-dot)",
+  },
+  competition: {
+    label: "Competition",
+    bg: "var(--cat-competition-bg)",
+    border: "var(--cat-competition-border)",
+    textClass: "text-[var(--cat-competition-text)]",
+    dot: "var(--cat-competition-dot)",
+  },
+  informal: {
+    label: "Informal",
+    bg: "var(--cat-informal-bg)",
+    border: "var(--cat-informal-border)",
+    textClass: "text-[var(--cat-informal-text)]",
+    dot: "var(--cat-informal-dot)",
+  },
+  formal: {
+    label: "Formal",
+    bg: "var(--cat-formal-bg)",
+    border: "var(--cat-formal-border)",
+    textClass: "text-[var(--cat-formal-text)]",
+    dot: "var(--cat-formal-dot)",
   },
 };
 
@@ -181,9 +203,10 @@ export default function EventCard({
   onRsvp,
   expiresAt,
 }: EventCardProps) {
+  const router = useRouter();
   const [isHovered, setIsHovered] = useState(false);
 
-  const cat = CATEGORY_CONFIG[category];
+  const cat = CATEGORY_CONFIG[category] || CATEGORY_CONFIG.misc;
   const expiry = useMemo(() => getExpiryInfo(expiresAt), [expiresAt]);
 
   // Headcount
@@ -236,6 +259,7 @@ export default function EventCard({
 
   return (
     <motion.article
+      onClick={() => router.push(`/events/${id}`)}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
@@ -406,7 +430,10 @@ export default function EventCard({
           }
           whileTap={!rsvpConfig.disabled ? { scale: 0.96 } : {}}
           disabled={rsvpConfig.disabled}
-          onClick={() => !rsvpConfig.disabled && onRsvp?.(id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (!rsvpConfig.disabled && onRsvp) onRsvp(id);
+          }}
           className={`
             inline-flex items-center gap-1.5 rounded-full px-3 py-1.5
             text-xs font-semibold font-mono tracking-wide

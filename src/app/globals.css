@@ -35,6 +35,80 @@
   --glass-border: rgba(255, 255, 255, 0.06);
   --glass-hover: rgba(108, 92, 231, 0.08);
   --bg-frosted: rgba(255, 255, 255, 0.05);
+  --glass-card-bg: linear-gradient(135deg, rgba(15,15,35,0.9) 0%, rgba(10,10,25,0.95) 100%);
+  --glass-strong-bg: rgba(10, 10, 30, 0.85);
+  --glass-strong-border: rgba(108, 92, 231, 0.12);
+
+  /* Category Colors (Dark Mode defaults) */
+  --cat-sports-bg: rgba(255,165,0,0.15);
+  --cat-sports-border: rgba(255,165,0,0.35);
+  --cat-sports-text: #fb923c;
+  --cat-sports-dot: #fb923c;
+
+  --cat-music-bg: rgba(236,72,153,0.15);
+  --cat-music-border: rgba(236,72,153,0.35);
+  --cat-music-text: #f472b6;
+  --cat-music-dot: #f472b6;
+
+  --cat-academic-bg: rgba(59,130,246,0.15);
+  --cat-academic-border: rgba(59,130,246,0.35);
+  --cat-academic-text: #60a5fa;
+  --cat-academic-dot: #60a5fa;
+
+  --cat-social-bg: rgba(34,197,94,0.15);
+  --cat-social-border: rgba(34,197,94,0.35);
+  --cat-social-text: #4ade80;
+  --cat-social-dot: #4ade80;
+
+  --cat-hackathon-bg: rgba(108,92,231,0.15);
+  --cat-hackathon-border: rgba(108,92,231,0.35);
+  --cat-hackathon-text: #a29bfe;
+  --cat-hackathon-dot: #6c5ce7;
+
+  --cat-competition-bg: rgba(108,92,231,0.15);
+  --cat-competition-border: rgba(108,92,231,0.35);
+  --cat-competition-text: #a29bfe;
+  --cat-competition-dot: #6c5ce7;
+
+  --cat-informal-bg: rgba(236,72,153,0.15);
+  --cat-informal-border: rgba(236,72,153,0.35);
+  --cat-informal-text: #f472b6;
+  --cat-informal-dot: #f472b6;
+
+  --cat-formal-bg: rgba(0,210,255,0.15);
+  --cat-formal-border: rgba(0,210,255,0.35);
+  --cat-formal-text: #00d2ff;
+  --cat-formal-dot: #00d2ff;
+
+  --cat-club-bg: rgba(16,185,129,0.15);
+  --cat-club-border: rgba(16,185,129,0.35);
+  --cat-club-text: #34d399;
+  --cat-club-dot: #34d399;
+
+  --cat-project-bg: rgba(249,115,22,0.15);
+  --cat-project-border: rgba(249,115,22,0.35);
+  --cat-project-text: #fb923c;
+  --cat-project-dot: #fb923c;
+
+  --cat-meetup-bg: rgba(236,72,153,0.15);
+  --cat-meetup-border: rgba(236,72,153,0.35);
+  --cat-meetup-text: #f472b6;
+  --cat-meetup-dot: #f472b6;
+
+  --cat-gaming-bg: rgba(6,182,212,0.15);
+  --cat-gaming-border: rgba(6,182,212,0.35);
+  --cat-gaming-text: #22d3ee;
+  --cat-gaming-dot: #22d3ee;
+
+  --cat-tournament-bg: rgba(234,179,8,0.15);
+  --cat-tournament-border: rgba(234,179,8,0.35);
+  --cat-tournament-text: #facc15;
+  --cat-tournament-dot: #facc15;
+
+  --cat-misc-bg: rgba(255,255,255,0.06);
+  --cat-misc-border: rgba(255,255,255,0.12);
+  --cat-misc-text: rgba(255,255,255,0.5);
+  --cat-misc-dot: rgba(255,255,255,0.4);
 
   /* Shadows */
   --shadow-glow-sm: 0 0 16px rgba(108, 92, 231, 0.25);
@@ -96,6 +170,80 @@
   --glass-border: rgba(255, 255, 255, 1);
   --glass-hover: rgba(255, 255, 255, 0.9);
   --bg-frosted: rgba(0, 0, 0, 0.05);
+  --glass-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(245, 247, 250, 0.85) 100%);
+  --glass-strong-bg: rgba(255, 255, 255, 0.9);
+  --glass-strong-border: rgba(92, 76, 231, 0.15);
+
+  /* Category Colors (Light Mode) */
+  --cat-sports-bg: rgba(249,115,22,0.08);
+  --cat-sports-border: rgba(249,115,22,0.25);
+  --cat-sports-text: #ea580c;
+  --cat-sports-dot: #ea580c;
+
+  --cat-music-bg: rgba(219,39,119,0.08);
+  --cat-music-border: rgba(219,39,119,0.25);
+  --cat-music-text: #db2777;
+  --cat-music-dot: #db2777;
+
+  --cat-academic-bg: rgba(37,99,235,0.08);
+  --cat-academic-border: rgba(37,99,235,0.25);
+  --cat-academic-text: #2563eb;
+  --cat-academic-dot: #2563eb;
+
+  --cat-social-bg: rgba(22,163,74,0.08);
+  --cat-social-border: rgba(22,163,74,0.25);
+  --cat-social-text: #16a34a;
+  --cat-social-dot: #16a34a;
+
+  --cat-hackathon-bg: rgba(92,76,231,0.08);
+  --cat-hackathon-border: rgba(92,76,231,0.25);
+  --cat-hackathon-text: #5c4ce7;
+  --cat-hackathon-dot: #5c4ce7;
+
+  --cat-competition-bg: rgba(92,76,231,0.08);
+  --cat-competition-border: rgba(92,76,231,0.25);
+  --cat-competition-text: #5c4ce7;
+  --cat-competition-dot: #5c4ce7;
+
+  --cat-informal-bg: rgba(219,39,119,0.08);
+  --cat-informal-border: rgba(219,39,119,0.25);
+  --cat-informal-text: #db2777;
+  --cat-informal-dot: #db2777;
+
+  --cat-formal-bg: rgba(8,145,178,0.08);
+  --cat-formal-border: rgba(8,145,178,0.25);
+  --cat-formal-text: #0891b2;
+  --cat-formal-dot: #0891b2;
+
+  --cat-club-bg: rgba(5,150,105,0.08);
+  --cat-club-border: rgba(5,150,105,0.25);
+  --cat-club-text: #059669;
+  --cat-club-dot: #059669;
+
+  --cat-project-bg: rgba(217,119,6,0.08);
+  --cat-project-border: rgba(217,119,6,0.25);
+  --cat-project-text: #d97706;
+  --cat-project-dot: #d97706;
+
+  --cat-meetup-bg: rgba(219,39,119,0.08);
+  --cat-meetup-border: rgba(219,39,119,0.25);
+  --cat-meetup-text: #db2777;
+  --cat-meetup-dot: #db2777;
+
+  --cat-gaming-bg: rgba(8,145,178,0.08);
+  --cat-gaming-border: rgba(8,145,178,0.25);
+  --cat-gaming-text: #0891b2;
+  --cat-gaming-dot: #0891b2;
+
+  --cat-tournament-bg: rgba(202,138,4,0.08);
+  --cat-tournament-border: rgba(202,138,4,0.25);
+  --cat-tournament-text: #ca8a04;
+  --cat-tournament-dot: #ca8a04;
+
+  --cat-misc-bg: rgba(0,0,0,0.05);
+  --cat-misc-border: rgba(0,0,0,0.12);
+  --cat-misc-text: rgba(0,0,0,0.55);
+  --cat-misc-dot: rgba(0,0,0,0.4);
 
   /* Shadows */
   --shadow-glow-sm: 0 0 16px rgba(108, 92, 231, 0.1);
@@ -157,14 +305,14 @@ body {
 }
 
 .glass-strong {
-  background: rgba(10, 10, 30, 0.85);
+  background: var(--glass-strong-bg);
   backdrop-filter: blur(40px) saturate(200%);
   -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1px solid rgba(108, 92, 231, 0.12);
+  border: 1px solid var(--glass-strong-border);
 }
 
 .glass-card {
-  background: linear-gradient(135deg, rgba(15,15,35,0.9) 0%, rgba(10,10,25,0.95) 100%);
+  background: var(--glass-card-bg);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--glass-border);

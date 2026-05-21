@@ -2,7 +2,7 @@ import { Creator, Project, CollabRequest, Flare } from "@/types";
 
 export const MOCK_CREATORS: Creator[] = [
   {
-    id: "1",
+    id: "c0000000-0000-0000-0000-000000000001",
     name: "Aria Chen",
     handle: "aria.creates",
     avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria&backgroundColor=6c5ce7",
@@ -20,7 +20,7 @@ export const MOCK_CREATORS: Creator[] = [
     socialLinks: { twitter: "ariacreates", github: "aria-chen", dribbble: "aria" },
   },
   {
-    id: "2",
+    id: "c0000000-0000-0000-0000-000000000002",
     name: "Zane Okafor",
     handle: "zanecode",
     avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=zane&backgroundColor=00cec9",
@@ -38,7 +38,7 @@ export const MOCK_CREATORS: Creator[] = [
     socialLinks: { github: "zanecode", twitter: "zanecode", linkedin: "zaneokafor" },
   },
   {
-    id: "3",
+    id: "c0000000-0000-0000-0000-000000000003",
     name: "Luna Voss",
     handle: "lunavisuals",
     avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=luna&backgroundColor=fd79a8",
@@ -56,7 +56,7 @@ export const MOCK_CREATORS: Creator[] = [
     socialLinks: { twitter: "lunavisuals", dribbble: "luna", instagram: "lunavisuals" } as Creator["socialLinks"],
   },
   {
-    id: "4",
+    id: "c0000000-0000-0000-0000-000000000004",
     name: "Kira Nakamura",
     handle: "kira.dev",
     avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira&backgroundColor=fdcb6e",
@@ -74,7 +74,7 @@ export const MOCK_CREATORS: Creator[] = [
     socialLinks: { github: "kiradev", twitter: "kiradev" },
   },
   {
-    id: "5",
+    id: "c0000000-0000-0000-0000-000000000005",
     name: "Eli Ramos",
     handle: "eli.motion",
     avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli&backgroundColor=a29bfe",
@@ -92,7 +92,7 @@ export const MOCK_CREATORS: Creator[] = [
     socialLinks: { github: "elimotion", twitter: "elimotion" },
   },
   {
-    id: "6",
+    id: "c0000000-0000-0000-0000-000000000006",
     name: "Mia Sterling",
     handle: "mia.brands",
     avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=mia&backgroundColor=00d2ff",
@@ -113,79 +113,79 @@ export const MOCK_CREATORS: Creator[] = [
 
 export const MOCK_PROJECTS: Project[] = [
   {
-    id: "p1",
+    id: "a0000000-0000-0000-0000-000000000001",
     title: "Nebula OS — Conceptual UI",
     description: "A futuristic operating system UI concept with AI-driven workspaces, spatial computing elements, and fluid motion design.",
     thumbnail: "",
     tags: ["UI Design", "Motion", "Concept", "Dark Mode"],
     likes: 2840,
     views: 18300,
-    creator: { id: "1", name: "Aria Chen", handle: "aria.creates", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria", verified: true },
+    creator: { id: "c0000000-0000-0000-0000-000000000001", name: "Aria Chen", handle: "aria.creates", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria", verified: true },
     featured: true,
     createdAt: "2024-03-15",
     gradient: "linear-gradient(135deg, #6c5ce7 0%, #a29bfe 50%, #00d2ff 100%)",
   },
   {
-    id: "p2",
+    id: "a0000000-0000-0000-0000-000000000002",
     title: "Hyperion — WebGL Particle Engine",
     description: "An open-source particle engine built on Three.js with GPU instancing, custom GLSL shaders, and reactive audio.",
     thumbnail: "",
     tags: ["Three.js", "WebGL", "Open Source", "GLSL"],
     likes: 4120,
     views: 29600,
-    creator: { id: "5", name: "Eli Ramos", handle: "eli.motion", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli", verified: true },
+    creator: { id: "c0000000-0000-0000-0000-000000000005", name: "Eli Ramos", handle: "eli.motion", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli", verified: true },
     featured: true,
     createdAt: "2024-02-28",
     gradient: "linear-gradient(135deg, #a29bfe 0%, #6c5ce7 50%, #fd79a8 100%)",
   },
   {
-    id: "p3",
+    id: "a0000000-0000-0000-0000-000000000003",
     title: "DreamForge — AI Image Platform",
     description: "Next-gen AI image generation platform with ControlNet, inpainting, and real-time style transfer at scale.",
     thumbnail: "",
     tags: ["AI", "Python", "React", "Stable Diffusion"],
     likes: 3560,
     views: 22100,
-    creator: { id: "4", name: "Kira Nakamura", handle: "kira.dev", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira", verified: false },
+    creator: { id: "c0000000-0000-0000-0000-000000000004", name: "Kira Nakamura", handle: "kira.dev", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira", verified: false },
     featured: true,
     createdAt: "2024-01-10",
     gradient: "linear-gradient(135deg, #fdcb6e 0%, #e17055 100%)",
   },
   {
-    id: "p4",
+    id: "a0000000-0000-0000-0000-000000000004",
     title: "Void — Immersive 3D Experience",
     description: "Award-winning interactive 3D web experience exploring the aesthetics of deep space and solitude.",
     thumbnail: "",
     tags: ["3D Art", "Blender", "WebGL", "Interactive"],
     likes: 6780,
     views: 44200,
-    creator: { id: "3", name: "Luna Voss", handle: "lunavisuals", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=luna", verified: true },
+    creator: { id: "c0000000-0000-0000-0000-000000000003", name: "Luna Voss", handle: "lunavisuals", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=luna", verified: true },
     featured: true,
     createdAt: "2023-11-20",
     gradient: "linear-gradient(135deg, #fd79a8 0%, #e17055 50%, #fdcb6e 100%)",
   },
   {
-    id: "p5",
+    id: "a0000000-0000-0000-0000-000000000005",
     title: "Axiom Design System",
     description: "A comprehensive design system for modern SaaS products: 200+ components, dark mode, and full Figma/code parity.",
     thumbnail: "",
     tags: ["Design System", "Figma", "React", "TypeScript"],
     likes: 1920,
     views: 13800,
-    creator: { id: "6", name: "Mia Sterling", handle: "mia.brands", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=mia", verified: true },
+    creator: { id: "c0000000-0000-0000-0000-000000000006", name: "Mia Sterling", handle: "mia.brands", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=mia", verified: true },
     featured: false,
     createdAt: "2024-04-01",
     gradient: "linear-gradient(135deg, #00d2ff 0%, #0984e3 100%)",
   },
   {
-    id: "p6",
+    id: "a0000000-0000-0000-0000-000000000006",
     title: "ChronoStack — Dev Productivity CLI",
     description: "A blazing-fast Rust CLI tool that tracks development time, generates changelogs, and syncs with GitHub automatically.",
     thumbnail: "",
     tags: ["Rust", "CLI", "Open Source", "DevTools"],
     likes: 2310,
     views: 16500,
-    creator: { id: "2", name: "Zane Okafor", handle: "zanecode", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=zane", verified: true },
+    creator: { id: "c0000000-0000-0000-0000-000000000002", name: "Zane Okafor", handle: "zanecode", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=zane", verified: true },
     featured: false,
     createdAt: "2024-03-22",
     gradient: "linear-gradient(135deg, #00cec9 0%, #0984e3 100%)",
@@ -194,32 +194,32 @@ export const MOCK_PROJECTS: Project[] = [
 
 export const MOCK_COLLABS: CollabRequest[] = [
   {
-    id: "c1",
+    id: "b0000000-0000-0000-0000-000000000001",
     title: "Looking for Motion Designer — AI Startup Rebrand",
     description: "Series A startup in the AI space needs a motion designer for our rebrand campaign. 4-week engagement.",
     skills: ["Motion Design", "After Effects", "Brand Identity"],
     type: "paid",
     budget: "$5,000–$8,000",
-    creator: { id: "6", name: "Mia Sterling", handle: "mia.brands", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=mia", verified: true },
+    creator: { id: "c0000000-0000-0000-0000-000000000006", name: "Mia Sterling", handle: "mia.brands", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=mia", verified: true },
     deadline: "2024-05-30",
     applicants: 7,
   },
   {
-    id: "c2",
+    id: "b0000000-0000-0000-0000-000000000002",
     title: "Co-build an Open-Source WebGL Framework",
     description: "Building the next layer on top of Three.js for interactive storytelling. Need React and shader experts.",
     skills: ["Three.js", "React", "GLSL", "WebGL"],
     type: "open-source",
-    creator: { id: "5", name: "Eli Ramos", handle: "eli.motion", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli", verified: true },
+    creator: { id: "c0000000-0000-0000-0000-000000000005", name: "Eli Ramos", handle: "eli.motion", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli", verified: true },
     applicants: 14,
   },
   {
-    id: "c3",
+    id: "b0000000-0000-0000-0000-000000000003",
     title: "AI Music Visualizer — Creative Partner Needed",
     description: "Building a real-time AI music visualizer. Need someone with audio engineering + 3D art skills.",
     skills: ["3D Art", "Blender", "Audio", "Python"],
     type: "collab",
-    creator: { id: "4", name: "Kira Nakamura", handle: "kira.dev", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira", verified: false },
+    creator: { id: "c0000000-0000-0000-0000-000000000004", name: "Kira Nakamura", handle: "kira.dev", avatar: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira", verified: false },
     applicants: 3,
   },
 ];
@@ -233,7 +233,7 @@ export const SKILLS_ALL = [
 
 export const MOCK_FEED_POSTS = [
   {
-    id: "fp1",
+    id: "d0000000-0000-0000-0000-000000000001",
     type: "work_post" as const,
     creator: MOCK_CREATORS[0],
     timestamp: "2h ago",
@@ -245,7 +245,7 @@ export const MOCK_FEED_POSTS = [
     category: "UI Design",
   },
   {
-    id: "fp2",
+    id: "d0000000-0000-0000-0000-000000000002",
     type: "trending_creator_spotlight" as const,
     creator: MOCK_CREATORS[4],
     timestamp: "5h ago",
@@ -257,7 +257,7 @@ export const MOCK_FEED_POSTS = [
     category: "Code",
   },
   {
-    id: "fp3",
+    id: "d0000000-0000-0000-0000-000000000003",
     type: "collab_call" as const,
     creator: MOCK_CREATORS[5],
     timestamp: "12h ago",
@@ -268,7 +268,7 @@ export const MOCK_FEED_POSTS = [
     category: "Writing",
   },
   {
-    id: "fp4",
+    id: "d0000000-0000-0000-0000-000000000004",
     type: "work_post" as const,
     creator: MOCK_CREATORS[2],
     timestamp: "1d ago",
@@ -280,7 +280,7 @@ export const MOCK_FEED_POSTS = [
     category: "3D",
   },
   {
-    id: "fp5",
+    id: "d0000000-0000-0000-0000-000000000005",
     type: "work_post" as const,
     creator: MOCK_CREATORS[3],
     timestamp: "2d ago",
@@ -292,7 +292,7 @@ export const MOCK_FEED_POSTS = [
     category: "UI Design",
   },
   {
-    id: "fp6",
+    id: "d0000000-0000-0000-0000-000000000006",
     type: "work_post" as const,
     creator: MOCK_CREATORS[4],
     timestamp: "3h ago",
@@ -304,7 +304,7 @@ export const MOCK_FEED_POSTS = [
     category: "Video",
   },
   {
-    id: "fp7",
+    id: "d0000000-0000-0000-0000-000000000007",
     type: "trending_creator_spotlight" as const,
     creator: MOCK_CREATORS[1],
     timestamp: "6h ago",
@@ -316,7 +316,7 @@ export const MOCK_FEED_POSTS = [
     category: "Music",
   },
   {
-    id: "fp8",
+    id: "d0000000-0000-0000-0000-000000000008",
     type: "work_post" as const,
     creator: MOCK_CREATORS[2],
     timestamp: "1d ago",
@@ -334,18 +334,18 @@ export const MOCK_FEED_POSTS = [
         "Load the game save from Chapter 3.",
         "Talk to the Merchant NPC at the crossroads.",
         "Cancel the trade screen immediately.",
-        "Check quest log - main quest progress is reset to 0%."
+        "Check quest log - main quest progress is reset to 0%.",
       ],
       stackTrace: "QuestManager.cs:Line 142\nNullReferenceException: Object reference not set to an instance of an object at QuestManager.ResetActiveQuest()",
-      screenshotUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2670&auto=format&fit=crop"
-    }
-  }
+      screenshotUrl: "https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2670&auto=format&fit=crop",
+    },
+  },
 ];
 
 export const MOCK_FLARES: Flare[] = [
   {
-    id: "f1",
-    user_id: "1",
+    id: "e0000000-0000-0000-0000-000000000001",
+    user_id: "c0000000-0000-0000-0000-000000000001",
     media_url: "https://assets.mixkit.co/videos/preview/mixkit-abstract-laser-lights-background-loop-41851-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
     caption: "Nebula OS Shimmer Effect. Tinkering with custom CSS backdrop filters and radial glows for the window headers. Let me know what you think of this animation! ✦",
@@ -356,12 +356,12 @@ export const MOCK_FLARES: Flare[] = [
     users: {
       display_name: "Aria Chen",
       handle: "aria.creates",
-      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria&backgroundColor=6c5ce7"
-    }
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria&backgroundColor=6c5ce7",
+    },
   },
   {
-    id: "f2",
-    user_id: "5",
+    id: "e0000000-0000-0000-0000-000000000002",
+    user_id: "c0000000-0000-0000-0000-000000000005",
     media_url: "https://assets.mixkit.co/videos/preview/mixkit-tunnel-of-futuristic-blue-neon-lights-42283-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2670&auto=format&fit=crop",
     caption: "Warp Tunnel. Rendered entirely in WebGL with Three.js. Standard GLSL shader running on a customized cylinder geometry. Highly responsive to scroll inputs.",
@@ -372,12 +372,12 @@ export const MOCK_FLARES: Flare[] = [
     users: {
       display_name: "Eli Ramos",
       handle: "eli.motion",
-      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli&backgroundColor=a29bfe"
-    }
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli&backgroundColor=a29bfe",
+    },
   },
   {
-    id: "f3",
-    user_id: "3",
+    id: "e0000000-0000-0000-0000-000000000003",
+    user_id: "c0000000-0000-0000-0000-000000000003",
     media_url: "https://assets.mixkit.co/videos/preview/mixkit-rotating-cube-with-neon-edges-42277-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1634017839464-5c339ebe3cb4?q=80&w=2564&auto=format&fit=crop",
     caption: "Hypercube. Playing with neon wireframe reflections in Octane Render. The glass refraction index is key here. What's your go-to render engine for glass?",
@@ -388,12 +388,12 @@ export const MOCK_FLARES: Flare[] = [
     users: {
       display_name: "Luna Voss",
       handle: "lunavisuals",
-      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=luna&backgroundColor=fd79a8"
-    }
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=luna&backgroundColor=fd79a8",
+    },
   },
   {
-    id: "f4",
-    user_id: "4",
+    id: "e0000000-0000-0000-0000-000000000004",
+    user_id: "c0000000-0000-0000-0000-000000000004",
     media_url: "https://assets.mixkit.co/videos/preview/mixkit-retro-futuristic-grid-background-42284-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1678324424699-4c12513fdf1b?q=80&w=2670&auto=format&fit=crop",
     caption: "AI Audio-Reactive Grid. Generating landscapes dynamically using Stable Diffusion ControlNet based on real-time FFT frequency analysis. Super smooth 60fps.",
@@ -404,12 +404,12 @@ export const MOCK_FLARES: Flare[] = [
     users: {
       display_name: "Kira Nakamura",
       handle: "kira.dev",
-      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira&backgroundColor=fdcb6e"
-    }
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=kira&backgroundColor=fdcb6e",
+    },
   },
   {
-    id: "f5",
-    user_id: "2",
+    id: "e0000000-0000-0000-0000-000000000005",
+    user_id: "c0000000-0000-0000-0000-000000000002",
     media_url: "https://assets.mixkit.co/videos/preview/mixkit-flying-through-a-futuristic-neon-grid-42285-large.mp4",
     thumbnail_url: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2670&auto=format&fit=crop",
     caption: "Cyber Grid Journey. Developing a procedural canvas shader path with Canvas 2D API for lightweight 2D neon loops. Weighing in at only 12KB gzip.",
@@ -420,8 +420,7 @@ export const MOCK_FLARES: Flare[] = [
     users: {
       display_name: "Zane Okafor",
       handle: "zanecode",
-      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=zane&backgroundColor=00cec9"
-    }
-  }
+      avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=zane&backgroundColor=00cec9",
+    },
+  },
 ];
-

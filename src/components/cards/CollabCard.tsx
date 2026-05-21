@@ -75,7 +75,7 @@ export default function CollabCard({ collab, index = 0, onApplySuccess }: Collab
     // Auto-fill profile link if possible
     const { data: profile } = await supabase.from('users').select('handle').eq('id', user.id).single();
     if (profile?.handle) {
-      setPortfolioLink(`https://nova-platform-rho.vercel.app/studio/${profile.handle}`);
+      setPortfolioLink(`https://corelx-platform.vercel.app/studio/${profile.handle}`);
     }
     setIsDrawerOpen(true);
   };

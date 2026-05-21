@@ -36,14 +36,30 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, ta
 
   const loadComments = async () => {
     setLoading(true);
-    const { data } = await supabase
+    console.log(`[CommentDrawer] Loading comments for targetType="${targetType}" and target_id="${postId}"`);
+    
+    const { data, error } = await supabase
       .from('comments')
       .select('*, users(handle, display_name, avatar_url)')
       .eq('target_type', targetType)
       .eq('target_id', postId)
       .order('created_at', { ascending: true });
       
-    if (data) setComments(data);
+    if (error) {
+      console.error("[CommentDrawer] Error loading comments:", error);
+    } else if (data) {
+      console.log(`[CommentDrawer] Successfully loaded ${data.length} comments:`, data);
+      const formattedComments = data.map(comment => {
+        // Handle database responses that return joined relation as singular, array, or object
+        const u = Array.isArray(comment.users) ? comment.users[0] : comment.users;
+        return {
+          ...comment,
+          user: u
+        };
+      });
+      setComments(formattedComments);
+    }
+    
     setLoading(false);
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -66,6 +82,9 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, ta
       setContent("");
       await loadComments();
       onCommentAdded?.();
+    } else {
+      console.error("Error inserting comment:", error);
+      alert(`Failed to add comment: ${error.message || JSON.stringify(error)}`);
     }
     setIsSubmitting(false);
   };
@@ -114,18 +133,18 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, ta
             ) : (
               comments.map(comment => (
                 <div key={comment.id} className="flex gap-3">
-                  <Link href={`/studio/${comment.users?.handle}`}>
+                  <Link href={`/studio/${comment.user?.handle}`}>
                     <img 
-                      src={comment.users?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.users?.handle}`} 
+                      src={comment.user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.handle}`} 
                       className="w-10 h-10 rounded-full object-cover border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] transition-colors" 
-                      alt={comment.users?.handle}
+                      alt={comment.user?.handle}
                     />
                   </Link>
                   <div className="flex-1">
                     <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl rounded-tl-sm px-4 py-3">
                       <div className="flex items-baseline justify-between mb-1">
-                        <Link href={`/studio/${comment.users?.handle}`} className="text-sm font-semibold text-white hover:text-[var(--accent-primary)] transition-colors">
-                          {comment.users?.display_name || comment.users?.handle}
+                        <Link href={`/studio/${comment.user?.handle}`} className="text-sm font-semibold text-white hover:text-[var(--accent-primary)] transition-colors">
+                          {comment.user?.display_name || comment.user?.handle}
                         </Link>
                         <span className="text-[10px] text-[var(--text-muted)]">
                           {new Date(comment.created_at).toLocaleDateString()}

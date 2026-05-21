@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Users, Lock, Unlock, CheckCircle } from "lucide-react";
+import { Users, Lock, Unlock, CheckCircle, Clock } from "lucide-react";
 import Button from "@/components/ui/Button";
 
 import { useRouter } from "next/navigation";
@@ -37,6 +37,8 @@ export interface PodCardProps {
     shortName?: string;
     hubType?: "college" | "society" | "corporate";
   };
+  startsAt?: string;
+  endsAt?: string;
 }
 
 /* ─── Pod type config ─────────────────────────────────────────── */
@@ -44,66 +46,66 @@ const POD_TYPE_CONFIG = {
   hackathon: {
     emoji: "⚡",
     label: "Hackathon",
-    color: "rgba(108,92,231,0.15)",
-    border: "rgba(108,92,231,0.35)",
-    text: "#a29bfe",
-    glow: "rgba(108,92,231,0.12)",
+    color: "var(--cat-hackathon-bg)",
+    border: "var(--cat-hackathon-border)",
+    text: "var(--cat-hackathon-text)",
+    glow: "var(--accent-primary-glow)",
   },
   class: {
     emoji: "📖",
     label: "Class",
-    color: "rgba(59,130,246,0.15)",
-    border: "rgba(59,130,246,0.35)",
-    text: "#60a5fa",
-    glow: "rgba(59,130,246,0.10)",
+    color: "var(--cat-academic-bg)",
+    border: "var(--cat-academic-border)",
+    text: "var(--cat-academic-text)",
+    glow: "var(--cat-academic-border)",
   },
   club: {
     emoji: "🎯",
     label: "Club",
-    color: "rgba(16,185,129,0.15)",
-    border: "rgba(16,185,129,0.35)",
-    text: "#34d399",
-    glow: "rgba(16,185,129,0.10)",
+    color: "var(--cat-club-bg)",
+    border: "var(--cat-club-border)",
+    text: "var(--cat-club-text)",
+    glow: "var(--cat-club-border)",
   },
   project: {
     emoji: "🛠️",
     label: "Project",
-    color: "rgba(249,115,22,0.15)",
-    border: "rgba(249,115,22,0.35)",
-    text: "#fb923c",
-    glow: "rgba(249,115,22,0.10)",
+    color: "var(--cat-project-bg)",
+    border: "var(--cat-project-border)",
+    text: "var(--cat-project-text)",
+    glow: "var(--cat-project-border)",
   },
   meetup: {
     emoji: "🤝",
     label: "Meetup",
-    color: "rgba(236,72,153,0.15)",
-    border: "rgba(236,72,153,0.35)",
-    text: "#f472b6",
-    glow: "rgba(236,72,153,0.10)",
+    color: "var(--cat-meetup-bg)",
+    border: "var(--cat-meetup-border)",
+    text: "var(--cat-meetup-text)",
+    glow: "var(--cat-meetup-border)",
   },
   sports: {
     emoji: "⚽",
     label: "Sports",
-    color: "rgba(16,185,129,0.15)",
-    border: "rgba(16,185,129,0.35)",
-    text: "#34d399",
-    glow: "rgba(16,185,129,0.10)",
+    color: "var(--cat-sports-bg)",
+    border: "var(--cat-sports-border)",
+    text: "var(--cat-sports-text)",
+    glow: "var(--cat-sports-border)",
   },
   gaming: {
     emoji: "🎮",
     label: "Gaming",
-    color: "rgba(6,182,212,0.15)",
-    border: "rgba(6,182,212,0.35)",
-    text: "#22d3ee",
-    glow: "rgba(6,182,212,0.10)",
+    color: "var(--cat-gaming-bg)",
+    border: "var(--cat-gaming-border)",
+    text: "var(--cat-gaming-text)",
+    glow: "var(--cat-gaming-border)",
   },
   tournament: {
     emoji: "🏆",
     label: "Tournament",
-    color: "rgba(234,179,8,0.15)",
-    border: "rgba(234,179,8,0.35)",
-    text: "#facc15",
-    glow: "rgba(234,179,8,0.10)",
+    color: "var(--cat-tournament-bg)",
+    border: "var(--cat-tournament-border)",
+    text: "var(--cat-tournament-text)",
+    glow: "var(--cat-tournament-border)",
   },
 } as const;
 
@@ -114,6 +116,25 @@ function AvatarFallback({ name }: { name: string }) {
       {name.charAt(0).toUpperCase()}
     </span>
   );
+}
+
+function formatRemainingTime(endsAtStr: string) {
+  const endsAt = new Date(endsAtStr);
+  const diffMs = endsAt.getTime() - Date.now();
+  if (diffMs <= 0) return "Expired";
+  const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
+  if (diffHrs < 24) {
+    if (diffHrs === 0) {
+      const diffMins = Math.floor(diffMs / (1000 * 60));
+      return `${diffMins}m left`;
+    }
+    return `${diffHrs}h left`;
+  }
+  const diffDays = Math.floor(diffHrs / 24);
+  if (diffDays < 7) {
+    return `${diffDays}d left`;
+  }
+  return endsAt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export default function PodCard({
@@ -131,6 +152,8 @@ export default function PodCard({
   index = 0,
   hub,
   podStatus = 'active',
+  startsAt,
+  endsAt,
 }: PodCardProps) {
   const typeConf = POD_TYPE_CONFIG[podType] || POD_TYPE_CONFIG.project;
   const router = useRouter();
@@ -191,6 +214,21 @@ export default function PodCard({
               {hub.hubType === "society" ? "🏡" : hub.hubType === "corporate" ? "🏢" : "🏫"}
             </span>
             {hub.shortName || hub.name}
+          </span>
+        )}
+
+        {/* Duration badge */}
+        {endsAt && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full text-[11px] font-medium px-2.5 py-0.5 border"
+            style={{
+              background: "rgba(108,92,231,0.08)",
+              borderColor: "rgba(108,92,231,0.25)",
+              color: "#a29bfe",
+            }}
+          >
+            <Clock className="w-2.5 h-2.5 animate-pulse" />
+            {formatRemainingTime(endsAt)}
           </span>
         )}
 
