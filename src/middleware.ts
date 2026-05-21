@@ -36,6 +36,8 @@ export async function middleware(request: NextRequest) {
                         request.nextUrl.pathname.startsWith('/feed') || 
                         request.nextUrl.pathname.startsWith('/explore') ||
                         request.nextUrl.pathname.startsWith('/collabs') ||
+                        request.nextUrl.pathname.startsWith('/pods') ||
+                        request.nextUrl.pathname.startsWith('/events') ||
                         request.nextUrl.pathname.startsWith('/showcase') ||
                         request.nextUrl.pathname.startsWith('/studio') ||
                         request.nextUrl.pathname.startsWith('/auth') ||
