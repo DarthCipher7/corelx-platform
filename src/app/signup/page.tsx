@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Upload, ChevronRight, Loader2, GraduationCap, ShieldCheck, AlertTriangle } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { SKILLS_ALL } from "@/lib/data";
+import Link from "next/link";
+import { RevealEffect } from "@/components/ui/RevealEffect";
 
 // ── Email Gate Types ──────────────────────────────────────────
 type EmailGateState = 'checking' | 'verified' | 'unrecognised' | 'skipped';
@@ -57,6 +59,14 @@ export default function SignupPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Auth Form State
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [showConfirmationMessage, setShowConfirmationMessage] = useState(false);
 
   const SKILL_CATEGORIES: Record<string, string[]> = {
     "All": SKILLS_ALL,
@@ -117,78 +127,132 @@ export default function SignupPage() {
   };
 
   // ── Load user + check college email domain ──────────────────
-  useEffect(() => {
-    async function loadUser() {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        router.push("/login");
+  const loadUser = async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (!authUser) {
+      setLoading(false);
+      return;
+    }
+    setUser(authUser);
+
+    // Check if this user has already completed onboarding
+    const { data: profile } = await supabase
+      .from('users')
+      .select('handle, display_name, tagline, avatar_url, is_email_verified, college_id, colleges(*)')
+      .eq('id', authUser.id)
+      .maybeSingle();
+
+    if (profile) {
+      if (profile.handle) setHandle(profile.handle);
+      if (profile.tagline) setTagline(profile.tagline);
+      if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
+      if (profile.colleges) {
+        const collegeData = Array.isArray(profile.colleges) ? profile.colleges[0] : profile.colleges;
+        if (collegeData) {
+          setSelectedCollege(collegeData);
+          setDetectedCollege(collegeData);
+        }
+      }
+      
+      // Already onboarded → skip to feed
+      if (profile.tagline && profile.tagline.trim().length > 0) {
+        router.push("/feed");
         return;
       }
-      setUser(authUser);
+    }
 
-      // Check if this user has already completed onboarding
-      const { data: profile } = await supabase
-        .from('users')
-        .select('handle, display_name, tagline, avatar_url, is_email_verified, college_id, colleges(*)')
-        .eq('id', authUser.id)
+    // ── College Email Gate ────────────────────────────────────
+    const userEmail = authUser.email || '';
+    const domain = userEmail.split('@')[1]?.toLowerCase() || '';
+
+    if (domain) {
+      // Check domain against colleges table
+      const { data: college } = await supabase
+        .from('colleges')
+        .select('id, name, short_name, email_domain, hub_type')
+        .eq('email_domain', domain)
         .maybeSingle();
 
-      if (profile) {
-        if (profile.handle) setHandle(profile.handle);
-        if (profile.tagline) setTagline(profile.tagline);
-        if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
-        if (profile.colleges) {
-          const collegeData = Array.isArray(profile.colleges) ? profile.colleges[0] : profile.colleges;
-          if (collegeData) {
-            setSelectedCollege(collegeData);
-            setDetectedCollege(collegeData);
-          }
-        }
-        
-        // Already onboarded → skip to feed
-        if (profile.tagline && profile.tagline.trim().length > 0) {
-          router.push("/feed");
-          return;
-        }
-      }
-
-      // ── College Email Gate ────────────────────────────────────
-      const email = authUser.email || '';
-      const domain = email.split('@')[1]?.toLowerCase() || '';
-
-      if (domain) {
-        // Check domain against colleges table
-        const { data: college } = await supabase
-          .from('colleges')
-          .select('id, name, short_name, email_domain, hub_type')
-          .eq('email_domain', domain)
-          .maybeSingle();
-
-        if (college) {
-          // Recognised institution — mark as verified in DB
-          setDetectedCollege(college);
-          setSelectedCollege(college);
-          setEmailGate('verified');
-          await supabase
-            .from('users')
-            .update({ 
-              email_domain: domain, 
-              college_id: college.id, 
-              is_email_verified: true 
-            })
-            .eq('id', authUser.id);
-        } else {
-          // Not in our colleges list
-          setEmailGate('unrecognised');
-        }
+      if (college) {
+        // Recognised institution — mark as verified in DB
+        setDetectedCollege(college);
+        setSelectedCollege(college);
+        setEmailGate('verified');
+        await supabase
+          .from('users')
+          .update({ 
+            email_domain: domain, 
+            college_id: college.id, 
+            is_email_verified: true 
+          })
+          .eq('id', authUser.id);
       } else {
         setEmailGate('unrecognised');
       }
-
-      setLoading(false);
+    } else {
+      setEmailGate('unrecognised');
     }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
     loadUser();
   }, [supabase, router]);
+
+  const handleCredentialsSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password || authLoading) return;
+    if (password !== confirmPassword) {
+      setAuthError("Passwords do not match");
+      return;
+    }
+    if (password.length < 6) {
+      setAuthError("Password must be at least 6 characters");
+      return;
+    }
+
+    setAuthLoading(true);
+    setAuthError(null);
+
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password: password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      setAuthError(error.message);
+      setAuthLoading(false);
+      return;
+    }
+
+    if (data?.user) {
+      if (data.session) {
+        await loadUser();
+      } else {
+        setShowConfirmationMessage(true);
+      }
+    }
+    setAuthLoading(false);
+  };
+
+  const handleOAuthSignup = async (provider: 'google' | 'linkedin_oidc') => {
+    setAuthLoading(true);
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) {
+      setAuthError(error.message);
+      setAuthLoading(false);
+    }
+  };
 
   // Handle Uniqueness Check
   useEffect(() => {
@@ -401,6 +465,165 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    if (showConfirmationMessage) {
+      return (
+        <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4 relative">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, var(--accent-cyan-glow) 0%, var(--bg-void) 70%)" }} />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl text-center relative z-10"
+          >
+            <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-6">
+              <Check className="w-8 h-8 text-emerald-400" />
+            </div>
+            <h2 className="text-2xl font-display font-bold text-white mb-4">Verify your email</h2>
+            <p className="text-sm text-[var(--text-secondary)] mb-6 leading-relaxed">
+              We have sent a verification link to <span className="text-white font-medium">{email}</span>.
+              Please click the link in the email to activate your account and start your onboarding.
+            </p>
+            <Link
+              href="/login"
+              className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[#5b4bc4] transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] block"
+            >
+              Go to Log In
+            </Link>
+          </motion.div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4 relative">
+        <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, var(--accent-cyan-glow) 0%, var(--bg-void) 70%)" }} />
+        
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative z-10"
+        >
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-display font-bold mb-2 text-white">Join the Network</h1>
+            <p className="text-sm text-[var(--text-secondary)]">Create your account to start building your legacy.</p>
+          </div>
+
+          {authError && (
+            <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              <span>{authError}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleCredentialsSignup} className="space-y-4">
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">Email</label>
+              <input
+                type="email"
+                required
+                className="w-full rounded-xl px-4 py-3 focus:outline-none focus:border-purple-400 transition-colors"
+                style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
+                placeholder="you@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">Password</label>
+              <input
+                type="password"
+                required
+                className="w-full rounded-xl px-4 py-3 focus:outline-none focus:border-purple-400 transition-colors"
+                style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">Confirm Password</label>
+              <input
+                type="password"
+                required
+                className="w-full rounded-xl px-4 py-3 focus:outline-none focus:border-purple-400 transition-colors"
+                style={{ backgroundColor: "var(--bg-deep)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+
+            <button 
+              type="submit"
+              disabled={authLoading}
+              className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[#5b4bc4] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2 mt-6"
+            >
+              {authLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Sign Up"}
+            </button>
+          </form>
+
+          <div className="flex items-center my-6">
+            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+            <span className="px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--text-muted)]">Or continue with</span>
+            <div className="flex-1 h-px bg-[var(--border-subtle)]" />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <RevealEffect className="rounded-xl overflow-hidden">
+              <button
+                onClick={() => handleOAuthSignup('google')}
+                disabled={authLoading}
+                type="button"
+                className="w-full py-3 px-4 flex items-center justify-center gap-2 text-xs font-medium transition-all cursor-pointer"
+                style={{
+                  backgroundColor: "var(--bg-frosted)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.6 14.8 1 12 1 7.3 1 3.4 3.7 1.6 7.6l3.7 2.9C6.2 7.2 8.9 5 12 5z"/>
+                  <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.3 3.7l3.6 2.8c2.1-2 3.7-5 3.7-8.7z"/>
+                  <path fill="#FBBC05" d="M5.3 14.8c-.2-.7-.3-1.5-.3-2.3s.1-1.6.3-2.3L1.6 7.3C.6 9.2 0 11.5 0 12.5s.6 3.3 1.6 5.2l3.7-2.9z"/>
+                  <path fill="#34A853" d="M12 23c3.2 0 6-1.1 8-3l-3.6-2.8c-1.1.7-2.5 1.2-4.4 1.2-3.1 0-5.8-2.2-6.7-5.5L1.6 15.8C3.4 19.8 7.3 23 12 23z"/>
+                </svg>
+                Google
+              </button>
+            </RevealEffect>
+
+            <RevealEffect className="rounded-xl overflow-hidden">
+              <button
+                onClick={() => handleOAuthSignup('linkedin_oidc')}
+                disabled={authLoading}
+                type="button"
+                className="w-full py-3 px-4 flex items-center justify-center gap-2 text-xs font-medium transition-all cursor-pointer"
+                style={{
+                  backgroundColor: "var(--bg-frosted)",
+                  border: "1px solid var(--glass-border)",
+                  color: "var(--text-primary)",
+                  backdropFilter: "blur(8px)",
+                }}
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="#0A66C2">
+                  <path d="M20.5 2h-17A1.5 1.5 0 002 3.5v17A1.5 1.5 0 003.5 22h17a1.5 1.5 0 001.5-1.5v-17A1.5 1.5 0 0020.5 2zM8 19H5V9h3v10zM6.5 7.8A1.8 1.8 0 118.3 6a1.8 1.8 0 01-1.8 1.8zM19 19h-3v-5.4c0-1.3 0-3-1.8-3s-2.1 1.4-2.1 2.9V19h-3V9h2.9v1.4h.1c.4-.8 1.4-1.6 3-1.6 3.2 0 3.8 2.1 3.8 4.8V19z"/>
+                </svg>
+                LinkedIn
+              </button>
+            </RevealEffect>
+          </div>
+
+          <p className="text-center text-sm mt-6 text-[var(--text-secondary)]">
+            Already have an account?{" "}
+            <Link href="/login" className="font-medium text-[var(--accent-primary)] hover:underline">
+              Log in
+            </Link>
+          </p>
+        </motion.div>
       </div>
     );
   }
