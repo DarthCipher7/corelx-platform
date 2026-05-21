@@ -851,7 +851,7 @@ export default function PodsPage() {
       displayName: pod.creator?.display_name ?? "Creator",
       avatarUrl: pod.creator?.avatar_url ?? undefined,
     },
-    isMember: userMemberships.has(pod.id),
+    isMember: userMemberships.has(pod.id) || (currentUser && currentUser.id === pod.creator_id),
     hub: pod.colleges ? {
       name: pod.colleges.name,
       shortName: pod.colleges.short_name,

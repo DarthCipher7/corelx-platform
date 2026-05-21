@@ -133,6 +133,9 @@ export default function PodDetailPage() {
         if (memData) {
           setIsMember(true);
           setMemberRole(memData.role as any);
+        } else if (user.id === podData.creator_id) {
+          setIsMember(true);
+          setMemberRole("creator");
         } else {
           setIsMember(false);
           setMemberRole(null);
