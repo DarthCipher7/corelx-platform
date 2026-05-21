@@ -135,6 +135,7 @@ CREATE OR REPLACE TRIGGER trg_check_pod_message_pins
 -- Enable RLS for pod_messages
 ALTER TABLE public.pod_messages ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Pod members can read messages" ON public.pod_messages;
 CREATE POLICY "Pod members can read messages" ON public.pod_messages
   FOR SELECT USING (
     EXISTS (
@@ -143,6 +144,7 @@ CREATE POLICY "Pod members can read messages" ON public.pod_messages
     )
   );
 
+DROP POLICY IF EXISTS "Pod members can insert messages" ON public.pod_messages;
 CREATE POLICY "Pod members can insert messages" ON public.pod_messages
   FOR INSERT WITH CHECK (
     EXISTS (
@@ -153,6 +155,7 @@ CREATE POLICY "Pod members can insert messages" ON public.pod_messages
     ) = 'active' -- Read-only when archived
   );
 
+DROP POLICY IF EXISTS "Pod creators/admins can update pins" ON public.pod_messages;
 CREATE POLICY "Pod creators/admins can update pins" ON public.pod_messages
   FOR UPDATE USING (
     EXISTS (
@@ -160,6 +163,7 @@ CREATE POLICY "Pod creators/admins can update pins" ON public.pod_messages
       WHERE pod_members.pod_id = pod_messages.pod_id AND pod_members.user_id = auth.uid() AND pod_members.role IN ('creator', 'admin')
     )
   );
+
 
 
 -- ── 4. COLLAB PERMANENCE CHANGES ──────────────────────────────
