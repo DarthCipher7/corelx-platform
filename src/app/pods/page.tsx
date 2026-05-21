@@ -12,9 +12,12 @@ import {
   Wrench,
   CheckCircle,
   Loader2,
+  Calendar,
 } from "lucide-react";
 import PodCard, { PodCardProps } from "@/components/cards/PodCard";
-import { PodType } from "@/types";
+import EventCard from "@/components/cards/EventCard";
+import CreateEventModal from "@/components/cards/CreateEventModal";
+import { PodType, CampusEvent } from "@/types";
 import Button from "@/components/ui/Button";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
@@ -738,6 +741,13 @@ export default function PodsPage() {
   const [userMemberships, setUserMemberships] = useState<Set<string>>(new Set());
   const [showCreateModal, setShowCreateModal] = useState(false);
 
+  // Events tab
+  const [pageTab, setPageTab] = useState<"pods" | "events">("pods");
+  const [events, setEvents] = useState<CampusEvent[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(false);
+  const [rsvpMap, setRsvpMap] = useState<Record<string, 'none' | 'pending' | 'attending' | 'declined'>>({});
+  const [showCreateEventModal, setShowCreateEventModal] = useState(false);
+
   /* ── Auth + initial fetch ───────────────────────────────────── */
   useEffect(() => {
     const initPage = async () => {
@@ -775,6 +785,64 @@ export default function PodsPage() {
 
     initPage();
   }, [scopeFilter]);
+
+  // Fetch events when switching to events tab
+  useEffect(() => {
+    if (pageTab === "events") fetchEvents();
+  }, [pageTab]);
+
+  const fetchEvents = async () => {
+    setEventsLoading(true);
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    const { data: eventsData } = await supabase
+      .from('events')
+      .select(`
+        id, title, description, category, trust_tier,
+        location_name, starts_at, ends_at, expires_at,
+        min_headcount, max_headcount, is_active,
+        require_mutual, require_face, organiser_id,
+        college_id, created_at,
+        organiser:users!events_organiser_id_fkey(handle, display_name, avatar_url)
+      `)
+      .eq('is_active', true)
+      .order('starts_at', { ascending: true })
+      .limit(50);
+
+    if (!eventsData) { setEventsLoading(false); return; }
+
+    const eventIds = eventsData.map(e => e.id);
+    const { data: rsvpData } = await supabase
+      .from('event_rsvps')
+      .select('event_id, user_id, status')
+      .in('event_id', eventIds)
+      .in('status', ['attending', 'pending', 'approved']);
+
+    const headcounts: Record<string, number> = {};
+    const myRsvps: Record<string, 'none' | 'pending' | 'attending' | 'declined'> = {};
+    rsvpData?.forEach(r => {
+      if (r.status === 'attending') headcounts[r.event_id] = (headcounts[r.event_id] || 0) + 1;
+      if (currentUser && r.user_id === currentUser.id) myRsvps[r.event_id] = r.status as any;
+    });
+
+    const mapped: CampusEvent[] = eventsData.map(e => ({
+      ...e,
+      current_headcount: headcounts[e.id] || 0,
+      organiser: Array.isArray(e.organiser) ? e.organiser[0] : e.organiser,
+    }));
+    setEvents(mapped);
+    setRsvpMap(myRsvps);
+    setEventsLoading(false);
+  };
+
+  const handleRsvp = async (eventId: string, trustTier: string) => {
+    if (!currentUser) { router.push('/login'); return; }
+    const status = trustTier === 'guarded' ? 'pending' : 'attending';
+    await supabase.from('event_rsvps').upsert(
+      { event_id: eventId, user_id: currentUser.id, status },
+      { onConflict: 'event_id,user_id' }
+    );
+    setRsvpMap(prev => ({ ...prev, [eventId]: status as any }));
+  };
 
   const fetchPods = async (collegeId: string | null = null, currentScope: "local" | "global" = "local") => {
     setLoading(true);
@@ -912,8 +980,38 @@ export default function PodsPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-shrink-0">
-            {/* Hub Selector Tab Toggle */}
-            {userCollege && (
+            {/* Pods / Events page tab toggle */}
+            <div
+              className="inline-flex rounded-xl p-1 gap-1"
+              style={{
+                background: "var(--bg-frosted)",
+                border: "1px solid var(--glass-border)",
+              }}
+            >
+              <button
+                onClick={() => setPageTab("pods")}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+                style={{
+                  background: pageTab === "pods" ? "var(--accent-primary)" : "transparent",
+                  color: pageTab === "pods" ? "#fff" : "var(--text-muted)",
+                }}
+              >
+                🏡 Pods
+              </button>
+              <button
+                onClick={() => setPageTab("events")}
+                className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
+                style={{
+                  background: pageTab === "events" ? "var(--accent-primary)" : "transparent",
+                  color: pageTab === "events" ? "#fff" : "var(--text-muted)",
+                }}
+              >
+                📅 Events
+              </button>
+            </div>
+
+            {/* Hub Selector — only on Pods tab */}
+            {pageTab === "pods" && userCollege && (
               <div
                 className="inline-flex rounded-xl p-1 gap-1"
                 style={{
@@ -925,17 +1023,12 @@ export default function PodsPage() {
                   onClick={() => setScopeFilter("local")}
                   className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
                   style={{
-                    background:
-                      scopeFilter === "local" ? "var(--accent-primary)" : "transparent",
+                    background: scopeFilter === "local" ? "var(--accent-primary)" : "transparent",
                     color: scopeFilter === "local" ? "#fff" : "var(--text-muted)",
                   }}
                 >
                   <span>
-                    {userCollege.hub_type === "society"
-                      ? "🏡"
-                      : userCollege.hub_type === "corporate"
-                      ? "🏢"
-                      : "🏫"}
+                    {userCollege.hub_type === "society" ? "🏡" : userCollege.hub_type === "corporate" ? "🏢" : "🏫"}
                   </span>
                   {userCollege.short_name || userCollege.name}
                 </button>
@@ -943,8 +1036,7 @@ export default function PodsPage() {
                   onClick={() => setScopeFilter("global")}
                   className="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5"
                   style={{
-                    background:
-                      scopeFilter === "global" ? "var(--accent-primary)" : "transparent",
+                    background: scopeFilter === "global" ? "var(--accent-primary)" : "transparent",
                     color: scopeFilter === "global" ? "#fff" : "var(--text-muted)",
                   }}
                 >
@@ -953,16 +1045,29 @@ export default function PodsPage() {
               </div>
             )}
 
-            <Button
-              variant="primary"
-              icon={<Plus className="w-4 h-4" />}
-              onClick={() => {
-                if (!currentUser) router.push("/login");
-                else setShowCreateModal(true);
-              }}
-            >
-              Create Pod
-            </Button>
+            {pageTab === "pods" ? (
+              <Button
+                variant="primary"
+                icon={<Plus className="w-4 h-4" />}
+                onClick={() => {
+                  if (!currentUser) router.push("/login");
+                  else setShowCreateModal(true);
+                }}
+              >
+                Create Pod
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                icon={<Calendar className="w-4 h-4" />}
+                onClick={() => {
+                  if (!currentUser) router.push("/login");
+                  else setShowCreateEventModal(true);
+                }}
+              >
+                Create Event
+              </Button>
+            )}
           </div>
         </motion.div>
 
@@ -990,154 +1095,121 @@ export default function PodsPage() {
           />
         </motion.div>
 
-        {/* ── Filter tabs (horizontally scrollable) ───────────── */}
-        <motion.div
-          className="relative mb-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.12 }}
-        >
-          <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
-            {FILTER_TABS.map(({ label, value }) => (
-              <button
-                key={value}
-                onClick={() => setActiveFilter(value)}
-                className="relative flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
-                style={{
-                  color:
-                    activeFilter === value
-                      ? "var(--text-primary)"
-                      : "var(--text-muted)",
-                }}
-              >
-                {/* Animated active pill */}
-                {activeFilter === value && (
-                  <motion.span
-                    layoutId="pod-filter-pill"
-                    className="absolute inset-0 rounded-xl"
-                    style={{
-                      background: "var(--bg-frosted)",
-                      border: "1px solid rgba(108,92,231,0.35)",
-                    }}
-                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  />
-                )}
-                <span className="relative z-10">{label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Active underline accent */}
-          <div
-            className="absolute bottom-0 left-0 right-0 h-px"
-            style={{ background: "var(--border-subtle)" }}
-          />
-        </motion.div>
-
-        {/* ── Results count ────────────────────────────────────── */}
-        <p className="text-xs mb-5" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-          {loading ? "Loading pods…" : `${filtered.length} pod${filtered.length !== 1 ? "s" : ""} found`}
-          {useMocks && !loading && (
-            <span
-              className="ml-2 px-2 py-0.5 rounded-full text-[10px] border"
-              style={{
-                background: "rgba(253,203,110,0.08)",
-                borderColor: "rgba(253,203,110,0.25)",
-                color: "#fdcb6e",
-              }}
+        {/* ── PODS TAB CONTENT ─────────────────────────────────── */}
+        {pageTab === "pods" && (
+          <>
+            {/* Filter tabs */}
+            <motion.div
+              className="relative mb-6"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.12 }}
             >
-              Example data
-            </span>
-          )}
-        </p>
+              <div className="flex gap-1 overflow-x-auto pb-1 scrollbar-hide">
+                {FILTER_TABS.map(({ label, value }) => (
+                  <button
+                    key={value}
+                    onClick={() => setActiveFilter(value)}
+                    className="relative flex-shrink-0 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                    style={{ color: activeFilter === value ? "var(--text-primary)" : "var(--text-muted)" }}
+                  >
+                    {activeFilter === value && (
+                      <motion.span
+                        layoutId="pod-filter-pill"
+                        className="absolute inset-0 rounded-xl"
+                        style={{ background: "var(--bg-frosted)", border: "1px solid rgba(108,92,231,0.35)" }}
+                        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                      />
+                    )}
+                    <span className="relative z-10">{label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="absolute bottom-0 left-0 right-0 h-px" style={{ background: "var(--border-subtle)" }} />
+            </motion.div>
 
-        {/* ── Pod grid ─────────────────────────────────────────── */}
-        {loading ? (
-          /* Skeleton loader */
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="rounded-2xl p-5 animate-pulse"
-                style={{
-                  background: "var(--bg-frosted)",
-                  border: "1px solid var(--glass-border)",
-                  height: "240px",
-                }}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.05 }}
-              >
-                <div className="flex gap-2 mb-4">
-                  <div className="h-5 w-20 rounded-full" style={{ background: "var(--border-subtle)" }} />
-                  <div className="h-5 w-16 rounded-full ml-auto" style={{ background: "var(--border-subtle)" }} />
-                </div>
-                <div className="h-5 w-3/4 rounded-lg mb-2" style={{ background: "var(--border-subtle)" }} />
-                <div className="h-4 w-full rounded-lg mb-1" style={{ background: "var(--border-subtle)" }} />
-                <div className="h-4 w-5/6 rounded-lg" style={{ background: "var(--border-subtle)" }} />
-              </motion.div>
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          /* Empty state */
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center p-16 rounded-2xl text-center"
-            style={{
-              background: "var(--bg-frosted)",
-              border: "1px solid var(--glass-border)",
-              backdropFilter: "blur(12px)",
-            }}
-          >
-            <div
-              className="w-16 h-16 rounded-full flex items-center justify-center mb-5"
-              style={{
-                background: "var(--bg-deep)",
-                border: "1px solid var(--border-subtle)",
-                boxShadow: "0 0 32px rgba(108,92,231,0.15)",
-              }}
-            >
-              <Target className="w-7 h-7" style={{ color: "var(--text-muted)" }} />
-            </div>
-            <h3
-              className="text-xl font-semibold mb-2 tracking-tight"
-              style={{ color: "var(--text-primary)", fontFamily: "var(--font-display)" }}
-            >
-              No pods here yet.
-            </h3>
-            <p className="text-sm mb-8 max-w-xs" style={{ color: "var(--text-secondary)" }}>
-              Be the first to launch a{" "}
-              {activeFilter !== "all" ? activeFilter : ""} pod on this campus.
+            <p className="text-xs mb-5" style={{ color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+              {loading ? "Loading pods…" : `${filtered.length} pod${filtered.length !== 1 ? "s" : ""} found`}
+              {useMocks && !loading && (
+                <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] border" style={{ background: "rgba(253,203,110,0.08)", borderColor: "rgba(253,203,110,0.25)", color: "#fdcb6e" }}>
+                  Example data
+                </span>
+              )}
             </p>
-            <Button
-              variant="primary"
-              icon={<Plus className="w-4 h-4" />}
-              onClick={() => {
-                if (!currentUser) router.push("/login");
-                else setShowCreateModal(true);
-              }}
-            >
-              Create Pod
-            </Button>
-          </motion.div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <AnimatePresence mode="popLayout">
-              {filtered.map((pod, i) => (
-                <PodCard
-                  key={pod.id}
-                  {...pod}
-                  index={i}
-                  isMember={
-                    useMocks ? false : userMemberships.has(pod.id)
-                  }
-                  onJoin={handleJoin}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
+
+            {loading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <motion.div key={i} className="rounded-2xl p-5 animate-pulse" style={{ background: "var(--bg-frosted)", border: "1px solid var(--glass-border)", height: "240px" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }}>
+                    <div className="flex gap-2 mb-4"><div className="h-5 w-20 rounded-full" style={{ background: "var(--border-subtle)" }} /><div className="h-5 w-16 rounded-full ml-auto" style={{ background: "var(--border-subtle)" }} /></div>
+                    <div className="h-5 w-3/4 rounded-lg mb-2" style={{ background: "var(--border-subtle)" }} />
+                    <div className="h-4 w-full rounded-lg mb-1" style={{ background: "var(--border-subtle)" }} />
+                    <div className="h-4 w-5/6 rounded-lg" style={{ background: "var(--border-subtle)" }} />
+                  </motion.div>
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
+              <motion.div className="text-center py-24" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <p className="text-5xl mb-4">🏡</p>
+                <p className="text-lg font-semibold mb-2" style={{ color: "var(--text-primary)" }}>No Pods Yet</p>
+                <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Be the first to launch a Pod in your community.</p>
+                <Button variant="primary" icon={<Plus className="w-4 h-4" />} onClick={() => { if (!currentUser) router.push("/login"); else setShowCreateModal(true); }}>Create First Pod</Button>
+              </motion.div>
+            ) : (
+              <motion.div className="grid grid-cols-1 md:grid-cols-2 gap-6" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.18 }}>
+                {filtered.map((pod, i) => (
+                  <PodCard key={pod.id} {...pod} index={i} onJoin={handleJoin} />
+                ))}
+              </motion.div>
+            )}
+          </>
         )}
+
+        {/* ── EVENTS TAB CONTENT ───────────────────────────────── */}
+        {pageTab === "events" && (
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}>
+            {eventsLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[...Array(4)].map((_, i) => (
+                  <motion.div key={i} className="rounded-2xl p-5 animate-pulse" style={{ background: "var(--bg-frosted)", border: "1px solid var(--glass-border)", height: "200px" }} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.05 }} />
+                ))}
+              </div>
+            ) : events.length === 0 ? (
+              <div className="text-center py-24">
+                <p className="text-5xl mb-4">📅</p>
+                <p className="text-lg font-semibold mb-2" style={{ color: "var(--text-primary)" }}>No Events Yet</p>
+                <p className="text-sm mb-6" style={{ color: "var(--text-muted)" }}>Create the first campus event for your community.</p>
+                <Button variant="primary" icon={<Calendar className="w-4 h-4" />} onClick={() => { if (!currentUser) router.push("/login"); else setShowCreateEventModal(true); }}>Create Event</Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {events.map((event, i) => (
+                  <EventCard
+                    key={event.id}
+                    id={event.id}
+                    title={event.title}
+                    category={event.category as any}
+                    trustTier={event.trust_tier as any}
+                    locationName={event.location_name}
+                    startsAt={event.starts_at}
+                    endsAt={event.ends_at}
+                    currentHeadcount={event.current_headcount ?? 0}
+                    maxHeadcount={event.max_headcount ?? undefined}
+                    organiser={{
+                      handle: event.organiser?.handle ?? "unknown",
+                      displayName: event.organiser?.display_name ?? "",
+                      avatarUrl: event.organiser?.avatar_url ?? undefined,
+                    }}
+                    rsvpStatus={rsvpMap[event.id] ?? "none"}
+                    onRsvp={(id) => handleRsvp(id, event.trust_tier)}
+                    expiresAt={event.expires_at}
+                  />
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
       </div>
 
       {/* ── CreatePodModal portal ────────────────────────────── */}
@@ -1149,7 +1221,17 @@ export default function PodsPage() {
             userCollege={userCollege}
             onCreated={(newPod) => {
               setDbPods((prev) => [newPod, ...prev]);
+              // Immediately mark creator as member of new pod
+              setUserMemberships((prev) => new Set([...prev, newPod.id]));
             }}
+          />
+        )}
+        {currentUser && (
+          <CreateEventModal
+            isOpen={showCreateEventModal}
+            onClose={() => setShowCreateEventModal(false)}
+            onSuccess={() => { setShowCreateEventModal(false); fetchEvents(); }}
+            userId={currentUser.id}
           />
         )}
       </AnimatePresence>
