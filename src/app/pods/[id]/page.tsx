@@ -205,7 +205,7 @@ export default function PodDetailPage() {
       .order("created_at", { ascending: true });
 
     if (!error && data) {
-      const msgs = data as PodMessage[];
+      const msgs = data as unknown as PodMessage[];
       setMessages(msgs);
       setPinnedMessages(msgs.filter((m) => m.is_pinned));
       setTimeout(scrollToBottom, 50);
