@@ -160,6 +160,11 @@ export default function PodDetailPage() {
           setIsMember(true);
           setMemberRole(memData.role as any);
         } else if (user.id === podData.creator_id) {
+          // Auto-insert creator into pod_members so RLS policies work correctly
+          await supabase.from("pod_members").upsert(
+            { pod_id: podId, user_id: user.id, role: "creator" },
+            { onConflict: "pod_id,user_id" }
+          );
           setIsMember(true);
           setMemberRole("creator");
         } else {
