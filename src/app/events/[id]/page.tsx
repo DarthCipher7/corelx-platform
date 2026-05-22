@@ -24,6 +24,7 @@ import {
   Pin,
   MessageSquare,
   Paperclip,
+  Share2,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
@@ -87,6 +88,18 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [organiserProfile, setOrganiserProfile] = useState<any>(null);
+
+  // Sharing states
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  const handleInvite = () => {
+    const inviteUrl = `${window.location.origin}/signup?invite_type=event&invite_id=${eventId}`;
+    navigator.clipboard.writeText(inviteUrl);
+    setToastMessage("Invite link copied to clipboard!");
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
   
   // RSVP states
   const [rsvpList, setRsvpList] = useState<any[]>([]);
@@ -780,6 +793,13 @@ export default function EventDetailPage() {
 
             {/* Actions */}
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                onClick={handleInvite}
+                className="px-3.5 py-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] bg-white/5 hover:bg-white/10 hover:text-white transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium"
+                title="Share Invite Link"
+              >
+                <Share2 className="w-3.5 h-3.5" /> Invite
+              </button>
               {isOrganiser ? (
                 <>
                   <Button variant="ghost" icon={<Edit className="w-4 h-4" />} onClick={() => setEditing(true)}>
@@ -1186,6 +1206,21 @@ export default function EventDetailPage() {
         </div>
 
       </div>
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] text-white text-sm shadow-2xl flex items-center gap-2.5 backdrop-blur-xl"
+            style={{ boxShadow: "0 10px 40px rgba(108,92,231,0.2)" }}
+          >
+            <div className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

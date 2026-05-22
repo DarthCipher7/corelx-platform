@@ -12,6 +12,7 @@ import Button from "@/components/ui/Button";
 import { createClient } from "@/utils/supabase/client";
 import { X, Image as ImageIcon, Play, Flame, AlertCircle } from "lucide-react";
 import { FeedPostData, Flare } from "@/types";
+import OnboardingOverlay from "@/components/onboarding/OnboardingOverlay";
 
 const FILTERS = [
   "All",
@@ -102,6 +103,8 @@ export default function FeedPage() {
           avatar_url,
           tagline,
           intent_status,
+          user_type,
+          is_verified,
           colleges (
             id,
             name,
@@ -418,7 +421,7 @@ export default function FeedPage() {
         name: authorUser?.display_name || "Unknown",
         handle: authorUser?.handle || "unknown",
         avatar: authorUser?.avatar_url || "",
-        verified: false,
+        verified: authorUser?.is_verified || authorUser?.user_type === "company" || authorUser?.user_type === "organisation",
         role: authorUser?.tagline || "Creator",
         college: authorUser?.colleges ? {
           id: authorUser.colleges.id,
@@ -486,6 +489,7 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen pt-24 pb-32">
+      <OnboardingOverlay />
       {/* Floating New Posts Pill */}
       <AnimatePresence>
         {newPostsCount > 0 && (

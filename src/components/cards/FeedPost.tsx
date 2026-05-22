@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bookmark, Sparkles, Share2, MoreHorizontal, Eye, AlertCircle, MessageSquare, Flag, Loader2 } from "lucide-react";
+import { Bookmark, Sparkles, Share2, MoreHorizontal, Eye, AlertCircle, MessageSquare, Flag, Loader2, CheckCircle } from "lucide-react";
 import type { FeedPostData } from "@/types";
 import Link from "next/link";
 import NeonBadge from "@/components/ui/NeonBadge";
@@ -286,6 +286,9 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
               <span className="font-semibold text-sm font-display transition-colors" style={{ color: "var(--text-primary)" }}>
                 {post.creator.name}
               </span>
+              {post.creator.verified && (
+                <CheckCircle className="w-3.5 h-3.5 text-cyan-400 fill-cyan-400/20 drop-shadow-[0_0_4px_rgba(34,211,238,0.5)] shrink-0 animate-pulse" />
+              )}
               <span className="text-xs" style={{ color: "var(--text-secondary)" }}>@{post.creator.handle}</span>
               {post.creator.college && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center gap-0.5">

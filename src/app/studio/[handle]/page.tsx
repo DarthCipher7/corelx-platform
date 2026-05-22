@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { notFound, useRouter } from "next/navigation";
-import { MapPin, Users, FolderOpen, CheckCircle, ArrowRight, X, Send, Flame, Loader2 } from "lucide-react";
+import { MapPin, Users, FolderOpen, CheckCircle, ArrowRight, X, Send, Flame, Loader2, ArrowLeft } from "lucide-react";
 import FeedPost from "@/components/cards/FeedPost";
 import FlareCard from "@/components/cards/FlareCard";
 import FlaresViewer from "@/components/explore/FlaresViewer";
@@ -351,6 +351,14 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
       {/* Cover Image */}
       <div className="h-64 w-full relative bg-gradient-to-tr from-purple-900 via-gray-900 to-black">
         <div className="absolute inset-0" style={{ background: "linear-gradient(to top, var(--bg-void), transparent)" }} />
+        {/* Floating Back Button */}
+        <button
+          onClick={() => router.back()}
+          className="absolute top-24 left-6 z-20 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-black/40 border border-white/10 hover:bg-white/10 text-white font-medium text-sm backdrop-blur-md transition-all group shadow-lg cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          Back
+        </button>
       </div>
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 relative -mt-24">
@@ -369,6 +377,9 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
           <div className="flex-1 pb-2">
             <div className="flex flex-wrap items-center gap-2.5 mb-1">
               <h1 className="text-3xl font-display font-bold" style={{ color: "var(--text-primary)" }}>{profile.display_name || profile.handle}</h1>
+              {(profile.is_verified || profile.user_type === "company" || profile.user_type === "organisation") && (
+                <CheckCircle className="w-6 h-6 text-cyan-400 fill-cyan-400/20 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)] shrink-0 animate-pulse" />
+              )}
               {profile.colleges && (
                 <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center gap-1">
                   {profile.colleges.hub_type === 'society' ? '🏡' : profile.colleges.hub_type === 'corporate' ? '🏢' : '🏫'} {profile.colleges.short_name || profile.colleges.name}
@@ -486,7 +497,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
                         name: profile.display_name || profile.handle,
                         handle: profile.handle,
                         avatar: profile.avatar_url || "",
-                        verified: false,
+                        verified: profile.is_verified || profile.user_type === "company" || profile.user_type === "organisation",
                         role: profile.tagline || "Creator"
                       },
                       timestamp: new Date(post.created_at).toLocaleDateString(),

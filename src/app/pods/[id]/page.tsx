@@ -24,6 +24,7 @@ import {
   Calendar,
   ArrowLeft,
   Paperclip,
+  Share2,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
@@ -74,6 +75,18 @@ export default function PodDetailPage() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [isMember, setIsMember] = useState(false);
   const [memberRole, setMemberRole] = useState<"creator" | "admin" | "member" | null>(null);
+
+  // Sharing states
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  const handleInvite = () => {
+    const inviteUrl = `${window.location.origin}/signup?invite_type=pod&invite_id=${podId}`;
+    navigator.clipboard.writeText(inviteUrl);
+    setToastMessage("Invite link copied to clipboard!");
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  };
 
   // Tabs
   const [activeTab, setActiveTab] = useState<"about" | "chat" | "members">("about");
@@ -624,6 +637,13 @@ export default function PodDetailPage() {
           </div>
 
           <div className="flex items-center gap-3 sm:self-center z-10">
+            <button
+              onClick={handleInvite}
+              className="px-3.5 py-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] bg-white/5 hover:bg-white/10 hover:text-white transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium"
+              title="Share Invite Link"
+            >
+              <Share2 className="w-3.5 h-3.5" /> Invite
+            </button>
             {isMember ? (
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
@@ -1188,6 +1208,21 @@ export default function PodDetailPage() {
           </AnimatePresence>
         </div>
       </div>
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] text-white text-sm shadow-2xl flex items-center gap-2.5 backdrop-blur-xl"
+            style={{ boxShadow: "0 10px 40px rgba(108,92,231,0.2)" }}
+          >
+            <div className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse" />
+            <span>{toastMessage}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

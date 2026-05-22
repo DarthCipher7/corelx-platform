@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, X, Upload, ChevronRight, Loader2, GraduationCap, ShieldCheck, AlertTriangle } from "lucide-react";
+import { Check, X, Upload, ChevronRight, Loader2, GraduationCap, ShieldCheck, AlertTriangle, Building, Users, User, ArrowLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { SKILLS_ALL } from "@/lib/data";
 import Link from "next/link";
@@ -18,6 +18,32 @@ interface CollegeInfo {
   short_name?: string;
   email_domain: string;
 }
+
+const CORPORATE_FOCUS_AREAS = [
+  "Software Engineering",
+  "AI & Machine Learning",
+  "Design & UX",
+  "Web3 & Blockchain",
+  "Hardware & Robotics",
+  "VR/AR & Spatial Tech",
+  "DevOps & Cloud Systems",
+  "Data Science & Analytics",
+  "Cybersecurity",
+  "Game Development",
+  "Developer Relations",
+  "Product Management",
+  "Creative Studio & Media",
+  "Ventures & AI Labs"
+];
+
+const isConsumerEmail = (emailStr: string) => {
+  const consumerDomains = [
+    "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "icloud.com",
+    "zoho.com", "mail.com", "protonmail.com", "proton.me", "yandex.com", "gmx.com"
+  ];
+  const domain = emailStr.split("@")[1]?.toLowerCase().trim();
+  return consumerDomains.includes(domain);
+};
 
 export default function SignupPage() {
   const router = useRouter();
@@ -57,6 +83,12 @@ export default function SignupPage() {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Role & Corporate states
+  const [roleSelected, setRoleSelected] = useState(false);
+  const [userType, setUserType] = useState<'individual' | 'company' | 'organisation'>('individual');
+  const [hqLocation, setHqLocation] = useState("");
+  const [pendingInvite, setPendingInvite] = useState<{ type: string; id: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -198,6 +230,24 @@ export default function SignupPage() {
 
   useEffect(() => {
     loadUser();
+
+    // Cache invite query parameters client-side
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const inviteType = params.get("invite_type");
+      const inviteId = params.get("invite_id");
+      if (inviteType && inviteId) {
+        sessionStorage.setItem("pending_invite_type", inviteType);
+        sessionStorage.setItem("pending_invite_id", inviteId);
+        setPendingInvite({ type: inviteType, id: inviteId });
+      } else {
+        const cachedType = sessionStorage.getItem("pending_invite_type");
+        const cachedId = sessionStorage.getItem("pending_invite_id");
+        if (cachedType && cachedId) {
+          setPendingInvite({ type: cachedType, id: cachedId });
+        }
+      }
+    }
   }, [supabase, router]);
 
   const handleCredentialsSignup = async (e: React.FormEvent) => {
@@ -209,6 +259,11 @@ export default function SignupPage() {
     }
     if (password.length < 6) {
       setAuthError("Password must be at least 6 characters");
+      return;
+    }
+
+    if ((userType === 'company' || userType === 'organisation') && isConsumerEmail(email)) {
+      setAuthError("Corporate registration is restricted to custom business domains. Consumer domains (e.g. gmail.com, yahoo.com) are blocked.");
       return;
     }
 
@@ -375,11 +430,12 @@ export default function SignupPage() {
     setIsSubmitting(true);
     // Normalise handle to lowercase before saving
     const normalizedHandle = handle.toLowerCase().trim();
-    // Upsert the user row to lock in the handle
+    // Upsert the user row to lock in the handle and user_type
     const { error } = await supabase.from('users').upsert({
       id: user.id,
       handle: normalizedHandle,
       display_name: normalizedHandle,
+      user_type: userType,
     }, { onConflict: 'id' });
 
     if (!error) setHandle(normalizedHandle);
@@ -433,12 +489,21 @@ export default function SignupPage() {
     // Final profile update
     // Always write a non-empty tagline so it acts as the onboarding-complete signal
     // (The DB trigger initialises tagline as '' so empty = not yet onboarded)
-    const finalTagline = tagline.trim().length > 0 ? tagline.trim() : handle || 'Creator';
+    let finalTagline = tagline.trim();
+    if (userType === 'company' || userType === 'organisation') {
+      const primaryFocus = selectedSkills[0] || 'Technology';
+      finalTagline = `${primaryFocus} • ${hqLocation.trim()}`;
+    }
+
+    if (finalTagline.length === 0) {
+      finalTagline = handle || 'Creator';
+    }
 
     const { error } = await supabase.from('users').update({
       tagline: finalTagline,
       display_name: handle || user.email?.split('@')[0] || 'Creator',
-      ...(finalAvatarUrl && { avatar_url: finalAvatarUrl })
+      ...(finalAvatarUrl && { avatar_url: finalAvatarUrl }),
+      user_type: userType,
     }).eq('id', user.id);
 
     if (error) console.error("Profile update error:", error);
@@ -498,6 +563,86 @@ export default function SignupPage() {
       );
     }
 
+    if (!roleSelected) {
+      return (
+        <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4 relative">
+          <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, var(--accent-cyan-glow) 0%, var(--bg-void) 70%)" }} />
+          
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative z-10"
+          >
+            {pendingInvite && (
+              <div className="mb-6 p-4 rounded-2xl bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 text-center relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent-primary)]/5 to-transparent animate-pulse" />
+                <div className="flex items-center gap-2 justify-center mb-1 text-[var(--accent-primary)]">
+                  <ShieldCheck className="w-5 h-5" />
+                  <span className="text-xs font-bold uppercase tracking-wider">Pending Invite Detected</span>
+                </div>
+                <p className="text-white text-xs">
+                  Sign up to join the exclusive {pendingInvite.type === 'pod' ? 'Pod' : 'Event'}.
+                </p>
+              </div>
+            )}
+
+            <div className="text-center mb-8">
+              <h1 className="text-3xl font-display font-bold mb-2 text-white">Choose Your Path</h1>
+              <p className="text-sm text-[var(--text-secondary)] font-medium">Select account type to join the network.</p>
+            </div>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => { setUserType('individual'); setRoleSelected(true); }}
+                className="w-full text-left p-5 rounded-2xl border border-[var(--glass-border)] bg-white/5 hover:bg-white/10 hover:border-[var(--accent-primary)]/50 transition-all flex gap-4 items-center group cursor-pointer"
+              >
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-all">
+                  <User className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-semibold text-sm group-hover:text-[var(--accent-primary)] transition-colors">Individual Creator</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">Developers, designers, and artists building their craft.</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { setUserType('company'); setRoleSelected(true); }}
+                className="w-full text-left p-5 rounded-2xl border border-[var(--glass-border)] bg-white/5 hover:bg-white/10 hover:border-[var(--accent-primary)]/50 transition-all flex gap-4 items-center group cursor-pointer"
+              >
+                <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500/20 transition-all">
+                  <Building className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-semibold text-sm group-hover:text-cyan-400 transition-colors">Company / Enterprise</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">Startups, studios, and businesses hiring and sourcing talent.</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => { setUserType('organisation'); setRoleSelected(true); }}
+                className="w-full text-left p-5 rounded-2xl border border-[var(--glass-border)] bg-white/5 hover:bg-white/10 hover:border-[var(--accent-primary)]/50 transition-all flex gap-4 items-center group cursor-pointer"
+              >
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 transition-all">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-white font-semibold text-sm group-hover:text-emerald-400 transition-colors">Organisation / Society</h3>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">Tech clubs, developer groups, and community hubs.</p>
+                </div>
+              </button>
+            </div>
+
+            <p className="text-center text-sm mt-8 text-[var(--text-secondary)]">
+              Already have an account?{" "}
+              <Link href={pendingInvite ? `/login?invite_type=${pendingInvite.type}&invite_id=${pendingInvite.id}` : "/login"} className="font-medium text-[var(--accent-primary)] hover:underline">
+                Log in
+              </Link>
+            </p>
+          </motion.div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4 relative">
         <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, var(--accent-cyan-glow) 0%, var(--bg-void) 70%)" }} />
@@ -507,9 +652,34 @@ export default function SignupPage() {
           animate={{ opacity: 1, y: 0 }}
           className="w-full max-w-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative z-10"
         >
-          <div className="text-center mb-8">
+          {pendingInvite && (
+            <div className="mb-6 p-4 rounded-2xl bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 text-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent-primary)]/5 to-transparent animate-pulse" />
+              <div className="flex items-center gap-2 justify-center mb-1 text-[var(--accent-primary)]">
+                <ShieldCheck className="w-5 h-5" />
+                <span className="text-xs font-bold uppercase tracking-wider">Pending Invite Detected</span>
+              </div>
+              <p className="text-white text-xs">
+                Sign up to join the exclusive {pendingInvite.type === 'pod' ? 'Pod' : 'Event'}.
+              </p>
+            </div>
+          )}
+
+          <div className="text-center mb-8 relative">
+            <button
+              type="button"
+              onClick={() => setRoleSelected(false)}
+              className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white/5 border border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+              title="Back"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </button>
             <h1 className="text-3xl font-display font-bold mb-2 text-white">Join the Network</h1>
-            <p className="text-sm text-[var(--text-secondary)]">Create your account to start building your legacy.</p>
+            <p className="text-sm text-[var(--text-secondary)]">
+              {userType === 'individual' 
+                ? "Create your account to start building your legacy." 
+                : `Create an account for your ${userType}.`}
+            </p>
           </div>
 
           {authError && (
@@ -531,6 +701,9 @@ export default function SignupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
+              {(userType === 'company' || userType === 'organisation') && (
+                <p className="text-[10px] text-cyan-400 mt-1">Requires a custom business/organization domain.</p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-semibold uppercase tracking-wider mb-1.5 text-[var(--text-muted)]">Password</label>
@@ -619,7 +792,7 @@ export default function SignupPage() {
 
           <p className="text-center text-sm mt-6 text-[var(--text-secondary)]">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-[var(--accent-primary)] hover:underline">
+            <Link href={pendingInvite ? `/login?invite_type=${pendingInvite.type}&invite_id=${pendingInvite.id}` : "/login"} className="font-medium text-[var(--accent-primary)] hover:underline">
               Log in
             </Link>
           </p>
@@ -917,8 +1090,14 @@ export default function SignupPage() {
               exit={{ opacity: 0, x: -20 }}
               className="flex flex-col h-full max-w-md mx-auto"
             >
-              <h2 className="text-2xl font-display font-bold text-white mb-2">Claim your identity</h2>
-              <p className="text-[var(--text-secondary)] mb-8">This is how the network will find you. Choose wisely.</p>
+              <h2 className="text-2xl font-display font-bold text-white mb-2">
+                {userType === 'individual' ? "Claim your identity" : "Register your workspace"}
+              </h2>
+              <p className="text-[var(--text-secondary)] mb-8">
+                {userType === 'individual' 
+                  ? "This is how the network will find you. Choose wisely." 
+                  : "Choose a unique handle for your brand/organisation profile."}
+              </p>
 
               <div className="relative mb-8">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] font-mono">@</span>
@@ -926,7 +1105,7 @@ export default function SignupPage() {
                   type="text"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value.toLowerCase())}
-                  placeholder="username"
+                  placeholder={userType === 'individual' ? "username" : "brandname"}
                   className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl py-4 pl-10 pr-12 text-white font-mono placeholder-[var(--text-muted)] outline-none transition-colors"
                 />
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
@@ -957,58 +1136,94 @@ export default function SignupPage() {
               exit={{ opacity: 0, x: -20 }}
               className="flex flex-col h-full"
             >
-              <h2 className="text-2xl font-display font-bold text-white mb-2 text-center">Build your arsenal</h2>
-              <p className="text-[var(--text-secondary)] mb-6 text-center">Select the skills that define your craft.</p>
+              <h2 className="text-2xl font-display font-bold text-white mb-2 text-center">
+                {userType === 'individual' ? "Build your arsenal" : "Select Focus Areas"}
+              </h2>
+              <p className="text-[var(--text-secondary)] mb-6 text-center">
+                {userType === 'individual' 
+                  ? "Select the skills that define your craft." 
+                  : "Select the primary disciplines your team focuses on."}
+              </p>
 
-              {/* Horizontally scrolling tab bar */}
-              <div className="flex overflow-x-auto no-scrollbar gap-8 mb-6 pb-2 border-b border-[var(--border-subtle)] w-full max-w-2xl mx-auto">
-                {Object.keys(SKILL_CATEGORIES).map((tab) => (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setActiveTab(tab)}
-                    className={`text-sm font-medium whitespace-nowrap px-1 pb-2 relative cursor-pointer transition-colors ${
-                      activeTab === tab
-                        ? "text-[var(--text-primary)] font-bold"
-                        : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
-                    }`}
-                  >
-                    {tab}
-                    {activeTab === tab && (
-                      <motion.div
-                        layoutId="activeTab"
-                        className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--accent-primary)] rounded-t-full shadow-[0_-2px_8px_rgba(108,92,231,0.5)]"
-                      />
-                    )}
-                  </button>
-                ))}
-              </div>
+              {userType === 'individual' ? (
+                <>
+                  {/* Horizontally scrolling tab bar */}
+                  <div className="flex overflow-x-auto no-scrollbar gap-8 mb-6 pb-2 border-b border-[var(--border-subtle)] w-full max-w-2xl mx-auto">
+                    {Object.keys(SKILL_CATEGORIES).map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setActiveTab(tab)}
+                        className={`text-sm font-medium whitespace-nowrap px-1 pb-2 relative cursor-pointer transition-colors ${
+                          activeTab === tab
+                            ? "text-[var(--text-primary)] font-bold"
+                            : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
+                        }`}
+                      >
+                        {tab}
+                        {activeTab === tab && (
+                          <motion.div
+                            layoutId="activeTab"
+                            className="absolute bottom-0 left-0 right-0 h-[2px] bg-[var(--accent-primary)] rounded-t-full shadow-[0_-2px_8px_rgba(108,92,231,0.5)]"
+                          />
+                        )}
+                      </button>
+                    ))}
+                  </div>
 
-              <div className="flex-1 overflow-y-auto max-h-[300px] custom-scrollbar pr-2 mb-8 -mx-2 px-2">
-                <div className="flex flex-wrap gap-2">
-                  {(SKILL_CATEGORIES[activeTab] || []).map(skill => (
-                    <button
-                      key={skill}
-                      type="button"
-                      onClick={() => toggleSkill(skill)}
-                      className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1.5"
-                      style={{
-                        background: selectedSkills.includes(skill)
-                          ? "var(--text-primary)"
-                          : "var(--bg-deep)",
-                        color: selectedSkills.includes(skill) ? "var(--bg-void)" : "var(--text-secondary)",
-                        border: selectedSkills.includes(skill)
-                          ? "1px solid var(--text-primary)"
-                          : "1px solid var(--border-subtle)",
-                        boxShadow: selectedSkills.includes(skill) ? "var(--shadow-glow-sm)" : "none",
-                      }}
-                    >
-                      {selectedSkills.includes(skill) && <Check className="w-3.5 h-3.5 text-[var(--bg-void)] font-bold" />}
-                      {skill}
-                    </button>
-                  ))}
+                  <div className="flex-1 overflow-y-auto max-h-[300px] custom-scrollbar pr-2 mb-8 -mx-2 px-2">
+                    <div className="flex flex-wrap gap-2">
+                      {(SKILL_CATEGORIES[activeTab] || []).map(skill => (
+                        <button
+                          key={skill}
+                          type="button"
+                          onClick={() => toggleSkill(skill)}
+                          className="px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 flex items-center gap-1.5"
+                          style={{
+                            background: selectedSkills.includes(skill)
+                              ? "var(--text-primary)"
+                              : "var(--bg-deep)",
+                            color: selectedSkills.includes(skill) ? "var(--bg-void)" : "var(--text-secondary)",
+                            border: selectedSkills.includes(skill)
+                              ? "1px solid var(--text-primary)"
+                              : "1px solid var(--border-subtle)",
+                            boxShadow: selectedSkills.includes(skill) ? "var(--shadow-glow-sm)" : "none",
+                          }}
+                        >
+                          {selectedSkills.includes(skill) && <Check className="w-3.5 h-3.5 text-[var(--bg-void)] font-bold" />}
+                          {skill}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 overflow-y-auto max-h-[300px] custom-scrollbar pr-2 mb-8 px-2">
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {CORPORATE_FOCUS_AREAS.map(focus => (
+                      <button
+                        key={focus}
+                        type="button"
+                        onClick={() => toggleSkill(focus)}
+                        className="px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 flex items-center gap-1.5"
+                        style={{
+                          background: selectedSkills.includes(focus)
+                            ? "var(--text-primary)"
+                            : "var(--bg-deep)",
+                          color: selectedSkills.includes(focus) ? "var(--bg-void)" : "var(--text-secondary)",
+                          border: selectedSkills.includes(focus)
+                            ? "1px solid var(--text-primary)"
+                            : "1px solid var(--border-subtle)",
+                          boxShadow: selectedSkills.includes(focus) ? "var(--shadow-glow-sm)" : "none",
+                        }}
+                      >
+                        {selectedSkills.includes(focus) && <Check className="w-3.5 h-3.5 text-[var(--bg-void)] font-bold" />}
+                        {focus}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="mt-auto pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
                 <span className="text-sm text-[var(--text-muted)] font-mono">
@@ -1035,8 +1250,12 @@ export default function SignupPage() {
               exit={{ opacity: 0, x: -20 }}
               className="flex flex-col h-full max-w-md mx-auto"
             >
-              <h2 className="text-2xl font-display font-bold text-white mb-2">Initialize your proxy</h2>
-              <p className="text-[var(--text-secondary)] mb-8">Set your face to the network.</p>
+              <h2 className="text-2xl font-display font-bold text-white mb-2">
+                {userType === 'individual' ? "Initialize your proxy" : "Setup brand profile"}
+              </h2>
+              <p className="text-[var(--text-secondary)] mb-8">
+                {userType === 'individual' ? "Set your face to the network." : "Upload brand logo and profile details."}
+              </p>
 
               <div className="flex flex-col items-center mb-8">
                 <div 
@@ -1049,7 +1268,7 @@ export default function SignupPage() {
                     <Upload className="w-8 h-8 text-[var(--text-muted)] group-hover:text-[var(--accent-primary)] transition-colors" />
                   )}
                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-xs font-semibold text-white">Change</span>
+                    <span className="text-xs font-semibold text-white">Upload</span>
                   </div>
                 </div>
                 <input 
@@ -1061,21 +1280,47 @@ export default function SignupPage() {
                 />
               </div>
 
-              <div className="mb-8">
-                <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Tagline</label>
-                <input
-                  type="text"
-                  value={tagline}
-                  onChange={(e) => setTagline(e.target.value)}
-                  placeholder="Senior Motion Designer @ Void"
-                  className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
-                />
-              </div>
+              {userType === 'individual' ? (
+                <div className="mb-8">
+                  <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Tagline</label>
+                  <input
+                    type="text"
+                    value={tagline}
+                    onChange={(e) => setTagline(e.target.value)}
+                    placeholder="Senior Motion Designer @ Void"
+                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                  />
+                </div>
+              ) : (
+                <div className="space-y-4 mb-8">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Headquarters / Location</label>
+                    <input
+                      type="text"
+                      value={hqLocation}
+                      onChange={(e) => setHqLocation(e.target.value)}
+                      placeholder="e.g. Bangalore, India"
+                      required
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">About / Description</label>
+                    <textarea
+                      value={tagline}
+                      onChange={(e) => setTagline(e.target.value)}
+                      placeholder="e.g. Building the future of AI & spatial computing."
+                      rows={3}
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors resize-none"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="mt-auto pt-4">
                 <button
                   onClick={handleStep3Submit}
-                  disabled={isSubmitting || !tagline}
+                  disabled={isSubmitting || (userType === 'individual' ? !tagline : (!hqLocation || !tagline))}
                   className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[#5b4bc4] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Complete Profile"}

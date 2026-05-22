@@ -1,20 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Button from "@/components/ui/Button";
 import { RevealEffect } from "@/components/ui/RevealEffect";
+import { ShieldCheck } from "lucide-react";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingInvite, setPendingInvite] = useState<{ type: string; id: string } | null>(null);
   
   const router = useRouter();
   const supabase = createClient();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const inviteType = params.get("invite_type");
+      const inviteId = params.get("invite_id");
+      if (inviteType && inviteId) {
+        sessionStorage.setItem("pending_invite_type", inviteType);
+        sessionStorage.setItem("pending_invite_id", inviteId);
+        setPendingInvite({ type: inviteType, id: inviteId });
+      } else {
+        const cachedType = sessionStorage.getItem("pending_invite_type");
+        const cachedId = sessionStorage.getItem("pending_invite_id");
+        if (cachedType && cachedId) {
+          setPendingInvite({ type: cachedType, id: cachedId });
+        }
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,6 +77,19 @@ export default function LoginPage() {
       <div className="absolute inset-0 pointer-events-none" style={{ background: "radial-gradient(ellipse at top, var(--accent-cyan-glow) 0%, var(--bg-void) 70%)" }} />
       
       <div className="w-full max-w-md glass-card rounded-2xl p-8 relative z-10 animate-fade-in-up">
+        {pendingInvite && (
+          <div className="mb-6 p-4 rounded-2xl bg-[var(--accent-primary)]/10 border border-[var(--accent-primary)]/20 text-center relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-[var(--accent-primary)]/5 to-transparent animate-pulse" />
+            <div className="flex items-center gap-2 justify-center mb-1 text-[var(--accent-primary)]">
+              <ShieldCheck className="w-5 h-5" />
+              <span className="text-xs font-bold uppercase tracking-wider">Pending Invite Detected</span>
+            </div>
+            <p className="text-white text-xs">
+              Log in to join the exclusive {pendingInvite.type === 'pod' ? 'Pod' : 'Event'}.
+            </p>
+          </div>
+        )}
+
         <div className="text-center mb-8">
           <h1 className="text-3xl font-display font-bold mb-2" style={{ color: "var(--text-primary)" }}>Welcome Back</h1>
           <p className="text-sm" style={{ color: "var(--text-secondary)" }}>Log in to continue building your legacy.</p>
@@ -151,7 +185,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm mt-6" style={{ color: "var(--text-secondary)" }}>
           Don't have an account?{" "}
-          <Link href="/signup" className="font-medium" style={{ color: "var(--accent-primary)" }}>
+          <Link href={pendingInvite ? `/signup?invite_type=${pendingInvite.type}&invite_id=${pendingInvite.id}` : "/signup"} className="font-medium" style={{ color: "var(--accent-primary)" }}>
             Sign up free
           </Link>
         </p>

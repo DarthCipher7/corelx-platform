@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Send, CheckCheck, MoreVertical, Flame } from "lucide-react";
+import { Search, Send, CheckCheck, MoreVertical, Flame, ArrowLeft, Paperclip, X, Loader2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -21,6 +21,7 @@ interface Message {
   content: string;
   is_read: boolean;
   created_at: string;
+  media_url?: string;
 }
 
 export default function MessagesPage() {
@@ -34,6 +35,11 @@ export default function MessagesPage() {
   const [activeThread, setActiveThread] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
+  
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [loading, setLoading] = useState(true);
   
@@ -209,18 +215,35 @@ export default function MessagesPage() {
     }
   }, [activeThread, currentUser, supabase]);
 
+  const clearAttachment = () => {
+    setSelectedFile(null);
+    if (mediaPreviewUrl) {
+      URL.revokeObjectURL(mediaPreviewUrl);
+      setMediaPreviewUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const sendMessage = async () => {
-    if (!inputMessage.trim() || !currentUser || !activeThread) return;
+    if (!inputMessage.trim() && !selectedFile) return;
+    if (!currentUser || !activeThread) return;
 
     const messageText = inputMessage.trim();
     setInputMessage(""); // Optimistic clear
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
+
+    let fileToUpload = selectedFile;
+    let previewToUse = mediaPreviewUrl;
+    clearAttachment();
 
     const newMessage: Message = {
       id: `temp-${Date.now()}`,
       sender_id: currentUser.id,
       recipient_id: activeThread.id,
       content: messageText,
+      media_url: previewToUse || undefined,
       is_read: false,
       created_at: new Date().toISOString()
     };
@@ -271,15 +294,41 @@ export default function MessagesPage() {
         setMessages(prev => [...prev, aiMessage]);
       }, 1500);
     } else {
-      const { error } = await supabase.from('messages').insert({
-        sender_id: currentUser.id,
-        recipient_id: activeThread.id,
-        content: messageText
-      });
+      try {
+        let uploadedMediaUrl = null;
+        if (fileToUpload) {
+          setUploadingMedia(true);
+          const fileExt = fileToUpload.name.split('.').pop();
+          const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+          const filePath = `chats/${fileName}`;
 
-      if (error) {
-        console.error("Failed to send message", error);
-        // In a real app, we'd mark the message as failed here
+          const { error: uploadError } = await supabase.storage
+            .from('media')
+            .upload(filePath, fileToUpload);
+
+          if (uploadError) {
+            console.error("Storage upload failed", uploadError);
+            throw uploadError;
+          }
+
+          const { data: urlData } = supabase.storage.from('media').getPublicUrl(filePath);
+          uploadedMediaUrl = urlData.publicUrl;
+        }
+
+        const { error } = await supabase.from('messages').insert({
+          sender_id: currentUser.id,
+          recipient_id: activeThread.id,
+          content: messageText || "",
+          media_url: uploadedMediaUrl
+        });
+
+        if (error) {
+          console.error("Failed to send message", error);
+        }
+      } catch (err) {
+        console.error("Error in message send flow:", err);
+      } finally {
+        setUploadingMedia(false);
       }
     }
   };
@@ -299,10 +348,19 @@ export default function MessagesPage() {
       <div className="messages-layout flex w-full max-w-[1200px] h-[calc(100vh-104px)] mx-auto rounded-3xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] backdrop-blur-2xl overflow-hidden shadow-2xl">
         
         {/* Left Pane: Active Threads */}
-        <div className="w-full sm:w-[320px] flex-shrink-0 flex flex-col border-r border-[var(--border-subtle)] bg-[rgba(3,3,8,0.4)]">
+        <div className={`w-full sm:w-[320px] flex-shrink-0 flex flex-col border-r border-[var(--border-subtle)] bg-[rgba(3,3,8,0.4)] ${activeThread ? "hidden sm:flex" : "flex"}`}>
           {/* Header */}
           <div className="p-5 border-b border-[var(--border-subtle)]">
-            <h2 className="text-xl font-display font-semibold text-white mb-4">Messages</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <button
+                onClick={() => router.back()}
+                className="p-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:bg-[rgba(255,255,255,0.05)] text-[var(--text-muted)] hover:text-white transition-all group cursor-pointer"
+                title="Go back"
+              >
+                <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+              </button>
+              <h2 className="text-xl font-display font-semibold text-white">Messages</h2>
+            </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
               <input
@@ -360,12 +418,20 @@ export default function MessagesPage() {
         </div>
 
         {/* Right Pane: Chat Log */}
-        <div className="hidden sm:flex flex-1 flex-col relative bg-[var(--bg-void)]">
+        <div className={`flex-1 flex-col relative bg-[var(--bg-void)] ${activeThread ? "flex" : "hidden sm:flex"}`}>
           {activeThread ? (
             <>
               {/* Chat Header */}
               <div className="p-5 border-b border-[var(--border-subtle)] bg-[rgba(3,3,8,0.8)] backdrop-blur-md flex items-center justify-between sticky top-0 z-10">
                 <div className="flex items-center gap-3">
+                  {/* Mobile Back Button to inbox threads list */}
+                  <button
+                    onClick={() => setActiveThread(null)}
+                    className="p-2 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] hover:bg-[rgba(255,255,255,0.05)] text-[var(--text-muted)] hover:text-white transition-all sm:hidden group cursor-pointer"
+                    title="Back to threads"
+                  >
+                    <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+                  </button>
                   <div className="relative">
                     {activeThread.avatar_url ? (
                       <img src={activeThread.avatar_url} alt={activeThread.handle} className="w-10 h-10 rounded-full object-cover" />
@@ -414,7 +480,25 @@ export default function MessagesPage() {
                               : "bg-[var(--bg-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] rounded-bl-sm backdrop-blur-md"
                           }`}
                         >
-                          {msg.content}
+                          {msg.media_url && (
+                            <div className="mb-2 rounded-xl overflow-hidden border border-[var(--glass-border)] bg-black/30 max-w-full max-h-[300px] flex items-center justify-center">
+                              {msg.media_url.match(/\.(mp4|webm|quicktime|ogg)/i) || msg.media_url.includes("video") ? (
+                                <video
+                                  src={msg.media_url}
+                                  controls
+                                  className="max-w-full max-h-[300px] object-contain rounded-xl"
+                                />
+                              ) : (
+                                <img
+                                  src={msg.media_url}
+                                  alt="Shared media"
+                                  className="max-w-full max-h-[300px] object-contain rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                                  onClick={() => window.open(msg.media_url, '_blank')}
+                                />
+                              )}
+                            </div>
+                          )}
+                          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
                           <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? "justify-end text-[var(--accent-primary)] opacity-80" : "justify-start text-[var(--text-muted)]"}`}>
                             {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             {isMe && <CheckCheck className="w-3 h-3 ml-0.5" />}
@@ -430,7 +514,33 @@ export default function MessagesPage() {
               {/* Input Area */}
               <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-deep)]">
                 <div className="relative flex items-end gap-3 max-w-4xl mx-auto">
-                  <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden focus-within:border-[var(--accent-primary)] transition-colors shadow-inner">
+                  <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden focus-within:border-[var(--accent-primary)] transition-colors shadow-inner flex flex-col">
+                    {/* Media Preview Container */}
+                    {mediaPreviewUrl && (
+                      <div className="relative p-3 bg-[var(--bg-void)] border-b border-[var(--border-subtle)] flex items-center gap-3">
+                        <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-[var(--glass-border)] bg-[var(--bg-deep)]">
+                          {selectedFile?.type.startsWith("video/") ? (
+                            <video src={mediaPreviewUrl} className="w-full h-full object-cover" muted />
+                          ) : (
+                            <img src={mediaPreviewUrl} alt="Preview" className="w-full h-full object-cover" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={clearAttachment}
+                            className="absolute top-1 right-1 p-1 rounded-full bg-black/60 text-white hover:bg-black/85 transition-colors cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-white font-medium truncate">{selectedFile?.name}</p>
+                          <p className="text-[10px] text-[var(--text-muted)] font-mono">
+                            {selectedFile ? (selectedFile.size / (1024 * 1024)).toFixed(2) : 0} MB
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    
                     <textarea
                       ref={textareaRef}
                       value={inputMessage}
@@ -447,16 +557,48 @@ export default function MessagesPage() {
                       style={{ minHeight: '48px' }}
                     />
                   </div>
+                  
+                  {/* File Attachment Input & Icon */}
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 50 * 1024 * 1024) {
+                        alert("File is too large. Max size is 50MB.");
+                        return;
+                      }
+                      setSelectedFile(file);
+                      setMediaPreviewUrl(URL.createObjectURL(file));
+                    }}
+                    accept="image/*,video/*"
+                    className="hidden"
+                  />
+                  
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-3.5 rounded-full bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:text-white hover:bg-[rgba(255,255,255,0.05)] border border-[var(--border-subtle)] transition-all cursor-pointer"
+                    title="Attach image or video"
+                  >
+                    <Paperclip className="w-5 h-5" />
+                  </button>
+
                   <button
                     onClick={sendMessage}
-                    disabled={!inputMessage.trim()}
+                    disabled={!inputMessage.trim() && !selectedFile}
                     className={`p-3.5 rounded-full flex-shrink-0 transition-all duration-300 ${
-                      inputMessage.trim()
-                        ? "bg-[var(--accent-primary)] text-white shadow-[0_0_15px_var(--accent-primary-glow)]"
-                        : "bg-[var(--bg-surface)] text-[var(--text-muted)]"
+                      inputMessage.trim() || selectedFile
+                        ? "bg-[var(--accent-primary)] text-white shadow-[0_0_15px_var(--accent-primary-glow)] cursor-pointer"
+                        : "bg-[var(--bg-surface)] text-[var(--text-muted)] cursor-not-allowed"
                     }`}
                   >
-                    <Send className={`w-5 h-5 ${inputMessage.trim() ? "translate-x-0.5 -translate-y-0.5" : ""}`} />
+                    {uploadingMedia ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <Send className={`w-5 h-5 ${inputMessage.trim() || selectedFile ? "translate-x-0.5 -translate-y-0.5" : ""}`} />
+                    )}
                   </button>
                 </div>
                 <div className="text-center mt-2">
@@ -477,13 +619,6 @@ export default function MessagesPage() {
               </p>
             </div>
           )}
-        </div>
-
-        {/* Mobile View Placeholder */}
-        <div className="sm:hidden flex flex-1 items-center justify-center p-4 text-center">
-          <p className="text-sm text-[var(--text-muted)]">
-            Mobile layout optimized for the native app.<br/>Please use desktop to view messages.
-          </p>
         </div>
 
       </div>
