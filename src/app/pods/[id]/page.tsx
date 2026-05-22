@@ -195,7 +195,7 @@ export default function PodDetailPage() {
   const fetchMessages = async () => {
     const { data, error } = await supabase
       .from("pod_messages")
-      .select("*, sender:users(handle, display_name, avatar_url)")
+      .select("id, pod_id, sender_id, content, is_pinned, is_system, created_at, sender:users(handle, display_name, avatar_url)")
       .eq("pod_id", podId)
       .order("created_at", { ascending: true });
 
@@ -204,6 +204,8 @@ export default function PodDetailPage() {
       setMessages(msgs);
       setPinnedMessages(msgs.filter((m) => m.is_pinned));
       setTimeout(scrollToBottom, 50);
+    } else if (error) {
+      console.error("fetchMessages error:", error.message);
     }
   };
 
@@ -448,12 +450,14 @@ export default function PodDetailPage() {
         uploadedUrl = urlData.publicUrl;
       }
 
-      const { error } = await supabase.from("pod_messages").insert({
+      const insertPayload: Record<string, any> = {
         pod_id: podId,
         sender_id: currentUser.id,
         content: text || (file ? file.name : ""),
-        media_url: uploadedUrl || null,
-      });
+      };
+      if (uploadedUrl) insertPayload.media_url = uploadedUrl;
+
+      const { error } = await supabase.from("pod_messages").insert(insertPayload);
 
       if (error) {
         throw new Error(error.message);
