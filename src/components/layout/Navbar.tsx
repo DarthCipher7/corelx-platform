@@ -75,9 +75,23 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    let activeUserId: string | null = null;
     let channel: any = null;
 
-    const fetchUserData = async (authUser: any) => {
+    const setupUser = async (authUser: any) => {
+      const authUserId = authUser?.id || null;
+      if (authUserId === activeUserId) {
+        return; // Already setup or already null
+      }
+
+      // Cleanup previous channel
+      if (channel) {
+        supabase.removeChannel(channel);
+        channel = null;
+      }
+
+      activeUserId = authUserId;
+
       if (!authUser) {
         setUser(null);
         setUserProfile(null);
@@ -89,67 +103,83 @@ export default function Navbar() {
 
       setUser(authUser);
 
-      // Profile
-      const { data: profile } = await supabase
-        .from("users")
-        .select("handle, display_name, avatar_url")
-        .eq("id", authUser.id)
-        .single();
-      if (profile) setUserProfile(profile);
+      try {
+        // Profile
+        const { data: profile } = await supabase
+          .from("users")
+          .select("handle, display_name, avatar_url")
+          .eq("id", authUser.id)
+          .single();
+        if (profile) setUserProfile(profile);
 
-      // Unread DM count
-      const fetchUnreadDMs = async () => {
-        const { count } = await supabase
-          .from("messages")
-          .select("*", { count: "exact", head: true })
-          .eq("recipient_id", authUser.id)
-          .eq("read", false);
-        setUnreadMessages(count || 0);
-      };
-      fetchUnreadDMs();
+        // Unread DM count
+        const fetchUnreadDMs = async () => {
+          try {
+            const { count } = await supabase
+              .from("messages")
+              .select("*", { count: "exact", head: true })
+              .eq("recipient_id", authUser.id)
+              .eq("read", false);
+            setUnreadMessages(count || 0);
+          } catch (err) {
+            console.error("Error fetching unread DMs:", err);
+          }
+        };
+        await fetchUnreadDMs();
 
-      // Notifications
-      const fetchNotifs = async () => {
-        const { data } = await supabase
-          .from("notifications")
-          .select(
-            "id, type, message, link, read, created_at, from_user:users!notifications_from_user_id_fkey(handle, display_name, avatar_url)"
+        // Notifications
+        const fetchNotifs = async () => {
+          try {
+            const { data } = await supabase
+              .from("notifications")
+              .select(
+                "id, type, message, link, read, created_at, from_user:users!notifications_from_user_id_fkey(handle, display_name, avatar_url)"
+              )
+              .eq("user_id", authUser.id)
+              .order("created_at", { ascending: false })
+              .limit(30);
+            if (data) {
+              setNotifications(data);
+              setUnreadNotifs(data.filter((n: any) => !n.read).length);
+            }
+          } catch (err) {
+            console.error("Error fetching notifications:", err);
+          }
+        };
+        await fetchNotifs();
+
+        // Real-time: new notification or updated DM read status
+        channel = supabase
+          .channel(`navbar-${authUser.id}`)
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${authUser.id}` },
+            () => fetchNotifs()
           )
-          .eq("user_id", authUser.id)
-          .order("created_at", { ascending: false })
-          .limit(30);
-        if (data) {
-          setNotifications(data);
-          setUnreadNotifs(data.filter((n: any) => !n.read).length);
-        }
-      };
-      fetchNotifs();
-
-      // Real-time: new notification or updated DM read status
-      channel = supabase
-        .channel(`navbar-${authUser.id}`)
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${authUser.id}` },
-          () => fetchNotifs()
-        )
-        .on(
-          "postgres_changes",
-          { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${authUser.id}` },
-          () => fetchUnreadDMs()
-        )
-        .on(
-          "postgres_changes",
-          { event: "UPDATE", schema: "public", table: "messages", filter: `recipient_id=eq.${authUser.id}` },
-          () => fetchUnreadDMs()
-        )
-        .subscribe();
+          .on(
+            "postgres_changes",
+            { event: "INSERT", schema: "public", table: "messages", filter: `recipient_id=eq.${authUser.id}` },
+            () => fetchUnreadDMs()
+          )
+          .on(
+            "postgres_changes",
+            { event: "UPDATE", schema: "public", table: "messages", filter: `recipient_id=eq.${authUser.id}` },
+            () => fetchUnreadDMs()
+          )
+          .subscribe();
+      } catch (err) {
+        console.error("Error setting up user data in Navbar:", err);
+      }
     };
 
-    supabase.auth.getUser().then(({ data: { user } }) => fetchUserData(user));
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setupUser(user);
+      }
+    });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      (_event, session) => fetchUserData(session?.user ?? null)
+      (_event, session) => setupUser(session?.user ?? null)
     );
 
     return () => {
