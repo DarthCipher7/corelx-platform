@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -19,11 +19,31 @@ import {
   Settings,
   UserCheck,
   X,
-  AlertCircle
+  AlertCircle,
+  Send,
+  Pin,
+  MessageSquare,
+  Paperclip,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
 import TrustTierBadge from "@/components/ui/TrustTierBadge";
+
+interface EventMessage {
+  id: string;
+  event_id: string;
+  sender_id: string;
+  content: string;
+  media_url?: string;
+  is_pinned: boolean;
+  is_system: boolean;
+  created_at: string;
+  sender?: {
+    handle: string;
+    display_name: string;
+    avatar_url?: string;
+  };
+}
 
 const INPUT_CLS =
   "w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] text-sm transition-all";
@@ -50,6 +70,13 @@ const CATEGORY_CONFIG = {
   informal: { label: "Informal", emoji: "🤝" },
   formal: { label: "Formal", emoji: "👔" },
 } as any;
+
+const isVideoUrl = (url: string) => {
+  if (!url) return false;
+  const cleanUrl = url.split("?")[0];
+  const videoExtensions = [".mp4", ".webm", ".mov", ".ogg", ".m4v"];
+  return videoExtensions.some((ext) => cleanUrl.toLowerCase().endsWith(ext));
+};
 
 export default function EventDetailPage() {
   const { id: eventId } = useParams() as { id: string };
@@ -82,6 +109,23 @@ export default function EventDetailPage() {
   // Verification Simulation State
   const [verifyingCampus, setVerifyingCampus] = useState(false);
   const [verificationSuccess, setVerificationSuccess] = useState(false);
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState<"about" | "chat">("about");
+
+  // Chat Space States
+  const [chatMessages, setChatMessages] = useState<EventMessage[]>([]);
+  const [inputMsg, setInputMsg] = useState("");
+  const [submittingMsg, setSubmittingMsg] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+
+  const mediaInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const isOrganiser = currentUser?.id === event?.organiser_id;
 
   useEffect(() => {
     if (!eventId) return;
@@ -295,6 +339,192 @@ export default function EventDetailPage() {
     }
   };
 
+  // Event Chat functions & hooks
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const fetchChatMessages = async () => {
+    const { data, error } = await supabase
+      .from("event_messages")
+      .select("*, sender:users(handle, display_name, avatar_url)")
+      .eq("event_id", eventId)
+      .order("created_at", { ascending: true });
+
+    if (!error && data) {
+      setChatMessages(data as EventMessage[]);
+      setTimeout(scrollToBottom, 50);
+    }
+  };
+
+  // Fetch event chat messages when chat tab is active
+  useEffect(() => {
+    if (activeTab === "chat" && (isOrganiser || isJoined)) {
+      fetchChatMessages();
+    }
+  }, [activeTab, isOrganiser, isJoined]);
+
+  // Subscribe to real-time event messages
+  useEffect(() => {
+    if (activeTab !== "chat" || (!isOrganiser && !isJoined) || !eventId) return;
+
+    const channel = supabase
+      .channel(`event_messages:${eventId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "event_messages",
+          filter: `event_id=eq.${eventId}`,
+        },
+        async (payload) => {
+          if (payload.eventType === "INSERT") {
+            const { data: senderData } = await supabase
+              .from("users")
+              .select("handle, display_name, avatar_url")
+              .eq("id", payload.new.sender_id)
+              .single();
+
+            const fullMsg: EventMessage = {
+              ...(payload.new as EventMessage),
+              sender: senderData || undefined,
+            };
+
+            setChatMessages((prev) => {
+              if (prev.some((m) => m.id === fullMsg.id)) return prev;
+              return [...prev, fullMsg];
+            });
+            setTimeout(scrollToBottom, 50);
+          } else if (payload.eventType === "UPDATE") {
+            setChatMessages((prev) =>
+              prev.map((msg) =>
+                msg.id === payload.new.id ? { ...msg, ...(payload.new as EventMessage) } : msg
+              )
+            );
+          } else if (payload.eventType === "DELETE") {
+            setChatMessages((prev) => prev.filter((msg) => msg.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [activeTab, isOrganiser, isJoined, eventId, supabase]);
+
+  const handleClearMedia = () => {
+    setSelectedFile(null);
+    if (mediaPreviewUrl) {
+      URL.revokeObjectURL(mediaPreviewUrl);
+      setMediaPreviewUrl(null);
+    }
+    if (mediaInputRef.current) {
+      mediaInputRef.current.value = "";
+    }
+  };
+
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 25 * 1024 * 1024) {
+        alert("File too large. Max 25MB allowed.");
+        return;
+      }
+      setSelectedFile(file);
+      setMediaPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSendEventMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if ((!inputMsg.trim() && !selectedFile) || !currentUser) return;
+
+    const text = inputMsg.trim();
+    const file = selectedFile;
+
+    setInputMsg("");
+    handleClearMedia();
+    setSubmittingMsg(true);
+
+    try {
+      let uploadedUrl: string | undefined = undefined;
+
+      if (file) {
+        setUploadingMedia(true);
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+        const filePath = `chat_media/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("media")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw new Error(`Media upload failed: ${uploadError.message}`);
+        }
+
+        const { data: urlData } = supabase.storage.from("media").getPublicUrl(filePath);
+        uploadedUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase.from("event_messages").insert({
+        event_id: eventId,
+        sender_id: currentUser.id,
+        content: text || (file ? file.name : ""),
+        media_url: uploadedUrl || null,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to send message");
+      setInputMsg(text);
+      if (file) {
+        setSelectedFile(file);
+        setMediaPreviewUrl(URL.createObjectURL(file));
+      }
+    } finally {
+      setSubmittingMsg(false);
+      setUploadingMedia(false);
+    }
+  };
+
+  const handleTogglePinEventMsg = async (msg: EventMessage) => {
+    if (!isOrganiser) return;
+
+    const newPinStatus = !msg.is_pinned;
+    if (newPinStatus && chatMessages.filter((m) => m.is_pinned).length >= 3) {
+      alert("An Event can have at most 3 pinned messages.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("event_messages")
+      .update({ is_pinned: newPinStatus })
+      .eq("id", msg.id);
+
+    if (error) {
+      alert(error.message);
+    }
+  };
+
+  const handleDeleteEventMessage = async (msgId: string) => {
+    if (!isOrganiser) return;
+    if (!window.confirm("Delete this message?")) return;
+
+    const { error } = await supabase
+      .from("event_messages")
+      .delete()
+      .eq("id", msgId);
+
+    if (error) {
+      alert(error.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-void)]">
@@ -318,7 +548,6 @@ export default function EventDetailPage() {
     );
   }
 
-  const isOrganiser = currentUser?.id === event.organiser_id;
   const cat = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.misc;
   const attendingList = rsvpList.filter(r => r.status === "attending" || r.status === "approved");
   const pendingList = rsvpList.filter(r => r.status === "pending");
@@ -591,106 +820,369 @@ export default function EventDetailPage() {
           </div>
         </div>
 
-        {/* ── Guest List and Pending Requests sections ─────────── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Attendees List (2 columns width) */}
-          <div
-            className="md:col-span-2 rounded-3xl p-6 backdrop-blur-xl flex flex-col gap-4"
-            style={{
-              background: "var(--bg-frosted)",
-              border: "1px solid var(--glass-border)",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-            }}
+        {/* ── Event Tabs Navigation ────────────────────────────────── */}
+        <div className="border-b border-[var(--border-subtle)] flex gap-2">
+          <button
+            onClick={() => setActiveTab("about")}
+            className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+              activeTab === "about" ? "text-white" : "text-[var(--text-muted)] hover:text-white"
+            }`}
           >
-            <h2 className="text-xl font-bold font-display flex items-center gap-2">
-              <Users className="w-5 h-5 text-[var(--accent-primary)]" />
-              Attendees ({attendingList.length})
-            </h2>
+            {activeTab === "about" && (
+              <motion.span
+                layoutId="active-event-tab"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent-primary)]"
+              />
+            )}
+            <span className="flex items-center gap-1.5 font-display uppercase tracking-wider text-xs">
+              About Event
+            </span>
+          </button>
 
-            {attendingList.length === 0 ? (
-              <p className="text-xs text-[var(--text-muted)] italic py-4">No one is attending yet.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto no-scrollbar">
-                {attendingList.map((rsvp) => (
-                  <div
-                    key={rsvp.id}
-                    className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--bg-deep)] border border-[var(--border-subtle)]"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs">
-                      {rsvp.user?.avatar_url ? (
-                        <img src={rsvp.user.avatar_url} alt={rsvp.user.display_name} className="w-full h-full rounded-full object-cover" />
-                      ) : (
-                        (rsvp.user?.display_name || "?").charAt(0).toUpperCase()
-                      )}
+          {(isOrganiser || isJoined) && (
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={`px-4 py-2 text-sm font-medium transition-colors relative ${
+                activeTab === "chat" ? "text-white" : "text-[var(--text-muted)] hover:text-white"
+              }`}
+            >
+              {activeTab === "chat" && (
+                <motion.span
+                  layoutId="active-event-tab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--accent-primary)]"
+                />
+              )}
+              <span className="flex items-center gap-1.5 font-display uppercase tracking-wider text-xs">
+                Chat Space
+              </span>
+            </button>
+          )}
+        </div>
+
+        {/* ── Tabs Content ───────────────────────────────────────── */}
+        <div className="min-h-[300px]">
+          <AnimatePresence mode="wait">
+            {/* ABOUT TAB */}
+            {activeTab === "about" && (
+              <motion.div
+                key="about-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="grid grid-cols-1 md:grid-cols-3 gap-6"
+              >
+                {/* Attendees List (2 columns width) */}
+                <div
+                  className="md:col-span-2 rounded-3xl p-6 backdrop-blur-xl flex flex-col gap-4"
+                  style={{
+                    background: "var(--bg-frosted)",
+                    border: "1px solid var(--glass-border)",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                  }}
+                >
+                  <h2 className="text-xl font-bold font-display flex items-center gap-2">
+                    <Users className="w-5 h-5 text-[var(--accent-primary)]" />
+                    Attendees ({attendingList.length})
+                  </h2>
+
+                  {attendingList.length === 0 ? (
+                    <p className="text-xs text-[var(--text-muted)] italic py-4">No one is attending yet.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[400px] overflow-y-auto no-scrollbar">
+                      {attendingList.map((rsvp) => (
+                        <div
+                          key={rsvp.id}
+                          className="flex items-center gap-3 p-3 rounded-2xl bg-[var(--bg-deep)] border border-[var(--border-subtle)]"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center font-bold text-xs">
+                            {rsvp.user?.avatar_url ? (
+                              <img src={rsvp.user.avatar_url} alt={rsvp.user.display_name} className="w-full h-full rounded-full object-cover" />
+                            ) : (
+                              (rsvp.user?.display_name || "?").charAt(0).toUpperCase()
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold truncate text-white">{rsvp.user?.display_name}</p>
+                            <p className="text-xs text-[var(--text-muted)] truncate font-mono">@{rsvp.user?.handle}</p>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-bold truncate text-white">{rsvp.user?.display_name}</p>
-                      <p className="text-xs text-[var(--text-muted)] truncate font-mono">@{rsvp.user?.handle}</p>
+                  )}
+                </div>
+
+                {/* Pending RSVPs List (Visible to Organiser only) */}
+                {isOrganiser && (
+                  <div
+                    className="rounded-3xl p-6 backdrop-blur-xl flex flex-col gap-4"
+                    style={{
+                      background: "var(--bg-frosted)",
+                      border: "1px solid var(--glass-border)",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+                    }}
+                  >
+                    <h2 className="text-lg font-bold font-display flex items-center gap-2 text-yellow-400">
+                      <Shield className="w-4 h-4" />
+                      Requests ({pendingList.length})
+                    </h2>
+
+                    {pendingList.length === 0 ? (
+                      <p className="text-xs text-[var(--text-muted)] italic py-4">No pending requests.</p>
+                    ) : (
+                      <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto no-scrollbar">
+                        {pendingList.map((rsvp) => (
+                          <div
+                            key={rsvp.id}
+                            className="flex flex-col gap-2 p-3 rounded-2xl bg-[var(--bg-deep)] border border-[var(--border-subtle)]"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center font-bold text-[10px]">
+                                {rsvp.user?.avatar_url ? (
+                                  <img src={rsvp.user.avatar_url} alt={rsvp.user.display_name} className="w-full h-full rounded-full object-cover" />
+                                ) : (
+                                  (rsvp.user?.display_name || "?").charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold truncate text-white">{rsvp.user?.display_name}</p>
+                                <p className="text-[10px] text-[var(--text-muted)] truncate font-mono">@{rsvp.user?.handle}</p>
+                              </div>
+                            </div>
+
+                            <div className="flex justify-end gap-1.5 pt-1">
+                              <button
+                                onClick={() => handleUpdateRsvpStatus(rsvp.id, "declined")}
+                                className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20"
+                              >
+                                Decline
+                              </button>
+                              <button
+                                onClick={() => handleUpdateRsvpStatus(rsvp.id, "attending")}
+                                className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-green-500 text-white hover:opacity-90"
+                              >
+                                Approve
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* CHAT TAB */}
+            {activeTab === "chat" && (isOrganiser || isJoined) && (
+              <motion.div
+                key="chat-tab"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="flex flex-col rounded-3xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] overflow-hidden shadow-2xl h-[550px] w-full"
+              >
+                {/* Pinned Messages Header */}
+                {chatMessages.filter((m) => m.is_pinned).length > 0 && (
+                  <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex flex-col gap-1.5 transition-all">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1">
+                      <Pin className="w-3 h-3" /> Pinned Announcements ({chatMessages.filter((m) => m.is_pinned).length} / 3)
+                    </span>
+
+                    <div className="space-y-1.5 max-h-[100px] overflow-y-auto">
+                      {chatMessages
+                        .filter((m) => m.is_pinned)
+                        .map((msg) => (
+                          <div
+                            key={msg.id}
+                            className="text-xs text-amber-300 flex items-start justify-between gap-4 p-1.5 rounded bg-black/10 border border-amber-500/10"
+                          >
+                            <span className="italic leading-normal flex-1">
+                              <strong>@{msg.sender?.handle || "user"}:</strong> "{msg.content}"
+                            </span>
+                            {isOrganiser && (
+                              <button
+                                onClick={() => handleTogglePinEventMsg(msg)}
+                                className="text-[10px] text-amber-400 hover:text-red-400 flex-shrink-0"
+                              >
+                                Unpin
+                              </button>
+                            )}
+                          </div>
+                        ))}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
+                )}
 
-          {/* Pending RSVPs List (Visible to Organiser only) */}
-          {isOrganiser && (
-            <div
-              className="rounded-3xl p-6 backdrop-blur-xl flex flex-col gap-4"
-              style={{
-                background: "var(--bg-frosted)",
-                border: "1px solid var(--glass-border)",
-                boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-              }}
-            >
-              <h2 className="text-lg font-bold font-display flex items-center gap-2 text-yellow-400">
-                <Shield className="w-4 h-4" />
-                Requests ({pendingList.length})
-              </h2>
-
-              {pendingList.length === 0 ? (
-                <p className="text-xs text-[var(--text-muted)] italic py-4">No pending requests.</p>
-              ) : (
-                <div className="flex flex-col gap-3 max-h-[400px] overflow-y-auto no-scrollbar">
-                  {pendingList.map((rsvp) => (
-                    <div
-                      key={rsvp.id}
-                      className="flex flex-col gap-2 p-3 rounded-2xl bg-[var(--bg-deep)] border border-[var(--border-subtle)]"
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center font-bold text-[10px]">
-                          {rsvp.user?.avatar_url ? (
-                            <img src={rsvp.user.avatar_url} alt={rsvp.user.display_name} className="w-full h-full rounded-full object-cover" />
-                          ) : (
-                            (rsvp.user?.display_name || "?").charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs font-bold truncate text-white">{rsvp.user?.display_name}</p>
-                          <p className="text-[10px] text-[var(--text-muted)] truncate font-mono">@{rsvp.user?.handle}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex justify-end gap-1.5 pt-1">
-                        <button
-                          onClick={() => handleUpdateRsvpStatus(rsvp.id, "declined")}
-                          className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-red-500/30 text-red-400 bg-red-500/10 hover:bg-red-500/20"
-                        >
-                          Decline
-                        </button>
-                        <button
-                          onClick={() => handleUpdateRsvpStatus(rsvp.id, "attending")}
-                          className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-green-500 text-white hover:opacity-90"
-                        >
-                          Approve
-                        </button>
-                      </div>
+                {/* Messages stream */}
+                <div
+                  ref={chatScrollContainerRef}
+                  className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/15"
+                >
+                  {chatMessages.length === 0 ? (
+                    <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[var(--text-muted)]">
+                      <MessageSquare className="w-8 h-8 mb-2 opacity-50 text-[var(--accent-primary)]" />
+                      <p className="text-sm font-semibold text-white">Welcome to the Event Chat Space.</p>
+                      <p className="text-xs text-[var(--text-muted)] mt-1">Introduce yourself and start coordinating!</p>
                     </div>
-                  ))}
+                  ) : (
+                    chatMessages.map((msg) => {
+                      const isMe = msg.sender_id === currentUser?.id;
+                      return (
+                        <div key={msg.id} className={`flex gap-3 max-w-[80%] ${isMe ? "ml-auto flex-row-reverse" : ""}`}>
+                          {/* Avatar */}
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-purple-500 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {msg.sender?.avatar_url ? (
+                              <img src={msg.sender.avatar_url} alt={msg.sender.handle} className="w-full h-full object-cover" />
+                            ) : (
+                              (msg.sender?.handle || "U").charAt(0).toUpperCase()
+                            )}
+                          </div>
+
+                          {/* Message Bubble */}
+                          <div className="space-y-1 max-w-[85%]">
+                            <div className={`flex items-center gap-2 ${isMe ? "justify-end" : ""}`}>
+                              <span className="text-[11px] font-semibold text-[var(--text-secondary)]">
+                                {isMe ? "You" : `@${msg.sender?.handle || "user"}`}
+                              </span>
+                              <span className="text-[9px] text-[var(--text-muted)] font-mono">
+                                {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              {msg.is_pinned && <Pin className="w-2.5 h-2.5 text-amber-400 rotate-45" />}
+                            </div>
+
+                            <div
+                              className={`p-3 rounded-2xl text-xs leading-relaxed border relative group/bubble ${
+                                isMe
+                                  ? "bg-[rgba(108,92,231,0.1)] border-[rgba(108,92,231,0.3)] text-white rounded-tr-sm"
+                                  : "bg-[var(--bg-surface)] border-[var(--glass-border)] text-[var(--text-secondary)] rounded-tl-sm"
+                              }`}
+                            >
+                              {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                              {msg.media_url && (
+                                <div className="mt-1.5 rounded-lg overflow-hidden border border-white/5 bg-black/25">
+                                  {isVideoUrl(msg.media_url) ? (
+                                    <video
+                                      src={msg.media_url}
+                                      controls
+                                      className="max-h-[240px] w-full rounded object-contain"
+                                    />
+                                  ) : (
+                                    <img
+                                      src={msg.media_url}
+                                      alt="Attachment"
+                                      className="max-h-[240px] w-full rounded object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() => window.open(msg.media_url, "_blank")}
+                                    />
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Hover Options (Pin/Delete for Organizer) */}
+                              {isOrganiser && (
+                                <div
+                                  className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover/bubble:opacity-100 transition-opacity flex gap-1 ${
+                                    isMe ? "right-full mr-2" : "left-full ml-2"
+                                  }`}
+                                >
+                                  <button
+                                    onClick={() => handleTogglePinEventMsg(msg)}
+                                    className={`p-1.5 rounded-full border bg-[var(--bg-deep)] transition-all hover:scale-105 ${
+                                      msg.is_pinned
+                                        ? "text-amber-400 border-amber-500/30"
+                                        : "text-[var(--text-muted)] border-[var(--border-subtle)] hover:text-amber-400"
+                                    }`}
+                                    title={msg.is_pinned ? "Unpin Announcement" : "Pin Announcement"}
+                                  >
+                                    <Pin className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteEventMessage(msg.id)}
+                                    className="p-1.5 rounded-full border border-red-500/30 bg-[var(--bg-deep)] text-red-400 transition-all hover:scale-105 hover:bg-red-500/10"
+                                    title="Delete Message"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
-            </div>
-          )}
+
+                {/* Input block */}
+                <div className="p-3 bg-[var(--bg-deep)] border-t border-[var(--border-subtle)] flex flex-col gap-2">
+                  <>
+                    {/* Media Preview */}
+                    {mediaPreviewUrl && (
+                      <div className="relative inline-block self-start rounded-xl overflow-hidden border border-[var(--glass-border)] bg-black/45 p-1 group">
+                        {selectedFile?.type.startsWith("video/") ? (
+                          <video src={mediaPreviewUrl} className="w-20 h-20 object-cover rounded-lg" muted />
+                        ) : (
+                          <img src={mediaPreviewUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
+                        )}
+                        <button
+                          type="button"
+                          onClick={handleClearMedia}
+                          className="absolute -top-1 -right-1 p-1.5 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors shadow-lg"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
+                    <form onSubmit={handleSendEventMessage} className="flex gap-2 items-center max-w-4xl mx-auto w-full">
+                      <input
+                        type="file"
+                        ref={mediaInputRef}
+                        onChange={handleMediaChange}
+                        accept="image/*,video/*"
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => mediaInputRef.current?.click()}
+                        disabled={uploadingMedia || submittingMsg}
+                        className="p-2.5 rounded-xl bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-white transition-colors"
+                        title="Attach Image or Video"
+                      >
+                        {uploadingMedia ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Paperclip className="w-5 h-5" />
+                        )}
+                      </button>
+                      <input
+                        type="text"
+                        value={inputMsg}
+                        onChange={(e) => setInputMsg(e.target.value)}
+                        placeholder="Coordinate ride shares, plan layout, discuss food..."
+                        className="flex-1 bg-[var(--bg-surface)] text-sm text-white placeholder-[var(--text-muted)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] focus:outline-none rounded-xl px-4 py-2.5 transition-colors"
+                      />
+                      <button
+                        type="submit"
+                        disabled={(!inputMsg.trim() && !selectedFile) || submittingMsg || uploadingMedia}
+                        className={`p-2.5 rounded-xl flex-shrink-0 transition-all ${
+                          inputMsg.trim() || selectedFile
+                            ? "bg-[var(--accent-primary)] text-white shadow-lg cursor-pointer"
+                            : "bg-[var(--bg-surface)] text-[var(--text-muted)] cursor-not-allowed"
+                        }`}
+                      >
+                        {submittingMsg ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Send className="w-5 h-5" />
+                        )}
+                      </button>
+                    </form>
+                  </>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
       </div>

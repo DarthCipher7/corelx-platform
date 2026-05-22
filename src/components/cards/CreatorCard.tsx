@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { MapPin, CheckCircle, Users, FolderOpen } from "lucide-react";
 import Image from "next/image";
@@ -8,6 +9,7 @@ import { formatNumber } from "@/lib/utils";
 import NeonBadge from "@/components/ui/NeonBadge";
 import Button from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
+import { createClient } from "@/utils/supabase/client";
 
 interface CreatorCardProps {
   creator: Creator;
@@ -16,7 +18,82 @@ interface CreatorCardProps {
 
 export default function CreatorCard({ creator, index = 0 }: CreatorCardProps) {
   const router = useRouter();
-  
+  const supabase = createClient();
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [followerCount, setFollowerCount] = useState<number>(0);
+  const [isFollowing, setIsFollowing] = useState<boolean>(false);
+
+  useEffect(() => {
+    async function loadFollowData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUser(user);
+
+        // Fetch actual follower count from follows table
+        const { count } = await supabase
+          .from('follows')
+          .select('*', { count: 'exact', head: true })
+          .eq('following_id', creator.id);
+
+        setFollowerCount(count || 0);
+
+        if (user) {
+          const { data: followRecord } = await supabase
+            .from('follows')
+            .select('id')
+            .eq('follower_id', user.id)
+            .eq('following_id', creator.id)
+            .maybeSingle();
+          setIsFollowing(!!followRecord);
+        }
+      } catch (error) {
+        console.error("Error loading follow data for creator:", creator.id, error);
+      }
+    }
+    loadFollowData();
+  }, [creator.id, supabase]);
+
+  const toggleFollow = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+
+    const nextIsFollowing = !isFollowing;
+    setIsFollowing(nextIsFollowing);
+    setFollowerCount(prev => prev + (nextIsFollowing ? 1 : -1));
+
+    try {
+      if (nextIsFollowing) {
+        const { error } = await supabase.from('follows').insert({
+          follower_id: currentUser.id,
+          following_id: creator.id
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('follows').delete()
+          .eq('follower_id', currentUser.id)
+          .eq('following_id', creator.id);
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Error toggling follow:", error);
+      // Rollback
+      setIsFollowing(!nextIsFollowing);
+      setFollowerCount(prev => prev + (nextIsFollowing ? -1 : 1));
+    }
+  };
+
+  const handleMessageClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!currentUser) {
+      router.push("/login");
+      return;
+    }
+    router.push(`/messages?with=${creator.id}`);
+  };
+
   return (
     <motion.article
       onClick={() => router.push(`/studio/${creator.handle}`)}
@@ -136,7 +213,7 @@ export default function CreatorCard({ creator, index = 0 }: CreatorCardProps) {
           style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
         >
           {[
-            { label: "Followers", value: formatNumber(creator.followers), icon: Users },
+            { label: "Followers", value: formatNumber(followerCount), icon: Users },
             { label: "Projects", value: creator.projects, icon: FolderOpen },
           ].map(({ label, value, icon: Icon }) => (
             <div key={label} className="flex items-center gap-1.5">
@@ -161,10 +238,22 @@ export default function CreatorCard({ creator, index = 0 }: CreatorCardProps) {
 
         {/* Action buttons */}
         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-          <Button variant="primary" size="sm" className="flex-1 justify-center">
-            Follow
+          <Button
+            variant={isFollowing ? "ghost" : "primary"}
+            size="sm"
+            className="flex-1 justify-center"
+            onClick={toggleFollow}
+            disabled={currentUser?.id === creator.id}
+          >
+            {isFollowing ? "Following" : "Follow"}
           </Button>
-          <Button variant="ghost" size="sm" className="flex-1 justify-center">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1 justify-center"
+            onClick={handleMessageClick}
+            disabled={currentUser?.id === creator.id}
+          >
             Message
           </Button>
         </div>

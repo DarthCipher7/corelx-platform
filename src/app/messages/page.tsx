@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Search, Send, CheckCheck, MoreVertical, Flame } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 interface UserProfile {
   id: string;
@@ -24,6 +25,7 @@ interface Message {
 
 export default function MessagesPage() {
   const supabase = createClient();
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [search, setSearch] = useState("");
   
@@ -57,7 +59,7 @@ export default function MessagesPage() {
     async function loadInitialData() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        setLoading(false);
+        router.push("/login?next=/messages");
         return;
       }
       setCurrentUser(user);
@@ -69,6 +71,8 @@ export default function MessagesPage() {
           .select('sender_id, recipient_id, created_at')
           .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
           .order('created_at', { ascending: false });
+
+        let loadedThreads: UserProfile[] = [];
 
         if (recentMessages && recentMessages.length > 0) {
           // Extract unique counterparty IDs
@@ -83,29 +87,64 @@ export default function MessagesPage() {
               .in('id', partnerIds);
 
             if (users) {
-              const formattedUsers: UserProfile[] = users.map(u => ({
+              loadedThreads = users.map(u => ({
                 id: u.id,
                 handle: u.handle,
                 display_name: u.display_name || u.handle,
-                avatar_url: u.avatar_url,
+                avatar_url: u.avatar_url || undefined,
                 is_online: u.availability_status === 'Available for work'
               }));
-              setThreads(formattedUsers);
-              
-              // Select the first thread by default
-              if (formattedUsers.length > 0) {
-                setActiveThread(formattedUsers[0]);
-              }
             }
           }
         } else {
           // Mock some threads for empty state preview
-          setThreads([
+          loadedThreads = [
             { id: "mock-1", handle: "aria.creates", display_name: "Aria Chen", is_online: true, avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria&backgroundColor=6c5ce7" },
             { id: "mock-2", handle: "eli.motion", display_name: "Eli Ramos", is_online: false, avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=eli&backgroundColor=a29bfe" },
             { id: "mock-3", handle: "lunavisuals", display_name: "Luna Voss", is_online: true, avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=luna&backgroundColor=fd79a8" }
-          ]);
-          setActiveThread({ id: "mock-1", handle: "aria.creates", display_name: "Aria Chen", is_online: true, avatar_url: "https://api.dicebear.com/8.x/lorelei/svg?seed=aria&backgroundColor=6c5ce7" });
+          ];
+        }
+
+        // Retrieve 'with' query parameter inside useEffect
+        const searchParams = new URLSearchParams(window.location.search);
+        const withUserId = searchParams.get("with");
+
+        if (withUserId) {
+          const existingThread = loadedThreads.find(t => t.id === withUserId);
+          if (existingThread) {
+            setThreads(loadedThreads);
+            setActiveThread(existingThread);
+          } else {
+            // Fetch user details from supabase
+            const { data: userData, error: userError } = await supabase
+              .from('users')
+              .select('id, handle, display_name, avatar_url, availability_status')
+              .eq('id', withUserId)
+              .single();
+
+            if (userData && !userError) {
+              const newThread: UserProfile = {
+                id: userData.id,
+                handle: userData.handle,
+                display_name: userData.display_name || userData.handle,
+                avatar_url: userData.avatar_url || undefined,
+                is_online: userData.availability_status === 'Available for work'
+              };
+              const updatedThreads = [newThread, ...loadedThreads];
+              setThreads(updatedThreads);
+              setActiveThread(newThread);
+            } else {
+              setThreads(loadedThreads);
+              if (loadedThreads.length > 0) {
+                setActiveThread(loadedThreads[0]);
+              }
+            }
+          }
+        } else {
+          setThreads(loadedThreads);
+          if (loadedThreads.length > 0) {
+            setActiveThread(loadedThreads[0]);
+          }
         }
       } catch (err) {
         console.error("Failed to load threads", err);
@@ -114,7 +153,7 @@ export default function MessagesPage() {
     }
     
     loadInitialData();
-  }, [supabase]);
+  }, [supabase, router]);
 
   // Load messages when active thread changes
   useEffect(() => {

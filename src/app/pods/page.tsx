@@ -888,12 +888,8 @@ export default function PodsPage() {
 
   /* ── Restore state on mount ─────────────────────────────────── */
   useEffect(() => {
-    const storedTab = sessionStorage.getItem("pods_page_tab");
     const storedScope = sessionStorage.getItem("pods_scope_filter");
     const storedFilter = sessionStorage.getItem("pods_active_filter");
-    if (storedTab === "pods" || storedTab === "events") {
-      setPageTab(storedTab);
-    }
     if (storedScope === "local" || storedScope === "global") {
       setScopeFilter(storedScope);
     }
@@ -903,10 +899,6 @@ export default function PodsPage() {
   }, []);
 
   /* ── Save state on changes ──────────────────────────────────── */
-  useEffect(() => {
-    sessionStorage.setItem("pods_page_tab", pageTab);
-  }, [pageTab]);
-
   useEffect(() => {
     sessionStorage.setItem("pods_scope_filter", scopeFilter);
   }, [scopeFilter]);

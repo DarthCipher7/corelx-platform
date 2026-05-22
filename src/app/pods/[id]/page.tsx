@@ -23,6 +23,7 @@ import {
   Loader2,
   Calendar,
   ArrowLeft,
+  Paperclip,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
@@ -45,6 +46,7 @@ interface PodMessage {
   pod_id: string;
   sender_id: string;
   content: string;
+  media_url?: string;
   is_pinned: boolean;
   is_system: boolean;
   created_at: string;
@@ -55,8 +57,12 @@ interface PodMessage {
   };
 }
 
-const INPUT_CLS =
-  "w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-3 focus:outline-none focus:ring-1 focus:ring-[var(--accent-primary)] text-sm transition-all";
+const isVideoUrl = (url: string) => {
+  if (!url) return false;
+  const cleanUrl = url.split("?")[0];
+  const videoExtensions = [".mp4", ".webm", ".mov", ".ogg", ".m4v"];
+  return videoExtensions.some((ext) => cleanUrl.toLowerCase().endsWith(ext));
+};
 
 export default function PodDetailPage() {
   const { id: podId } = useParams() as { id: string };
@@ -84,6 +90,12 @@ export default function PodDetailPage() {
   const [submittingMsg, setSubmittingMsg] = useState(false);
   const [pinnedMessages, setPinnedMessages] = useState<PodMessage[]>([]);
   const [showPinnedHeader, setShowPinnedHeader] = useState(true);
+
+  // Media sharing states
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
 
   // Members Tab States
   const [membersList, setMembersList] = useState<PodMemberProfile[]>([]);
@@ -368,24 +380,81 @@ export default function PodDetailPage() {
   };
 
   // 4. Message Actions (Send, Pin/Unpin)
+  const handleClearMedia = () => {
+    setSelectedFile(null);
+    if (mediaPreviewUrl) {
+      URL.revokeObjectURL(mediaPreviewUrl);
+      setMediaPreviewUrl(null);
+    }
+    if (mediaInputRef.current) {
+      mediaInputRef.current.value = "";
+    }
+  };
+
+  const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 25 * 1024 * 1024) {
+        alert("File too large. Max 25MB allowed.");
+        return;
+      }
+      setSelectedFile(file);
+      setMediaPreviewUrl(URL.createObjectURL(file));
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputMsg.trim() || !currentUser || pod.pod_status === "archived") return;
+    if ((!inputMsg.trim() && !selectedFile) || !currentUser || pod.pod_status === "archived") return;
 
     const text = inputMsg.trim();
+    const file = selectedFile;
+
     setInputMsg("");
+    handleClearMedia();
     setSubmittingMsg(true);
 
-    const { error } = await supabase.from("pod_messages").insert({
-      pod_id: podId,
-      sender_id: currentUser.id,
-      content: text,
-    });
+    try {
+      let uploadedUrl: string | undefined = undefined;
 
-    setSubmittingMsg(false);
-    if (error) {
-      alert(error.message);
-      setInputMsg(text); // Restore text
+      if (file) {
+        setUploadingMedia(true);
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+        const filePath = `chat_media/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("media")
+          .upload(filePath, file);
+
+        if (uploadError) {
+          throw new Error(`Media upload failed: ${uploadError.message}`);
+        }
+
+        const { data: urlData } = supabase.storage.from("media").getPublicUrl(filePath);
+        uploadedUrl = urlData.publicUrl;
+      }
+
+      const { error } = await supabase.from("pod_messages").insert({
+        pod_id: podId,
+        sender_id: currentUser.id,
+        content: text || (file ? file.name : ""),
+        media_url: uploadedUrl || null,
+      });
+
+      if (error) {
+        throw new Error(error.message);
+      }
+    } catch (err: any) {
+      alert(err.message || "Failed to send message");
+      setInputMsg(text);
+      if (file) {
+        setSelectedFile(file);
+        setMediaPreviewUrl(URL.createObjectURL(file));
+      }
+    } finally {
+      setSubmittingMsg(false);
+      setUploadingMedia(false);
     }
   };
 
@@ -897,7 +966,27 @@ export default function PodDetailPage() {
                                   : "bg-[var(--bg-surface)] border-[var(--glass-border)] text-[var(--text-secondary)] rounded-tl-sm"
                               }`}
                             >
-                              <p className="whitespace-pre-wrap">{msg.content}</p>
+                              {msg.content && (
+                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                              )}
+                              {msg.media_url && (
+                                <div className="mt-1.5 rounded-lg overflow-hidden border border-white/5 bg-black/25">
+                                  {isVideoUrl(msg.media_url) ? (
+                                    <video
+                                      src={msg.media_url}
+                                      controls
+                                      className="max-h-[240px] w-full rounded object-contain"
+                                    />
+                                  ) : (
+                                    <img
+                                      src={msg.media_url}
+                                      alt="Attachment"
+                                      className="max-h-[240px] w-full rounded object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                                      onClick={() => window.open(msg.media_url, "_blank")}
+                                    />
+                                  )}
+                                </div>
+                              )}
 
                               {/* Hover Options (Pin/Unpin) */}
                               {isAdmin && (
@@ -927,37 +1016,77 @@ export default function PodDetailPage() {
                 </div>
 
                 {/* Input block */}
-                <div className="p-3 bg-[var(--bg-deep)] border-t border-[var(--border-subtle)]">
+                <div className="p-3 bg-[var(--bg-deep)] border-t border-[var(--border-subtle)] flex flex-col gap-2">
                   {isArchived ? (
                     <div className="p-3 text-center text-xs text-[var(--text-muted)] font-mono flex items-center justify-center gap-2">
                       <Archive className="w-4 h-4 text-red-500" />
                       This Pod has been archived. Chat is read-only.
                     </div>
                   ) : (
-                    <form onSubmit={handleSendMessage} className="flex gap-2 items-center max-w-4xl mx-auto">
-                      <input
-                        type="text"
-                        value={inputMsg}
-                        onChange={(e) => setInputMsg(e.target.value)}
-                        placeholder="Discuss studying, hacking, residency, gaming..."
-                        className="flex-1 bg-[var(--bg-surface)] text-sm text-white placeholder-[var(--text-muted)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] focus:outline-none rounded-xl px-4 py-2.5 transition-colors"
-                      />
-                      <button
-                        type="submit"
-                        disabled={!inputMsg.trim() || submittingMsg}
-                        className={`p-2.5 rounded-xl flex-shrink-0 transition-all ${
-                          inputMsg.trim()
-                            ? "bg-[var(--accent-primary)] text-white shadow-lg"
-                            : "bg-[var(--bg-surface)] text-[var(--text-muted)]"
-                        }`}
-                      >
-                        {submittingMsg ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <Send className="w-5 h-5" />
-                        )}
-                      </button>
-                    </form>
+                    <>
+                      {/* Media Preview */}
+                      {mediaPreviewUrl && (
+                        <div className="relative inline-block self-start rounded-xl overflow-hidden border border-[var(--glass-border)] bg-black/45 p-1 group">
+                          {selectedFile?.type.startsWith("video/") ? (
+                            <video src={mediaPreviewUrl} className="w-20 h-20 object-cover rounded-lg" muted />
+                          ) : (
+                            <img src={mediaPreviewUrl} alt="Preview" className="w-20 h-20 object-cover rounded-lg" />
+                          )}
+                          <button
+                            type="button"
+                            onClick={handleClearMedia}
+                            className="absolute -top-1 -right-1 p-1.5 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors shadow-lg"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+
+                      <form onSubmit={handleSendMessage} className="flex gap-2 items-center max-w-4xl mx-auto w-full">
+                        <input
+                          type="file"
+                          ref={mediaInputRef}
+                          onChange={handleMediaChange}
+                          accept="image/*,video/*"
+                          className="hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => mediaInputRef.current?.click()}
+                          disabled={uploadingMedia || submittingMsg}
+                          className="p-2.5 rounded-xl bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-white transition-colors"
+                          title="Attach Image or Video"
+                        >
+                          {uploadingMedia ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <Paperclip className="w-5 h-5" />
+                          )}
+                        </button>
+                        <input
+                          type="text"
+                          value={inputMsg}
+                          onChange={(e) => setInputMsg(e.target.value)}
+                          placeholder="Discuss studying, hacking, residency, gaming..."
+                          className="flex-1 bg-[var(--bg-surface)] text-sm text-white placeholder-[var(--text-muted)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] focus:outline-none rounded-xl px-4 py-2.5 transition-colors"
+                        />
+                        <button
+                          type="submit"
+                          disabled={(!inputMsg.trim() && !selectedFile) || submittingMsg || uploadingMedia}
+                          className={`p-2.5 rounded-xl flex-shrink-0 transition-all ${
+                            inputMsg.trim() || selectedFile
+                              ? "bg-[var(--accent-primary)] text-white shadow-lg cursor-pointer"
+                              : "bg-[var(--bg-surface)] text-[var(--text-muted)] cursor-not-allowed"
+                          }`}
+                        >
+                          {submittingMsg ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <Send className="w-5 h-5" />
+                          )}
+                        </button>
+                      </form>
+                    </>
                   )}
                 </div>
               </motion.div>

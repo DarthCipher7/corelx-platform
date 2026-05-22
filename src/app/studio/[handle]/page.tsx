@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { notFound, useRouter } from "next/navigation";
-import { MapPin, Users, FolderOpen, CheckCircle, ArrowRight, X, Send, Flame } from "lucide-react";
+import { MapPin, Users, FolderOpen, CheckCircle, ArrowRight, X, Send, Flame, Loader2 } from "lucide-react";
 import FeedPost from "@/components/cards/FeedPost";
 import FlareCard from "@/components/cards/FlareCard";
 import FlaresViewer from "@/components/explore/FlaresViewer";
@@ -33,6 +33,12 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
   const [activeTab, setActiveTab] = useState<"projects" | "flares">("projects");
   const [creatorFlares, setCreatorFlares] = useState<Flare[]>([]);
   const [selectedFlareIndex, setSelectedFlareIndex] = useState<number | null>(null);
+
+  // Follows modal state
+  const [isFollowsModalOpen, setIsFollowsModalOpen] = useState(false);
+  const [followsModalType, setFollowsModalType] = useState<"followers" | "following">("followers");
+  const [followsList, setFollowsList] = useState<any[]>([]);
+  const [loadingFollowsList, setLoadingFollowsList] = useState(false);
 
   useEffect(() => {
     async function loadData() {
@@ -196,6 +202,137 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
     }
   };
 
+  const fetchFollowsList = async (type: "followers" | "following") => {
+    if (!profile) return;
+    setLoadingFollowsList(true);
+    setFollowsList([]);
+    try {
+      let ids: string[] = [];
+      if (type === "followers") {
+        const { data, error } = await supabase
+          .from("follows")
+          .select("follower_id")
+          .eq("following_id", profile.id);
+        if (error) throw error;
+        ids = (data || []).map((row: any) => row.follower_id);
+      } else {
+        const { data, error } = await supabase
+          .from("follows")
+          .select("following_id")
+          .eq("follower_id", profile.id);
+        if (error) throw error;
+        ids = (data || []).map((row: any) => row.following_id);
+      }
+
+      if (ids.length === 0) {
+        setFollowsList([]);
+        return;
+      }
+
+      const { data: usersData, error: usersError } = await supabase
+        .from("users")
+        .select("id, handle, display_name, avatar_url, tagline")
+        .in("id", ids);
+
+      if (usersError) throw usersError;
+
+      let followedMap: Record<string, boolean> = {};
+      if (currentUser && usersData && usersData.length > 0) {
+        const { data: followRecords, error: followError } = await supabase
+          .from("follows")
+          .select("following_id")
+          .eq("follower_id", currentUser.id)
+          .in("following_id", usersData.map(u => u.id));
+        
+        if (!followError && followRecords) {
+          followRecords.forEach((rec: any) => {
+            followedMap[rec.following_id] = true;
+          });
+        }
+      }
+
+      const listWithFollowState = (usersData || []).map((u: any) => ({
+        ...u,
+        isFollowedByMe: !!followedMap[u.id]
+      }));
+
+      const orderedList = ids
+        .map(id => listWithFollowState.find(u => u.id === id))
+        .filter(Boolean);
+
+      setFollowsList(orderedList);
+    } catch (err) {
+      console.error("Error fetching follows list:", err);
+    } finally {
+      setLoadingFollowsList(false);
+    }
+  };
+
+  const handleOpenFollowsModal = (type: "followers" | "following") => {
+    setFollowsModalType(type);
+    setIsFollowsModalOpen(true);
+    fetchFollowsList(type);
+  };
+
+  const toggleFollowListItem = async (targetUser: any) => {
+    if (!currentUser) return router.push("/login");
+
+    const targetId = targetUser.id;
+    const isCurrentlyFollowing = targetUser.isFollowedByMe;
+
+    // Optimistically update
+    setFollowsList(prev => prev.map(u => {
+      if (u.id === targetId) {
+        return { ...u, isFollowedByMe: !isCurrentlyFollowing };
+      }
+      return u;
+    }));
+
+    if (targetId === profile.id) {
+      setIsFollowing(!isCurrentlyFollowing);
+      setFollowerCount(prev => isCurrentlyFollowing ? prev - 1 : prev + 1);
+    }
+
+    if (isOwner && followsModalType === "following") {
+      setFollowingCount(prev => isCurrentlyFollowing ? prev - 1 : prev + 1);
+    }
+
+    try {
+      if (isCurrentlyFollowing) {
+        const { error } = await supabase
+          .from("follows")
+          .delete()
+          .eq("follower_id", currentUser.id)
+          .eq("following_id", targetId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("follows")
+          .insert({
+            follower_id: currentUser.id,
+            following_id: targetId
+          });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Failed to toggle follow status in list:", err);
+      // Revert
+      setFollowsList(prev => prev.map(u => {
+        if (u.id === targetId) {
+          return { ...u, isFollowedByMe: isCurrentlyFollowing };
+        }
+        return u;
+      }));
+      if (targetId === profile.id) {
+        setIsFollowing(isCurrentlyFollowing);
+        setFollowerCount(prev => isCurrentlyFollowing ? prev + 1 : prev - 1);
+      }
+      if (isOwner && followsModalType === "following") {
+        setFollowingCount(prev => isCurrentlyFollowing ? prev + 1 : prev - 1);
+      }
+    }
+  };
+
   const handleMessageRedirect = () => {
     if (!currentUser) return router.push("/login");
     router.push(`/messages?with=${profile.id}`);
@@ -240,8 +377,18 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
             </div>
             <p className="font-medium text-lg mb-2" style={{ color: "var(--accent-primary)" }}>@{profile.handle}</p>
             <div className="flex flex-wrap items-center gap-4 text-sm" style={{ color: "var(--text-muted)" }}>
-              <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {followerCount} followers</span>
-              <span className="flex items-center gap-1.5"><Users className="w-4 h-4" /> {followingCount} following</span>
+              <button
+                onClick={() => handleOpenFollowsModal("followers")}
+                className="flex items-center gap-1.5 hover:text-white transition-colors duration-200 cursor-pointer focus:outline-none"
+              >
+                <Users className="w-4 h-4" /> {followerCount} followers
+              </button>
+              <button
+                onClick={() => handleOpenFollowsModal("following")}
+                className="flex items-center gap-1.5 hover:text-white transition-colors duration-200 cursor-pointer focus:outline-none"
+              >
+                <Users className="w-4 h-4" /> {followingCount} following
+              </button>
             </div>
           </div>
 
@@ -404,6 +551,120 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
             onClose={() => setSelectedFlareIndex(null)}
           />
         )}
+
+        {/* Follows List Modal */}
+        <AnimatePresence>
+          {isFollowsModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              {/* Backdrop with fade in */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsFollowsModalOpen(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-md"
+              />
+
+              {/* Modal Box */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="relative w-full max-w-md max-h-[80vh] overflow-hidden rounded-2xl border border-white/10 bg-[#0d0d15]/90 backdrop-blur-xl text-white shadow-2xl flex flex-col z-10"
+              >
+                {/* Header */}
+                <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                  <h3 className="text-lg font-display font-semibold capitalize">
+                    {followsModalType}
+                  </h3>
+                  <button
+                    onClick={() => setIsFollowsModalOpen(false)}
+                    className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition-colors focus:outline-none"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Scrollable list content */}
+                <div className="flex-1 overflow-y-auto p-4 scrollbar-none">
+                  {loadingFollowsList ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 text-purple-500 animate-spin mb-2" />
+                      <p className="text-sm text-gray-400">Loading list...</p>
+                    </div>
+                  ) : followsList.length === 0 ? (
+                    <div className="text-center py-12 text-gray-400">
+                      No {followsModalType} found.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {followsList.map((user) => {
+                        const isSelf = currentUser?.id === user.id;
+                        return (
+                          <div
+                            key={user.id}
+                            className="flex items-center justify-between gap-3 p-2 rounded-xl transition-all duration-200 hover:bg-white/5"
+                          >
+                            {/* User card link */}
+                            <div
+                              onClick={() => {
+                                router.push(`/studio/${user.handle}`);
+                                setIsFollowsModalOpen(false);
+                              }}
+                              className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                            >
+                              <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 flex items-center justify-center font-bold text-white text-base bg-gradient-to-br from-purple-500 to-cyan-500">
+                                {user.avatar_url ? (
+                                  <img
+                                    src={user.avatar_url}
+                                    alt={user.display_name || user.handle}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  user.display_name?.charAt(0) || user.handle?.charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold text-sm truncate block text-white hover:text-purple-300 transition-colors">
+                                    {user.display_name || user.handle}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-purple-400 font-medium block">
+                                  @{user.handle}
+                                </span>
+                                {user.tagline && (
+                                  <span className="text-xs text-gray-400 block truncate mt-0.5">
+                                    {user.tagline}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Follow/Unfollow Button */}
+                            {!isSelf && currentUser && (
+                              <button
+                                onClick={() => toggleFollowListItem(user)}
+                                className={`shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full transition-all duration-200 ${
+                                  user.isFollowedByMe
+                                    ? "bg-white/10 border border-white/15 text-white hover:border-red-500/40 hover:text-red-300 hover:bg-red-500/10"
+                                    : "bg-purple-600 text-white hover:bg-purple-500 shadow-[0_0_10px_rgba(147,51,234,0.3)]"
+                                }`}
+                              >
+                                {user.isFollowedByMe ? "Unfollow" : "Follow"}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
       </div>
     </div>
