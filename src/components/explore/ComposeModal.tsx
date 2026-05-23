@@ -271,7 +271,7 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
                 className="w-full py-4 border border-dashed border-white/10 hover:border-[var(--accent-primary)] hover:bg-[var(--accent-primary-glow)] rounded-xl flex items-center justify-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] hover:text-white transition-all bg-white/3"
               >
                 <Paperclip className="w-4 h-4 text-purple-400 animate-pulse" />
-                <span>Upload Picture, Video, or Audio (Max 50MB)</span>
+                <span>Upload Picture, Video, or Audio (Max 100MB)</span>
                 <input 
                   id="trace-media-upload" 
                   type="file" 
@@ -281,8 +281,8 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
                     const file = e.target.files?.[0];
                     if (!file) return;
                     setErrorText("");
-                    if (file.size > 50 * 1024 * 1024) {
-                      setErrorText("File size too large. Max 50MB allowed.");
+                    if (file.size > 100 * 1024 * 1024) {
+                      setErrorText("File size too large. Max 100MB allowed.");
                       return;
                     }
                     let type: "image" | "video" | "audio" | null = null;

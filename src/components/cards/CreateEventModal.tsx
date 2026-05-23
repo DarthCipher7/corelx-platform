@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
@@ -90,7 +90,7 @@ const TRUST_TIERS: {
   },
 ];
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 // ─── Step Slide Variants ──────────────────────────────────────────────────────
 
@@ -144,12 +144,61 @@ export default function CreateEventModal({
   const [requireFace, setRequireFace] = useState(false);
   const [requireMutual, setRequireMutual] = useState(false);
 
+  // Sharing states
+  const [userPods, setUserPods] = useState<any[]>([]);
+  const [selectedPods, setSelectedPods] = useState<string[]>([]);
+  const [loadingPods, setLoadingPods] = useState(false);
+
   // Submission state
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // ─── Today's date string ────────────────────────────────────────────────────
   const todayStr = new Date().toISOString().split("T")[0];
+
+  // Fetch user pods for sharing on mount/open
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    
+    async function fetchUserPods() {
+      setLoadingPods(true);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("pod_members")
+          .select(`
+            pod_id,
+            pods (
+              id,
+              name,
+              pod_status
+            )
+          `)
+          .eq("user_id", userId);
+          
+        if (!error && data) {
+          const activePods = data
+            .map((item: any) => item.pods)
+            .filter((p: any) => p && p.pod_status !== "archived");
+          setUserPods(activePods);
+        }
+      } catch (err) {
+        console.error("Error fetching user pods for event sharing:", err);
+      } finally {
+        setLoadingPods(false);
+      }
+    }
+    
+    fetchUserPods();
+  }, [isOpen, userId]);
+
+  const handleTogglePod = (podId: string) => {
+    setSelectedPods((prev) =>
+      prev.includes(podId)
+        ? prev.filter((id) => id !== podId)
+        : [...prev, podId]
+    );
+  };
 
   // ─── Navigation ─────────────────────────────────────────────────────────────
 
@@ -174,6 +223,10 @@ export default function CreateEventModal({
         return date !== "" && startTime !== "" && endTime !== "";
       case 4:
         return !hasLimit || maxHeadcount >= 2;
+      case 5:
+        return true;
+      case 6:
+        return true;
       default:
         return true;
     }
@@ -188,7 +241,7 @@ export default function CreateEventModal({
 
     try {
       const supabase = createClient();
-      const { error: insertError } = await supabase
+      const { data: newEvent, error: insertError } = await supabase
         .from("events")
         .insert({
           organiser_id: userId,
@@ -202,9 +255,28 @@ export default function CreateEventModal({
           max_headcount: hasLimit ? maxHeadcount : null,
           require_mutual: requireMutual,
           require_face: requireFace,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      // Broadcast share message to selected pods
+      if (selectedPods.length > 0 && newEvent) {
+        const shareContent = `📅 **Event Shared:** Created a new event: **${title.trim()}**! \nClick here to view details and RSVP: /events/${newEvent.id}`;
+        
+        await Promise.all(
+          selectedPods.map((podId) =>
+            supabase.from("pod_messages").insert({
+              pod_id: podId,
+              sender_id: userId,
+              content: shareContent,
+              is_system: true,
+            })
+          )
+        );
+      }
+
       onSuccess();
       onClose();
       resetForm();
@@ -232,6 +304,7 @@ export default function CreateEventModal({
     setSelectedTier("checked");
     setRequireFace(false);
     setRequireMutual(false);
+    setSelectedPods([]);
     setError(null);
   }
 
@@ -355,6 +428,14 @@ export default function CreateEventModal({
                           setRequireFace={setRequireFace}
                           requireMutual={requireMutual}
                           setRequireMutual={setRequireMutual}
+                        />
+                      )}
+                      {step === 6 && (
+                        <StepSharePods
+                          pods={userPods}
+                          selected={selectedPods}
+                          onToggle={handleTogglePod}
+                          loading={loadingPods}
                         />
                       )}
                     </motion.div>
@@ -943,5 +1024,71 @@ function CheckboxRow({
         {label}
       </span>
     </label>
+  );
+}
+
+function StepSharePods({
+  pods,
+  selected,
+  onToggle,
+  loading,
+}: {
+  pods: any[];
+  selected: string[];
+  onToggle: (podId: string) => void;
+  loading: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-4">
+      <StepHeader>Share Event to Pods</StepHeader>
+      <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+        Select the pods you would like to announce this event to. A link and announcement will automatically be posted to the pod's chat space.
+      </p>
+
+      {loading ? (
+        <div className="py-10 flex justify-center items-center">
+          <div className="w-6 h-6 border-2 border-[var(--accent-primary)] border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : pods.length > 0 ? (
+        <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
+          {pods.map((pod) => {
+            const isChecked = selected.includes(pod.id);
+            return (
+              <label
+                key={pod.id}
+                className="flex items-center gap-3 p-3 rounded-2xl border bg-white/3 cursor-pointer transition-all hover:bg-white/5"
+                style={{
+                  borderColor: isChecked ? "var(--accent-primary)" : "var(--glass-border)",
+                  backgroundColor: isChecked ? "rgba(108,92,231,0.08)" : "transparent"
+                }}
+              >
+                <div
+                  className="relative w-4.5 h-4.5 rounded border flex items-center justify-center flex-shrink-0 transition-all duration-150"
+                  style={{
+                    background: isChecked ? "var(--accent-primary)" : "transparent",
+                    borderColor: isChecked ? "var(--accent-primary)" : "rgba(108,92,231,0.3)",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                    checked={isChecked}
+                    onChange={() => onToggle(pod.id)}
+                  />
+                  {isChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{pod.name}</p>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="py-8 text-center text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] rounded-2xl">
+          <p className="text-xs">You are not a member of any active pods.</p>
+        </div>
+      )}
+    </div>
   );
 }

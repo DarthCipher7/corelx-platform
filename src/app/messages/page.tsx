@@ -577,8 +577,8 @@ export default function MessagesPage() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (!file) return;
-                      if (file.size > 50 * 1024 * 1024) {
-                        alert("File is too large. Max size is 50MB.");
+                      if (file.size > 100 * 1024 * 1024) {
+                        alert("File is too large. Max size is 100MB.");
                         return;
                       }
                       setSelectedFile(file);

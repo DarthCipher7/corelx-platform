@@ -480,8 +480,8 @@ export default function EventDetailPage() {
   const handleMediaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 25 * 1024 * 1024) {
-        alert("File too large. Max 25MB allowed.");
+      if (file.size > 100 * 1024 * 1024) {
+        alert("File too large. Max 100MB allowed.");
         return;
       }
       setSelectedFile(file);

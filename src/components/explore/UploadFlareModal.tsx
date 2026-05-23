@@ -11,7 +11,7 @@ interface UploadFlareModalProps {
   onSuccess?: () => void;
 }
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB
 const MAX_DURATION = 60; // 60s
 const TARGET_RATIO = 9 / 16;
 const RATIO_TOLERANCE = 0.1;
@@ -53,7 +53,7 @@ export default function UploadFlareModal({ isOpen, onClose, onSuccess }: UploadF
     
     // 1. Check size
     if (selectedFile.size > MAX_FILE_SIZE) {
-      setError("File too large. Max 25MB allowed.");
+      setError("File too large. Max 100MB allowed.");
       return;
     }
     
@@ -327,7 +327,7 @@ export default function UploadFlareModal({ isOpen, onClose, onSuccess }: UploadF
                 </motion.div>
                 <p className="text-sm font-medium text-white mb-1">Drop your Flare here</p>
                 <p className="text-xs text-[var(--text-muted)] text-center max-w-[200px]">
-                  9:16 Vertical format.<br/>MP4 or WebM (Max 60s, 25MB)
+                  9:16 Vertical format.<br/>MP4 or WebM (Max 60s, 100MB)
                 </p>
               </div>
             ) : (
