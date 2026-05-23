@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { MapPin, Clock, Users, Check, Shield } from "lucide-react";
 import TrustTierBadge from "@/components/ui/TrustTierBadge";
+import OfficialTag from "@/components/ui/OfficialTag";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,7 @@ interface EventCardProps {
   currentHeadcount: number;
   maxHeadcount?: number;
   organiser: {
+    id?: string;
     handle: string;
     displayName: string;
     avatarUrl?: string;
@@ -418,8 +420,9 @@ export default function EventCard({
             handle={organiser.handle}
             size={24}
           />
-          <span className="text-xs text-white/40 font-mono truncate">
+          <span className="text-xs text-white/40 font-mono truncate flex items-center gap-1">
             @{organiser.handle}
+            {organiser.id && <OfficialTag entityId={organiser.id} size="sm" />}
           </span>
         </div>
 

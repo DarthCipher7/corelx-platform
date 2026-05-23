@@ -9,6 +9,7 @@ import NeonBadge from "@/components/ui/NeonBadge";
 import { createClient } from "@/utils/supabase/client";
 import { RevealEffect } from "@/components/ui/RevealEffect";
 import CommentDrawer from "./CommentDrawer";
+import OfficialTag from "@/components/ui/OfficialTag";
 import MediaPlayer from "@/components/ui/MediaPlayer";
 import BugReportLog from "@/components/cards/BugReportLog";
 
@@ -286,13 +287,13 @@ export default function FeedPost({ post, index = 0 }: FeedPostProps) {
               <span className="font-semibold text-sm font-display transition-colors" style={{ color: "var(--text-primary)" }}>
                 {post.creator.name}
               </span>
-              {post.creator.verified && (
-                <CheckCircle className="w-3.5 h-3.5 text-cyan-400 fill-cyan-400/20 drop-shadow-[0_0_4px_rgba(34,211,238,0.5)] shrink-0 animate-pulse" />
-              )}
+              <OfficialTag entityId={post.creator.id} />
               <span className="text-xs" style={{ color: "var(--text-secondary)" }}>@{post.creator.handle}</span>
               {post.creator.college && (
                 <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center gap-0.5">
-                  {post.creator.college.hub_type === 'society' ? '🏡' : post.creator.college.hub_type === 'corporate' ? '🏢' : '🏫'} {post.creator.college.short_name || post.creator.college.name}
+                  {post.creator.college.hub_type === 'society' ? '🏡' : post.creator.college.hub_type === 'corporate' ? '🏢' : '🏫'} 
+                  <span>{post.creator.college.short_name || post.creator.college.name}</span>
+                  <OfficialTag entityId={post.creator.college.id} size="sm" />
                 </span>
               )}
             </div>

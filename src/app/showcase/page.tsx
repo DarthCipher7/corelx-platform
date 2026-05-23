@@ -170,14 +170,14 @@ export default function ShowcasePage() {
                 style={{
                   background:
                     activeSort === label
-                      ? "rgba(108,92,231,0.15)"
-                      : "rgba(10,10,30,0.6)",
+                      ? "var(--accent-primary-glow)"
+                      : "var(--glass-bg)",
                   border:
                     activeSort === label
-                      ? "1px solid rgba(108,92,231,0.4)"
+                      ? "1px solid var(--accent-primary)"
                       : "1px solid var(--glass-border)",
                   color:
-                    activeSort === label ? "#a29bfe" : "var(--text-muted)",
+                    activeSort === label ? "var(--text-primary)" : "var(--text-muted)",
                 }}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -198,7 +198,7 @@ export default function ShowcasePage() {
                 background:
                   activeTag === tag
                     ? "var(--accent-primary)"
-                    : "rgba(10,10,30,0.6)",
+                    : "var(--glass-bg)",
                 color: activeTag === tag ? "#fff" : "var(--text-secondary)",
                 border:
                   activeTag === tag

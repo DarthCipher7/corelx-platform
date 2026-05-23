@@ -154,6 +154,7 @@ export interface CampusEvent {
   college_id?: string;
   created_at: string;
   organiser?: {
+    id?: string;
     handle: string;
     display_name: string;
     avatar_url?: string;

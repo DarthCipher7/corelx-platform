@@ -7,6 +7,7 @@ import Image from "next/image";
 import type { Creator } from "@/types";
 import { formatNumber } from "@/lib/utils";
 import NeonBadge from "@/components/ui/NeonBadge";
+import OfficialTag from "@/components/ui/OfficialTag";
 import Button from "@/components/ui/Button";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
@@ -99,9 +100,9 @@ export default function CreatorCard({ creator, index = 0 }: CreatorCardProps) {
       onClick={() => router.push(`/studio/${creator.handle}`)}
       className="relative rounded-2xl overflow-hidden group cursor-pointer"
       style={{
-        background: "linear-gradient(135deg, rgba(15,15,35,0.95) 0%, rgba(10,10,25,0.98) 100%)",
-        border: "1px solid rgba(255,255,255,0.05)",
-        boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+        background: "var(--glass-card-bg)",
+        border: "1px solid var(--border-subtle)",
+        boxShadow: "var(--shadow-card)",
       }}
       initial={{ opacity: 0, y: 30 }}
       whileInView={{ opacity: 1, y: 0 }}
@@ -118,7 +119,7 @@ export default function CreatorCard({ creator, index = 0 }: CreatorCardProps) {
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to bottom, transparent 40%, rgba(10,10,25,0.95) 100%)",
+              "linear-gradient(to bottom, transparent 40%, var(--bg-surface) 100%)",
           }}
         />
         {/* Online indicator */}
@@ -164,12 +165,7 @@ export default function CreatorCard({ creator, index = 0 }: CreatorCardProps) {
           >
             {creator.name}
           </h3>
-          {creator.verified && (
-            <CheckCircle
-              className="w-4 h-4 flex-shrink-0"
-              style={{ color: "var(--accent-cyan)" }}
-            />
-          )}
+          <OfficialTag entityId={creator.id} />
         </div>
 
         <p
@@ -210,7 +206,7 @@ export default function CreatorCard({ creator, index = 0 }: CreatorCardProps) {
         {/* Stats row */}
         <div
           className="flex items-center gap-4 py-3 mb-4"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+          style={{ borderTop: "1px solid var(--border-subtle)" }}
         >
           {[
             { label: "Followers", value: formatNumber(followerCount), icon: Users },

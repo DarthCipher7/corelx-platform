@@ -120,9 +120,9 @@ export default function CollabCard({ collab, index = 0, onApplySuccess }: Collab
       <motion.article
         className="relative rounded-2xl p-5 group cursor-pointer flex flex-col justify-between min-h-[220px]"
         style={{
-          background: "linear-gradient(135deg, rgba(15,15,35,0.95) 0%, rgba(10,10,25,0.98) 100%)",
-          border: "1px solid rgba(255,255,255,0.05)",
-          boxShadow: "0 4px 24px rgba(0,0,0,0.5)",
+          background: "var(--glass-card-bg)",
+          border: "1px solid var(--border-subtle)",
+          boxShadow: "var(--shadow-card)",
         }}
         initial={{ opacity: 0, x: -20 }}
         whileInView={{ opacity: 1, x: 0 }}
@@ -211,7 +211,7 @@ export default function CollabCard({ collab, index = 0, onApplySuccess }: Collab
           {/* Footer */}
           <div
             className="flex items-center justify-between pt-3"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+            style={{ borderTop: "1px solid var(--border-subtle)" }}
           >
             <div className="flex items-center gap-2">
               <div

@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import OfficialTag from "@/components/ui/OfficialTag";
 import {
   Users,
   MessageSquare,
@@ -95,6 +96,7 @@ export default function PodDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
+  const [editVisibility, setEditVisibility] = useState<"open" | "invite">("open");
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Chat Tab States
@@ -112,6 +114,10 @@ export default function PodDetailPage() {
 
   // Members Tab States
   const [membersList, setMembersList] = useState<PodMemberProfile[]>([]);
+  const membersListRef = useRef(membersList);
+  useEffect(() => {
+    membersListRef.current = membersList;
+  }, [membersList]);
   const [kickingMemberId, setKickingMemberId] = useState<string | null>(null);
   const [promotingMemberId, setPromotingMemberId] = useState<string | null>(null);
 
@@ -146,6 +152,7 @@ export default function PodDetailPage() {
       setPod(podData);
       setEditName(podData.name);
       setEditDesc(podData.description || "");
+      setEditVisibility(podData.visibility || "open");
 
       // Check Membership
       if (user) {
@@ -231,11 +238,20 @@ export default function PodDetailPage() {
         async (payload) => {
           if (payload.eventType === "INSERT") {
             // Fetch sender profile to append
-            const { data: senderData } = await supabase
-              .from("users")
-              .select("handle, display_name, avatar_url")
-              .eq("id", payload.new.sender_id)
-              .single();
+            const cachedMember = membersListRef.current?.find(
+              (m) => m.user_id === payload.new.sender_id
+            );
+            let senderData = cachedMember?.user;
+            if (!senderData) {
+              const { data } = await supabase
+                .from("users")
+                .select("handle, display_name, avatar_url")
+                .eq("id", payload.new.sender_id)
+                .single();
+              if (data) {
+                senderData = data;
+              }
+            }
 
             const fullMsg: PodMessage = {
               ...(payload.new as PodMessage),
@@ -283,7 +299,12 @@ export default function PodDetailPage() {
   }, [isMember, podId, supabase]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   };
 
   // 3. User Actions (Join, Leave, Edit, Archive, Delete)
@@ -338,6 +359,7 @@ export default function PodDetailPage() {
       .update({
         name: editName.trim(),
         description: editDesc.trim() || null,
+        visibility: editVisibility,
       })
       .eq("id", podId)
       .select()
@@ -462,10 +484,21 @@ export default function PodDetailPage() {
       };
       if (uploadedUrl) insertPayload.media_url = uploadedUrl;
 
-      const { error } = await supabase.from("pod_messages").insert(insertPayload);
+      const { data: insertedMsg, error } = await supabase
+        .from("pod_messages")
+        .insert(insertPayload)
+        .select("*, sender:users(handle, display_name, avatar_url)")
+        .single();
 
       if (error) {
         throw new Error(error.message);
+      }
+      if (insertedMsg) {
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === insertedMsg.id)) return prev;
+          return [...prev, insertedMsg as unknown as PodMessage];
+        });
+        setTimeout(scrollToBottom, 55);
       }
     } catch (err: any) {
       alert(err.message || "Failed to send message");
@@ -550,9 +583,9 @@ export default function PodDetailPage() {
 
   if (!pod) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-[var(--bg-void)]">
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-[var(--bg-void)] text-[var(--text-primary)]">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold font-display text-white mb-2">Pod Not Found</h2>
+        <h2 className="text-2xl font-bold font-display mb-2">Pod Not Found</h2>
         <p className="text-sm text-[var(--text-muted)] mb-6 max-w-sm">
           This pod may have been deleted, auto-purged after archive, or does not exist.
         </p>
@@ -569,12 +602,12 @@ export default function PodDetailPage() {
   const isArchived = pod.pod_status === "archived";
 
   return (
-    <div className="min-h-screen pt-24 pb-28 px-4 sm:px-6 bg-[var(--bg-void)] text-white">
+    <div className="min-h-screen pt-24 pb-28 px-4 sm:px-6 bg-[var(--bg-void)] text-[var(--text-primary)]">
       <div className="max-w-4xl mx-auto flex flex-col gap-6">
         {/* ── Back Button ─────────────────────────────────────── */}
         <button
           onClick={() => router.push("/pods")}
-          className="self-start flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors group"
+          className="self-start flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Back to Pods
@@ -611,11 +644,11 @@ export default function PodDetailPage() {
           <div className="space-y-3 z-10">
             {/* Tag / Meta Row */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-purple-500/30 bg-purple-500/10 text-[#a29bfe]">
+              <span className="inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest px-2.5 py-0.5 rounded-full border border-[var(--cat-hackathon-border)] bg-[var(--cat-hackathon-bg)] text-[var(--cat-hackathon-text)]">
                 {pod.pod_type}
               </span>
               {pod.colleges && (
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-0.5 rounded-full border border-[var(--border-subtle)] bg-white/5 text-[var(--text-secondary)]">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium px-2.5 py-0.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-deep)] text-[var(--text-secondary)]">
                   🏫 {pod.colleges.short_name || pod.colleges.name}
                 </span>
               )}
@@ -634,8 +667,9 @@ export default function PodDetailPage() {
               )}
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-white leading-tight">
+            <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight text-[var(--text-primary)] leading-tight flex items-center gap-1.5 flex-wrap">
               {pod.name}
+              <OfficialTag entityId={podId} />
             </h1>
 
             {pod.description && (
@@ -648,7 +682,7 @@ export default function PodDetailPage() {
           <div className="flex items-center gap-3 sm:self-center z-10">
             <button
               onClick={handleInvite}
-              className="px-3.5 py-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] bg-white/5 hover:bg-white/10 hover:text-white transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium"
+              className="px-3.5 py-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] bg-[var(--bg-frosted)] hover:bg-[var(--glass-hover)] hover:text-[var(--text-primary)] transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium"
               title="Share Invite Link"
             >
               <Share2 className="w-3.5 h-3.5" /> Invite
@@ -689,7 +723,7 @@ export default function PodDetailPage() {
           <button
             onClick={() => setActiveTab("about")}
             className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-              activeTab === "about" ? "text-white" : "text-[var(--text-muted)] hover:text-white"
+              activeTab === "about" ? "text-[var(--text-primary)] font-semibold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
           >
             {activeTab === "about" && (
@@ -708,7 +742,7 @@ export default function PodDetailPage() {
               <button
                 onClick={() => setActiveTab("chat")}
                 className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                  activeTab === "chat" ? "text-white" : "text-[var(--text-muted)] hover:text-white"
+                  activeTab === "chat" ? "text-[var(--text-primary)] font-semibold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 }`}
               >
                 {activeTab === "chat" && (
@@ -725,7 +759,7 @@ export default function PodDetailPage() {
               <button
                 onClick={() => setActiveTab("members")}
                 className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                  activeTab === "members" ? "text-white" : "text-[var(--text-muted)] hover:text-white"
+                  activeTab === "members" ? "text-[var(--text-primary)] font-semibold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                 }`}
               >
                 {activeTab === "members" && (
@@ -822,7 +856,7 @@ export default function PodDetailPage() {
                               required
                               value={editName}
                               onChange={(e) => setEditName(e.target.value)}
-                              className="w-full bg-[var(--bg-deep)] text-white border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)] mt-1"
+                              className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)] mt-1"
                             />
                           </div>
                           <div>
@@ -830,8 +864,19 @@ export default function PodDetailPage() {
                             <textarea
                               value={editDesc}
                               onChange={(e) => setEditDesc(e.target.value)}
-                              className="w-full bg-[var(--bg-deep)] text-white border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)] resize-none h-20 mt-1"
+                              className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)] resize-none h-20 mt-1"
                             />
+                          </div>
+                          <div>
+                            <label className="text-[10px] uppercase font-semibold text-[var(--text-muted)]">Visibility</label>
+                            <select
+                              value={editVisibility}
+                              onChange={(e) => setEditVisibility(e.target.value as any)}
+                              className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)] mt-1"
+                            >
+                              <option value="open" className="bg-[var(--bg-void)] text-[var(--text-primary)]">🔓 Open (Public)</option>
+                              <option value="invite" className="bg-[var(--bg-void)] text-[var(--text-primary)]">🔒 Invite Only (Private)</option>
+                            </select>
                           </div>
                           <div className="flex gap-2">
                             <Button type="button" variant="ghost" className="text-xs flex-1 py-1" onClick={() => setEditing(false)}>
@@ -846,7 +891,7 @@ export default function PodDetailPage() {
                         <div className="space-y-2">
                           <button
                             onClick={() => setEditing(true)}
-                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium border border-[var(--border-subtle)] bg-[var(--bg-deep)] hover:bg-white/5 transition-all flex items-center gap-2"
+                            className="w-full text-left px-3 py-2 rounded-xl text-xs font-medium border border-[var(--border-subtle)] bg-[var(--bg-deep)] hover:bg-[var(--glass-hover)] transition-all flex items-center gap-2"
                           >
                             <Edit2 className="w-3.5 h-3.5 text-[var(--text-muted)]" /> Edit Metadata
                           </button>
@@ -991,7 +1036,7 @@ export default function PodDetailPage() {
                             <div
                               className={`p-3 rounded-2xl text-xs leading-relaxed border relative group/bubble ${
                                 isMe
-                                  ? "bg-[rgba(108,92,231,0.1)] border-[rgba(108,92,231,0.3)] text-white rounded-tr-sm"
+                                  ? "bg-[rgba(108,92,231,0.1)] border-[rgba(108,92,231,0.3)] text-[var(--text-primary)] rounded-tr-sm"
                                   : "bg-[var(--bg-surface)] border-[var(--glass-border)] text-[var(--text-secondary)] rounded-tl-sm"
                               }`}
                             >
@@ -1083,7 +1128,7 @@ export default function PodDetailPage() {
                           type="button"
                           onClick={() => mediaInputRef.current?.click()}
                           disabled={uploadingMedia || submittingMsg}
-                          className="p-2.5 rounded-xl bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-white transition-colors"
+                          className="p-2.5 rounded-xl bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                           title="Attach Image or Video"
                         >
                           {uploadingMedia ? (
@@ -1097,7 +1142,7 @@ export default function PodDetailPage() {
                           value={inputMsg}
                           onChange={(e) => setInputMsg(e.target.value)}
                           placeholder="Discuss studying, hacking, residency, gaming..."
-                          className="flex-1 bg-[var(--bg-surface)] text-sm text-white placeholder-[var(--text-muted)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] focus:outline-none rounded-xl px-4 py-2.5 transition-colors"
+                          className="flex-1 bg-[var(--bg-surface)] text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] focus:outline-none rounded-xl px-4 py-2.5 transition-colors"
                         />
                         <button
                           type="submit"
@@ -1154,7 +1199,7 @@ export default function PodDetailPage() {
                           </div>
 
                           <div>
-                            <p className="text-sm font-semibold text-white">
+                            <p className="text-sm font-semibold text-[var(--text-primary)]">
                               {member.user.display_name}
                             </p>
                             <p className="text-xs text-[var(--text-muted)] font-mono">
@@ -1224,7 +1269,7 @@ export default function PodDetailPage() {
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] text-white text-sm shadow-2xl flex items-center gap-2.5 backdrop-blur-xl"
+            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] text-[var(--text-primary)] text-sm shadow-2xl flex items-center gap-2.5 backdrop-blur-xl"
             style={{ boxShadow: "0 10px 40px rgba(108,92,231,0.2)" }}
           >
             <div className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse" />

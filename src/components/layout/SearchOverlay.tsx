@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Search, X, Loader2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
+import OfficialTag from "@/components/ui/OfficialTag";
 
 interface SearchOverlayProps {
   isOpen: boolean;
@@ -134,8 +135,9 @@ export default function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
                     </div>
                   )}
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-lg font-semibold text-white group-hover:text-[var(--accent-primary)] transition-colors truncate">
-                      {user.display_name || user.handle}
+                    <h4 className="text-lg font-semibold text-white group-hover:text-[var(--accent-primary)] transition-colors truncate flex items-center gap-1.5">
+                      <span>{user.display_name || user.handle}</span>
+                      <OfficialTag entityId={user.id} />
                     </h4>
                     <p className="text-sm text-[var(--text-muted)] truncate">
                       @{user.handle} {user.tagline && `• ${user.tagline}`}

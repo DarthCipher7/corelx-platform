@@ -110,7 +110,7 @@ export default function ExplorePage() {
             <p className="label-mono mb-2 text-[var(--accent-primary)] flex items-center gap-1.5">
               <span>✦</span> Discovery Network
             </p>
-            <h1 className="display-sm text-white font-bold tracking-tight">
+            <h1 className="display-sm text-[var(--text-primary)] font-bold tracking-tight">
               Explore Creators 👥
             </h1>
           </motion.div>
@@ -131,7 +131,7 @@ export default function ExplorePage() {
             <input
               id="explore-search"
               className="input-nova pl-11"
-              style={{ background: "var(--bg-frosted)", color: "var(--text-primary)", backdropFilter: "blur(8px)" }}
+              style={{ backdropFilter: "blur(8px)" }}
               placeholder="Search creators by name, skill, or role…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -168,7 +168,7 @@ export default function ExplorePage() {
                 background:
                   activeRole === role
                     ? "var(--text-primary)"
-                    : "var(--bg-frosted)",
+                    : "var(--glass-bg)",
                 backdropFilter: "blur(8px)",
                 color: activeRole === role ? "var(--bg-void)" : "var(--text-secondary)",
                 border:
@@ -199,7 +199,7 @@ export default function ExplorePage() {
               style={{
                 background: activeSkills.includes(skill)
                   ? "var(--accent-primary-glow)"
-                  : "var(--bg-frosted)",
+                  : "var(--glass-bg)",
                 backdropFilter: "blur(8px)",
                 borderColor: activeSkills.includes(skill)
                   ? "var(--accent-primary)"

@@ -972,7 +972,7 @@ export default function PodsPage() {
         min_headcount, max_headcount, is_active,
         require_mutual, require_face, organiser_id,
         college_id, created_at,
-        organiser:users!events_organiser_id_fkey(handle, display_name, avatar_url)
+        organiser:users!events_organiser_id_fkey(id, handle, display_name, avatar_url)
       `)
       .eq('is_active', true)
       .order('starts_at', { ascending: true })
@@ -1107,7 +1107,17 @@ export default function PodsPage() {
   const useMocks = !loading && dbPods.length === 0;
   const allPods: Omit<PodCardProps, "onJoin">[] = useMocks
     ? MOCK_PODS
-    : dbPods.map(mapDbPod);
+    : dbPods
+        .filter((pod) => {
+          if (pod.visibility === "invite") {
+            return (
+              currentUser &&
+              (pod.creator_id === currentUser.id || userMemberships.has(pod.id))
+            );
+          }
+          return true;
+        })
+        .map(mapDbPod);
 
   const filtered =
     activeFilter === "all"
@@ -1370,6 +1380,7 @@ export default function PodsPage() {
                     currentHeadcount={event.current_headcount ?? 0}
                     maxHeadcount={event.max_headcount ?? undefined}
                     organiser={{
+                      id: event.organiser?.id ?? event.organiser_id,
                       handle: event.organiser?.handle ?? "unknown",
                       displayName: event.organiser?.display_name ?? "",
                       avatarUrl: event.organiser?.avatar_url ?? undefined,

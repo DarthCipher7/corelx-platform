@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { Users, Lock, Unlock, CheckCircle, Clock } from "lucide-react";
 import Button from "@/components/ui/Button";
+import OfficialTag from "@/components/ui/OfficialTag";
 
 import { useRouter } from "next/navigation";
 
@@ -271,13 +272,14 @@ export default function PodCard({
 
       {/* ── Pod name ───────────────────────────────────────────── */}
       <h3
-        className="text-lg font-bold leading-snug mb-1"
+        className="text-lg font-bold leading-snug mb-1 flex items-center gap-1.5 flex-wrap"
         style={{
           color: "var(--text-primary)",
           fontFamily: "var(--font-display)",
         }}
       >
         {name}
+        <OfficialTag entityId={id} />
       </h3>
 
       {/* ── Description ────────────────────────────────────────── */}

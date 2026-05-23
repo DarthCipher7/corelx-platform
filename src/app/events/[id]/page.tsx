@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import OfficialTag from "@/components/ui/OfficialTag";
 import {
   ArrowLeft,
   Calendar,
@@ -88,6 +89,10 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [organiserProfile, setOrganiserProfile] = useState<any>(null);
+  const organiserProfileRef = useRef(organiserProfile);
+  useEffect(() => {
+    organiserProfileRef.current = organiserProfile;
+  }, [organiserProfile]);
 
   // Sharing states
   const [showToast, setShowToast] = useState(false);
@@ -103,6 +108,10 @@ export default function EventDetailPage() {
   
   // RSVP states
   const [rsvpList, setRsvpList] = useState<any[]>([]);
+  const rsvpListRef = useRef(rsvpList);
+  useEffect(() => {
+    rsvpListRef.current = rsvpList;
+  }, [rsvpList]);
   const [userRsvp, setUserRsvp] = useState<any>(null); // current user's RSVP if any
   const [isJoined, setIsJoined] = useState(false);
   const [isPending, setIsPending] = useState(false);
@@ -354,7 +363,12 @@ export default function EventDetailPage() {
 
   // Event Chat functions & hooks
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   };
 
   const fetchChatMessages = async () => {
@@ -393,11 +407,36 @@ export default function EventDetailPage() {
         },
         async (payload) => {
           if (payload.eventType === "INSERT") {
-            const { data: senderData } = await supabase
-              .from("users")
-              .select("handle, display_name, avatar_url")
-              .eq("id", payload.new.sender_id)
-              .single();
+            let senderData: any = null;
+            if (organiserProfileRef.current && organiserProfileRef.current.id === payload.new.sender_id) {
+              senderData = {
+                handle: organiserProfileRef.current.handle,
+                display_name: organiserProfileRef.current.display_name,
+                avatar_url: organiserProfileRef.current.avatar_url,
+              };
+            } else {
+              const matchedRsvp = rsvpListRef.current?.find(
+                (r) => r.user_id === payload.new.sender_id
+              );
+              if (matchedRsvp?.user) {
+                senderData = {
+                  handle: matchedRsvp.user.handle,
+                  display_name: matchedRsvp.user.display_name,
+                  avatar_url: matchedRsvp.user.avatar_url,
+                };
+              }
+            }
+
+            if (!senderData) {
+              const { data } = await supabase
+                .from("users")
+                .select("handle, display_name, avatar_url")
+                .eq("id", payload.new.sender_id)
+                .single();
+              if (data) {
+                senderData = data;
+              }
+            }
 
             const fullMsg: EventMessage = {
               ...(payload.new as EventMessage),
@@ -482,15 +521,26 @@ export default function EventDetailPage() {
         uploadedUrl = urlData.publicUrl;
       }
 
-      const { error } = await supabase.from("event_messages").insert({
-        event_id: eventId,
-        sender_id: currentUser.id,
-        content: text || (file ? file.name : ""),
-        media_url: uploadedUrl || null,
-      });
+      const { data: insertedMsg, error } = await supabase
+        .from("event_messages")
+        .insert({
+          event_id: eventId,
+          sender_id: currentUser.id,
+          content: text || (file ? file.name : ""),
+          media_url: uploadedUrl || null,
+        })
+        .select("*, sender:users(handle, display_name, avatar_url)")
+        .single();
 
       if (error) {
         throw new Error(error.message);
+      }
+      if (insertedMsg) {
+        setChatMessages((prev) => {
+          if (prev.some((m) => m.id === insertedMsg.id)) return prev;
+          return [...prev, insertedMsg as unknown as EventMessage];
+        });
+        setTimeout(scrollToBottom, 50);
       }
     } catch (err: any) {
       alert(err.message || "Failed to send message");
@@ -548,9 +598,9 @@ export default function EventDetailPage() {
 
   if (!event) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-[var(--bg-void)]">
+      <div className="min-h-screen flex flex-col items-center justify-center text-center p-8 bg-[var(--bg-void)] text-[var(--text-primary)]">
         <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-        <h2 className="text-2xl font-bold font-display text-white mb-2">Event Not Found</h2>
+        <h2 className="text-2xl font-bold font-display mb-2">Event Not Found</h2>
         <p className="text-sm text-[var(--text-muted)] mb-6 max-w-sm">
           This event may have been cancelled, deleted, or does not exist.
         </p>
@@ -566,13 +616,13 @@ export default function EventDetailPage() {
   const pendingList = rsvpList.filter(r => r.status === "pending");
 
   return (
-    <div className="min-h-screen pt-24 pb-28 px-4 sm:px-6 bg-[var(--bg-void)] text-white">
+    <div className="min-h-screen pt-24 pb-28 px-4 sm:px-6 bg-[var(--bg-void)] text-[var(--text-primary)]">
       <div className="max-w-4xl mx-auto flex flex-col gap-6">
         
         {/* ── Back Button ─────────────────────────────────────── */}
         <button
           onClick={() => router.back()}
-          className="self-start flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-white transition-colors group"
+          className="self-start flex items-center gap-2 text-sm text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
           Back
@@ -787,7 +837,10 @@ export default function EventDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-[var(--text-secondary)] font-medium">Hosted by</p>
-                <p className="text-sm font-bold text-white">@{organiserProfile?.handle || "organiser"}</p>
+                <p className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-1">
+                  @{organiserProfile?.handle || "organiser"}
+                  {organiserProfile?.id && <OfficialTag entityId={organiserProfile.id} size="sm" />}
+                </p>
               </div>
             </div>
 
@@ -795,7 +848,7 @@ export default function EventDetailPage() {
             <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
               <button
                 onClick={handleInvite}
-                className="px-3.5 py-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] bg-white/5 hover:bg-white/10 hover:text-white transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium"
+                className="px-3.5 py-2 rounded-xl border border-[var(--glass-border)] text-[var(--text-secondary)] bg-[var(--bg-frosted)] hover:bg-[var(--glass-hover)] hover:text-[var(--text-primary)] transition-all text-xs flex items-center gap-1.5 cursor-pointer font-medium"
                 title="Share Invite Link"
               >
                 <Share2 className="w-3.5 h-3.5" /> Invite
@@ -822,7 +875,7 @@ export default function EventDetailPage() {
                     </div>
                   ) : isPending ? (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-white/50 bg-white/5 border border-white/10 px-3.5 py-2 rounded-xl flex items-center gap-1.5">
+                      <span className="text-xs font-semibold text-[var(--text-secondary)] bg-[var(--bg-frosted)] border border-[var(--border-subtle)] px-3.5 py-2 rounded-xl flex items-center gap-1.5">
                         Request Pending
                       </span>
                       <Button variant="ghost" onClick={handleCancelRsvp} loading={isRsvping}>
@@ -845,7 +898,7 @@ export default function EventDetailPage() {
           <button
             onClick={() => setActiveTab("about")}
             className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-              activeTab === "about" ? "text-white" : "text-[var(--text-muted)] hover:text-white"
+              activeTab === "about" ? "text-[var(--text-primary)] font-semibold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
             }`}
           >
             {activeTab === "about" && (
@@ -863,7 +916,7 @@ export default function EventDetailPage() {
             <button
               onClick={() => setActiveTab("chat")}
               className={`px-4 py-2 text-sm font-medium transition-colors relative ${
-                activeTab === "chat" ? "text-white" : "text-[var(--text-muted)] hover:text-white"
+                activeTab === "chat" ? "text-[var(--text-primary)] font-semibold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               }`}
             >
               {activeTab === "chat" && (
@@ -922,7 +975,7 @@ export default function EventDetailPage() {
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-bold truncate text-white">{rsvp.user?.display_name}</p>
+                            <p className="text-sm font-bold truncate text-[var(--text-primary)]">{rsvp.user?.display_name}</p>
                             <p className="text-xs text-[var(--text-muted)] truncate font-mono">@{rsvp.user?.handle}</p>
                           </div>
                         </div>
@@ -964,7 +1017,7 @@ export default function EventDetailPage() {
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold truncate text-white">{rsvp.user?.display_name}</p>
+                                <p className="text-xs font-bold truncate text-[var(--text-primary)]">{rsvp.user?.display_name}</p>
                                 <p className="text-[10px] text-[var(--text-muted)] truncate font-mono">@{rsvp.user?.handle}</p>
                               </div>
                             </div>
@@ -1041,7 +1094,7 @@ export default function EventDetailPage() {
                   {chatMessages.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center p-6 text-[var(--text-muted)]">
                       <MessageSquare className="w-8 h-8 mb-2 opacity-50 text-[var(--accent-primary)]" />
-                      <p className="text-sm font-semibold text-white">Welcome to the Event Chat Space.</p>
+                      <p className="text-sm font-semibold text-[var(--text-primary)]">Welcome to the Event Chat Space.</p>
                       <p className="text-xs text-[var(--text-muted)] mt-1">Introduce yourself and start coordinating!</p>
                     </div>
                   ) : (
@@ -1073,7 +1126,7 @@ export default function EventDetailPage() {
                             <div
                               className={`p-3 rounded-2xl text-xs leading-relaxed border relative group/bubble ${
                                 isMe
-                                  ? "bg-[rgba(108,92,231,0.1)] border-[rgba(108,92,231,0.3)] text-white rounded-tr-sm"
+                                  ? "bg-[rgba(108,92,231,0.1)] border-[rgba(108,92,231,0.3)] text-[var(--text-primary)] rounded-tr-sm"
                                   : "bg-[var(--bg-surface)] border-[var(--glass-border)] text-[var(--text-secondary)] rounded-tl-sm"
                               }`}
                             >
@@ -1166,7 +1219,7 @@ export default function EventDetailPage() {
                         type="button"
                         onClick={() => mediaInputRef.current?.click()}
                         disabled={uploadingMedia || submittingMsg}
-                        className="p-2.5 rounded-xl bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-white transition-colors"
+                        className="p-2.5 rounded-xl bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
                         title="Attach Image or Video"
                       >
                         {uploadingMedia ? (
@@ -1180,7 +1233,7 @@ export default function EventDetailPage() {
                         value={inputMsg}
                         onChange={(e) => setInputMsg(e.target.value)}
                         placeholder="Coordinate ride shares, plan layout, discuss food..."
-                        className="flex-1 bg-[var(--bg-surface)] text-sm text-white placeholder-[var(--text-muted)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] focus:outline-none rounded-xl px-4 py-2.5 transition-colors"
+                        className="flex-1 bg-[var(--bg-surface)] text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] focus:outline-none rounded-xl px-4 py-2.5 transition-colors"
                       />
                       <button
                         type="submit"
@@ -1213,7 +1266,7 @@ export default function EventDetailPage() {
             initial={{ opacity: 0, y: 50, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] text-white text-sm shadow-2xl flex items-center gap-2.5 backdrop-blur-xl"
+            className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] text-[var(--text-primary)] text-sm shadow-2xl flex items-center gap-2.5 backdrop-blur-xl"
             style={{ boxShadow: "0 10px 40px rgba(108,92,231,0.2)" }}
           >
             <div className="w-2 h-2 rounded-full bg-[var(--accent-primary)] animate-pulse" />
