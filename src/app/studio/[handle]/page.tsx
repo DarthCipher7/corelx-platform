@@ -108,6 +108,10 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
   const [creatorFlares, setCreatorFlares] = useState<Flare[]>([]);
   const [selectedFlareIndex, setSelectedFlareIndex] = useState<number | null>(null);
 
+  // Work filter states
+  const [projectFilter, setProjectFilter] = useState("All");
+  const [flareFilter, setFlareFilter] = useState("All");
+
   // Follows modal state
   const [isFollowsModalOpen, setIsFollowsModalOpen] = useState(false);
   const [followsModalType, setFollowsModalType] = useState<"followers" | "following">("followers");
@@ -248,25 +252,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
           if (matchedMock.length > 0) {
             setCreatorFlares(matchedMock);
           } else {
-            // Generate customized fallback flares so they aren't empty
-            setCreatorFlares([
-              {
-                id: `f-mock-${profileData.id}-1`,
-                user_id: profileData.id,
-                media_url: "https://assets.mixkit.co/videos/preview/mixkit-abstract-laser-lights-background-loop-41851-large.mp4",
-                thumbnail_url: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop",
-                caption: `Tinkering with the future of creators at CORELX. High-fidelity dynamic environments are coming next! ✦`,
-                tags: ["UI Design", "Creative", "WIP"],
-                duration_seconds: 12,
-                created_at: new Date().toISOString(),
-                spark_count: 32,
-                users: {
-                  display_name: profileData.display_name || undefined,
-                  handle: profileData.handle,
-                  avatar_url: profileData.avatar_url || undefined
-                }
-              }
-            ]);
+            setCreatorFlares([]);
           }
         }
       } catch (e) {
@@ -504,6 +490,20 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
 
   const auraScore = profile?.pulse_score ?? 150;
   const tier = getAuraTier(auraScore);
+
+  // Dynamic filter lists derived from profile.feed_posts and creatorFlares
+  const projectCategories = ["All", ...Array.from(new Set(profile.feed_posts?.map((p: any) => p.category).filter(Boolean) || []))];
+  const flareTags = ["All", ...Array.from(new Set(creatorFlares?.flatMap((f: any) => f.tags || []).filter(Boolean) || []))];
+
+  const filteredProjects = profile.feed_posts?.filter((post: any) => {
+    if (projectFilter === "All") return true;
+    return post.category?.toLowerCase() === projectFilter.toLowerCase();
+  }) || [];
+
+  const filteredFlaresList = creatorFlares?.filter((flare: any) => {
+    if (flareFilter === "All") return true;
+    return flare.tags?.some((t: string) => t.toLowerCase() === flareFilter.toLowerCase());
+  }) || [];
 
   return (
     <div className="min-h-screen pb-32">
@@ -751,36 +751,63 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
               transition={{ duration: 0.2 }}
             >
               {profile.feed_posts?.length > 0 ? (
-                <div className="grid grid-cols-1 gap-6">
-                  {profile.feed_posts.map((post: any) => {
-                    const qaReport = Array.isArray(post.qa_reports) ? post.qa_reports[0] : post.qa_reports;
-                    const postData: FeedPostData = {
-                      id: post.id,
-                      type: "work_post",
-                      creator: {
-                        id: profile.id,
-                        name: profile.display_name || profile.handle,
-                        handle: profile.handle,
-                        avatar: profile.avatar_url || "",
-                        verified: profile.is_verified || profile.user_type === "company" || profile.user_type === "organisation",
-                        role: profile.tagline || "Creator"
-                      },
-                      timestamp: new Date(post.created_at).toLocaleDateString(),
-                      title: post.title,
-                      caption: post.caption,
-                      mediaUrl: post.media_url,
-                      tags: [],
-                      saves: 0,
-                      category: post.category,
-                      bug_details: qaReport ? {
-                        title: qaReport.bug_title,
-                        severity: qaReport.severity as "critical" | "high" | "medium" | "low",
-                        platforms: qaReport.platform || [],
-                        steps: qaReport.steps || []
-                      } : undefined
-                    };
-                    return <FeedPost key={post.id} post={postData} />;
-                  })}
+                <div className="flex flex-col">
+                  {/* Category Filters */}
+                  {projectCategories.length > 2 && (
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-6 border-b border-white/5">
+                      {projectCategories.map((cat: any) => (
+                        <button
+                          key={cat}
+                          onClick={() => setProjectFilter(cat)}
+                          className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 ${
+                            projectFilter === cat
+                              ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                              : "bg-white/5 text-[var(--text-secondary)] hover:text-white border border-white/10 hover:bg-white/10"
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {filteredProjects.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-6">
+                      {filteredProjects.map((post: any) => {
+                        const qaReport = Array.isArray(post.qa_reports) ? post.qa_reports[0] : post.qa_reports;
+                        const postData: FeedPostData = {
+                          id: post.id,
+                          type: "work_post",
+                          creator: {
+                            id: profile.id,
+                            name: profile.display_name || profile.handle,
+                            handle: profile.handle,
+                            avatar: profile.avatar_url || "",
+                            verified: profile.is_verified || profile.user_type === "company" || profile.user_type === "organisation",
+                            role: profile.tagline || "Creator"
+                          },
+                          timestamp: new Date(post.created_at).toLocaleDateString(),
+                          title: post.title,
+                          caption: post.caption,
+                          mediaUrl: post.media_url,
+                          tags: [],
+                          saves: 0,
+                          category: post.category,
+                          bug_details: qaReport ? {
+                            title: qaReport.bug_title,
+                            severity: qaReport.severity as "critical" | "high" | "medium" | "low",
+                            platforms: qaReport.platform || [],
+                            steps: qaReport.steps || []
+                          } : undefined
+                        };
+                        return <FeedPost key={post.id} post={postData} />;
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-[var(--text-muted)] text-sm">
+                      No posts found in this category.
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-24 rounded-2xl bg-[var(--bg-frosted)] border border-dashed border-[var(--border-subtle)]">
@@ -797,19 +824,48 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6"
+              className="flex flex-col"
             >
               {creatorFlares.length > 0 ? (
-                creatorFlares.map((flare, idx) => (
-                  <FlareCard
-                    key={flare.id}
-                    flare={flare}
-                    index={idx}
-                    onClick={() => setSelectedFlareIndex(idx)}
-                  />
-                ))
+                <>
+                  {/* Tag Filters */}
+                  {flareTags.length > 2 && (
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-3 mb-6 border-b border-white/5">
+                      {flareTags.map((tag: any) => (
+                        <button
+                          key={tag}
+                          onClick={() => setFlareFilter(tag)}
+                          className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 ${
+                            flareFilter === tag
+                              ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                              : "bg-white/5 text-[var(--text-secondary)] hover:text-white border border-white/10 hover:bg-white/10"
+                          }`}
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {filteredFlaresList.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                      {filteredFlaresList.map((flare, idx) => (
+                        <FlareCard
+                          key={flare.id}
+                          flare={flare}
+                          index={idx}
+                          onClick={() => setSelectedFlareIndex(idx)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-12 text-[var(--text-muted)] text-sm">
+                      No Flares found with this tag.
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="col-span-full text-center py-24 rounded-2xl bg-[var(--bg-frosted)] border border-dashed border-[var(--border-subtle)]">
+                <div className="text-center py-24 rounded-2xl bg-[var(--bg-frosted)] border border-dashed border-[var(--border-subtle)] w-full">
                   <Flame className="w-12 h-12 mx-auto mb-4 opacity-50 text-[var(--accent-primary)]" />
                   <h3 className="text-xl font-medium mb-2 text-white">No Flares yet</h3>
                   <p style={{ color: "var(--text-secondary)" }}>When {profile.handle} uploads a creative Flare loop, it will light up here.</p>
@@ -822,7 +878,7 @@ export default function StudioPage({ params }: { params: Promise<{ handle: strin
         {/* Studio Restricted Flares Viewer Overlay */}
         {selectedFlareIndex !== null && (
           <FlaresViewer
-            flares={creatorFlares}
+            flares={filteredFlaresList}
             initialIndex={selectedFlareIndex}
             onClose={() => setSelectedFlareIndex(null)}
           />

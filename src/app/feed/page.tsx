@@ -23,7 +23,7 @@ const FILTERS = [
   "Video", "Motion", "Music",
   "Social Media", "Writing",
   "Code", "AI", "3D", "Gaming",
-  "Art", "Fashion", "Freelance",
+  "Art", "Fashion", "Freelance", "Sponsorships",
 ];
 
 export default function FeedPage() {
@@ -642,24 +642,59 @@ export default function FeedPage() {
       </AnimatePresence>
 
       {/* Main Header with viewMode selector and action buttons */}
-      <div className="max-w-[680px] mx-auto px-4 sm:px-6 mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 border-b border-[var(--border-subtle)] pb-6">
-          <div>
-            <p className="label-mono mb-2 text-[var(--accent-primary)] flex items-center gap-1.5">
-              <span>✦</span> Discovery Network
-            </p>
-            <h1 className="display-sm text-white font-bold tracking-tight">
-              {feedMode === "posts" ? "Discovery Feed 👥" : feedMode === "flares" ? "Trending Flares 🔥" : feedMode === "traces" ? "Ephemeral Traces ✦" : "Campus Events 🗓️"}
-            </h1>
+      <div className="max-w-[680px] mx-auto px-4 sm:px-6 mb-8">
+        <div className="flex flex-col gap-6 border-b border-[var(--border-subtle)] pb-6">
+          {/* Row 1: Title and Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="label-mono mb-1 text-[var(--accent-primary)] flex items-center gap-1.5 text-xs uppercase tracking-wider font-bold">
+                <span className="text-cyan-400">✦</span> Discovery Network
+              </p>
+              <h1 className="text-3xl font-display font-bold text-white tracking-tight">
+                {feedMode === "posts" ? "Discovery Feed 👥" : feedMode === "flares" ? "Trending Flares 🔥" : "Ephemeral Traces ✦"}
+              </h1>
+            </div>
+
+            {/* Posting actions */}
+            {user === undefined ? (
+              <div className="w-28 h-9 bg-white/5 border border-white/10 rounded-xl animate-pulse" />
+            ) : user ? (
+              <div className="flex items-center gap-2.5 self-start sm:self-auto">
+                <button
+                  type="button"
+                  onClick={() => setIsPostModalOpen(true)}
+                  className="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 bg-white/5 text-white hover:bg-white/10 border border-white/10 active:scale-95 cursor-pointer"
+                >
+                  Post Work
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(true)}
+                  className="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)] shadow-[0_0_20px_rgba(108,92,231,0.4)] border border-[var(--glass-border)] active:scale-95 cursor-pointer"
+                >
+                  <Flame className="w-3.5 h-3.5 fill-current" />
+                  Post Flare
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => window.location.href = '/login'}
+                className="px-4 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all duration-300 bg-[var(--accent-primary)] text-white hover:bg-[var(--accent-primary-hover)] active:scale-95 cursor-pointer"
+              >
+                Join to Post
+              </button>
+            )}
           </div>
-          
-          <div className="flex flex-wrap items-center gap-3">
+
+          {/* Row 2: Selector and Telemetry Stats */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
             {/* Posts / Flares / Traces Selector */}
-            <div className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md">
+            <div className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md self-start">
               <button
                 type="button"
                 onClick={() => setFeedMode("posts")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 ${
                   feedMode === "posts"
                     ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
                     : "text-[var(--text-secondary)] hover:text-white"
@@ -670,7 +705,7 @@ export default function FeedPage() {
               <button
                 type="button"
                 onClick={() => setFeedMode("flares")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1 ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${
                   feedMode === "flares"
                     ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
                     : "text-[var(--text-secondary)] hover:text-white"
@@ -681,7 +716,7 @@ export default function FeedPage() {
               <button
                 type="button"
                 onClick={() => setFeedMode("traces")}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1 ${
+                className={`px-4 py-2 rounded-lg text-xs font-bold font-mono uppercase tracking-wider transition-all duration-300 flex items-center gap-1 ${
                   feedMode === "traces"
                     ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
                     : "text-[var(--text-secondary)] hover:text-white"
@@ -691,36 +726,17 @@ export default function FeedPage() {
               </button>
             </div>
 
-            {/* Posting actions */}
-            {user === undefined ? (
-              <div className="w-28 h-9 bg-white/5 border border-white/10 rounded-xl animate-pulse" />
-            ) : user ? (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsPostModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--bg-frosted)] text-white hover:bg-[var(--bg-surface)] border border-[var(--glass-border)] active:scale-95 cursor-pointer"
-                >
-                  Post Work
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(true)}
-                  className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 flex items-center gap-1.5 bg-[var(--accent-primary)] text-white hover:opacity-90 shadow-[0_0_15px_rgba(108,92,231,0.3)] active:scale-95 cursor-pointer"
-                >
-                  <Flame className="w-3.5 h-3.5 fill-current" />
-                  Post Flare
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => window.location.href = '/login'}
-                className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-300 bg-[var(--accent-primary)] text-white hover:opacity-90 active:scale-95 cursor-pointer"
-              >
-                Join to Post
-              </button>
-            )}
+            {/* Telemetry Stats */}
+            <div className="text-xs font-mono text-[var(--text-muted)] flex items-center gap-2 self-end sm:self-auto">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>
+                {feedMode === "posts"
+                  ? `${combinedPosts.length} ITEMS INDEXED`
+                  : feedMode === "flares"
+                  ? `${filteredFlares.length} LOOPS ACTIVE`
+                  : `${followedTraces.length} TRACES LIVE`}
+              </span>
+            </div>
           </div>
         </div>
       </div>
