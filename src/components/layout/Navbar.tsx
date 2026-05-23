@@ -172,9 +172,9 @@ export default function Navbar() {
       }
     };
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) {
-        setupUser(user);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setupUser(session.user);
       }
     });
 

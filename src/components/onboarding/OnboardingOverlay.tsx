@@ -78,8 +78,8 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
       }
     }
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUser(user);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) setUser(session.user);
     });
   }, [isStaticPage]);
 

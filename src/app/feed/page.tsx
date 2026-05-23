@@ -28,7 +28,8 @@ const FILTERS = [
 
 export default function FeedPage() {
   const [activeFilter, setActiveFilter] = useState("All");
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<any>(undefined);
+  const [loading, setLoading] = useState(true);
   const [dbPosts, setDbPosts] = useState<any[]>([]);
   const [flares, setFlares] = useState<Flare[]>([]);
   const [collabs, setCollabs] = useState<any[]>([]);
@@ -82,11 +83,20 @@ export default function FeedPage() {
   
   const supabase = createClient();
 
+  // Listen for auth state changes on client side immediately
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) setUser(user);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
     });
-  }, []);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
 
   useEffect(() => {
     if (!user) return;
@@ -166,293 +176,331 @@ export default function FeedPage() {
   }, [dbPosts]);
 
   const fetchPosts = async () => {
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    try {
+      setLoading(true);
+      // Retrieve the session from localStorage cache (extremely fast, ~2ms)
+      const { data: { session } } = await supabase.auth.getSession();
+      const currentUser = session?.user ?? null;
+      if (currentUser) {
+        setUser(currentUser);
+      } else {
+        setUser(null);
+      }
 
-    // Fetch posts limit 100 for scoring pool
-    let query = supabase
-      .from('feed_posts')
-      .select(`
-        id,
-        title,
-        caption,
-        media_url,
-        category,
-        created_at,
-        user_id,
-        users (
+      // Fetch posts limit 100 for scoring pool
+      let postsQuery = supabase
+        .from('feed_posts')
+        .select(`
           id,
-          handle,
-          display_name,
-          avatar_url,
-          tagline,
-          intent_status,
-          user_type,
-          is_verified,
-          colleges (
+          title,
+          caption,
+          media_url,
+          category,
+          created_at,
+          user_id,
+          users (
             id,
-            name,
-            short_name,
-            hub_type
+            handle,
+            display_name,
+            avatar_url,
+            tagline,
+            intent_status,
+            user_type,
+            is_verified,
+            colleges (
+              id,
+              name,
+              short_name,
+              hub_type
+            )
+          ),
+          qa_reports (
+            id,
+            bug_title,
+            severity,
+            platform,
+            steps
           )
-        ),
-        qa_reports (
-          id,
-          bug_title,
-          severity,
-          platform,
-          steps
-        )
-      `)
-      .limit(100);
+        `)
+        .order('created_at', { ascending: false })
+        .limit(100);
 
-    if (activeFilter !== "All") {
-      query = query.eq('category', activeFilter);
-    }
+      if (activeFilter !== "All") {
+        postsQuery = postsQuery.eq('category', activeFilter);
+      }
+
+      // Fetch all core feed and user metadata in parallel (Step 1)
+      const step1Promises: PromiseLike<any>[] = [];
+      let postsData: any[] = [];
       
-    const { data: postsData } = await query;
-    if (!postsData) return;
-
-    // Fetch ancillary data in parallel
-    let followedIds = new Set<string>();
-    let viewerSkills = new Set<string>();
-    let seenPostIds = new Set<string>();
-    let viewerIntent = 'available';
-    let mutualFollowers: Record<string, string[]> = {};
-
-    const postIds = postsData.map(p => p.id);
-    const authorIds = Array.from(new Set(postsData.map(p => p.user_id)));
-
-    const promises: PromiseLike<any>[] = [];
-
-    if (currentUser) {
-      promises.push(
-        supabase.from('follows').select('following_id').eq('follower_id', currentUser.id)
-          .then(({ data }) => data?.forEach(f => followedIds.add(f.following_id)))
+      step1Promises.push(
+        postsQuery.then(({ data }) => {
+          if (data) postsData = data;
+        })
       );
-      promises.push(
-        supabase.from('skills').select('skill_name').eq('user_id', currentUser.id)
-          .then(({ data }) => data?.forEach(s => viewerSkills.add(s.skill_name.toLowerCase())))
+
+      let followedIds = new Set<string>();
+      let viewerSkills = new Set<string>();
+      let seenPostIds = new Set<string>();
+      let viewerIntent = 'available';
+      let mutualFollowers: Record<string, string[]> = {};
+
+      if (currentUser) {
+        step1Promises.push(
+          supabase.from('follows').select('following_id').eq('follower_id', currentUser.id)
+            .then(({ data }) => data?.forEach(f => followedIds.add(f.following_id)))
+        );
+        step1Promises.push(
+          supabase.from('skills').select('skill_name').eq('user_id', currentUser.id)
+            .then(({ data }) => data?.forEach(s => viewerSkills.add(s.skill_name.toLowerCase())))
+        );
+        step1Promises.push(
+          supabase.from('post_impressions').select('post_id').eq('user_id', currentUser.id)
+            .then(({ data }) => data?.forEach(i => seenPostIds.add(i.post_id)))
+        );
+        step1Promises.push(
+          supabase.from('users').select('intent_status').eq('id', currentUser.id).single()
+            .then(({ data }) => { if (data?.intent_status) viewerIntent = data.intent_status; })
+        );
+      }
+
+      // Fetch Flares and Collab calls for injections
+      let rawFlares: any[] = [];
+      let rawCollabs: any[] = [];
+
+      step1Promises.push(
+        supabase.from('flares').select('*, users(*)').limit(30)
+          .then(({ data }) => { if (data) rawFlares = data; })
       );
-      promises.push(
-        supabase.from('post_impressions').select('post_id').eq('user_id', currentUser.id)
-          .then(({ data }) => data?.forEach(i => seenPostIds.add(i.post_id)))
+
+      step1Promises.push(
+        supabase.from('collab_calls').select('*, users(*)').limit(10)
+          .then(({ data }) => { if (data) rawCollabs = data; })
       );
-      promises.push(
-        supabase.from('users').select('intent_status').eq('id', currentUser.id).single()
-          .then(({ data }) => { if (data?.intent_status) viewerIntent = data.intent_status; })
+
+      // Wait for all Step 1 data to load
+      await Promise.all(step1Promises);
+
+      if (!postsData || postsData.length === 0) {
+        setLoading(false);
+        return;
+      }
+
+      // Derive IDs for the next step of queries
+      const postIds = postsData.map(p => p.id);
+      const authorIds = Array.from(new Set(postsData.map(p => p.user_id)));
+
+      // Step 2: Fetch interaction counts, author follows, and flares analytics in parallel
+      const step2Promises: PromiseLike<any>[] = [];
+      let sparkCounts: Record<string, number> = {};
+      let impressionCounts: Record<string, number> = {};
+
+      if (postIds.length > 0) {
+        step2Promises.push(
+          supabase.from('sparks').select('target_id').in('target_id', postIds).eq('target_type', 'post')
+            .then(({ data }) => {
+              data?.forEach(s => {
+                sparkCounts[s.target_id] = (sparkCounts[s.target_id] || 0) + 1;
+              });
+            })
+        );
+
+        step2Promises.push(
+          supabase.from('post_impressions').select('post_id').in('post_id', postIds)
+            .then(({ data }) => {
+              data?.forEach(i => {
+                impressionCounts[i.post_id] = (impressionCounts[i.post_id] || 0) + 1;
+              });
+            })
+        );
+      }
+
+      if (authorIds.length > 0) {
+        step2Promises.push(
+          supabase.from('follows').select('follower_id, following_id').in('following_id', authorIds)
+            .then(({ data }) => {
+              data?.forEach(f => {
+                if (!mutualFollowers[f.following_id]) mutualFollowers[f.following_id] = [];
+                mutualFollowers[f.following_id].push(f.follower_id);
+              });
+            })
+        );
+      }
+
+      // Fetch Flares algorithmic tracking stats
+      let viewsResData: any[] = [];
+      let flaresSparksResData: any[] = [];
+      let requestsResData: any[] = [];
+
+      step2Promises.push(
+        supabase.from('flare_views').select('flare_id, completed')
+          .then(({ data }) => { if (data) viewsResData = data; })
       );
+      step2Promises.push(
+        supabase.from('sparks').select('target_id').eq('target_type', 'flare')
+          .then(({ data }) => { if (data) flaresSparksResData = data; })
+      );
+      step2Promises.push(
+        supabase.from('collab_requests').select('flare_id')
+          .then(({ data }) => { if (data) requestsResData = data; })
+      );
+
+      await Promise.all(step2Promises);
+
+      // Score Feed Posts
+      const scoredPosts = postsData.map(post => {
+        // 1. RecencyScore (30%)
+        let recencyScore = 0;
+        const ageHours = (Date.now() - new Date(post.created_at).getTime()) / (1000 * 60 * 60);
+        if (ageHours < 2) {
+          recencyScore = 1.0;
+        } else if (ageHours <= 48) {
+          recencyScore = Math.max(0, 1.0 - 0.15 * (ageHours - 2));
+        }
+
+        // 2. SparkVelocity (25%)
+        const sparks = sparkCounts[post.id] || 0;
+        const impressions = impressionCounts[post.id] || 0;
+        const sparkVelocity = impressions > 0 ? (sparks / impressions) : 0;
+
+        // 3. NetworkBoost (20%)
+        let networkBoost = 0;
+        if (followedIds.has(post.user_id)) {
+          networkBoost += 0.20;
+        }
+        const authorFollowers = mutualFollowers[post.user_id] || [];
+        const mutualCount = authorFollowers.filter(fid => followedIds.has(fid)).length;
+        if (mutualCount >= 3) {
+          networkBoost += 0.10;
+        }
+
+        // 4. SkillRelevance (15%)
+        const postTags = [post.category.toLowerCase()];
+        const hashtags = post.caption?.match(/#\w+/g);
+        if (hashtags) {
+          hashtags.forEach((tag: string) => postTags.push(tag.replace('#', '').toLowerCase()));
+        }
+        const overlap = postTags.filter(t => viewerSkills.has(t)).length;
+        const skillRelevance = viewerSkills.size > 0 ? (overlap / viewerSkills.size) : 0;
+
+        // 5. IntentMatch (10%)
+        let intentMatch = 0;
+        const authorUser = Array.isArray(post.users) ? post.users[0] : post.users;
+        const authorIntent = authorUser?.intent_status || 'available';
+        if (authorIntent === 'hiring' && ['available', 'looking_for_team', 'open_to_gigs'].includes(viewerIntent)) {
+          intentMatch = 1.0;
+        } else if (['available', 'open_to_gigs'].includes(authorIntent) && viewerIntent === 'hiring') {
+          intentMatch = 1.0;
+        } else if (authorIntent === viewerIntent) {
+          intentMatch = 0.5;
+        }
+
+        let score = (recencyScore * 0.30) + (sparkVelocity * 0.25) + (networkBoost * 0.20) + (skillRelevance * 0.15) + (intentMatch * 0.10);
+
+        // SeenPenalty
+        if (seenPostIds.has(post.id)) {
+          score = score * 0.05;
+        }
+
+        return {
+          ...post,
+          score,
+          isNetwork: followedIds.has(post.user_id)
+        };
+      });
+
+      // Score Flares Algorithmic Discovery
+      const flareViewsMap: Record<string, { total: number; completed: number }> = {};
+      viewsResData.forEach(v => {
+        if (!flareViewsMap[v.flare_id]) flareViewsMap[v.flare_id] = { total: 0, completed: 0 };
+        flareViewsMap[v.flare_id].total++;
+        if (v.completed) flareViewsMap[v.flare_id].completed++;
+      });
+
+      const flareSparksMap: Record<string, number> = {};
+      flaresSparksResData.forEach(s => {
+        flareSparksMap[s.target_id] = (flareSparksMap[s.target_id] || 0) + 1;
+      });
+
+      const flareRequestsMap: Record<string, number> = {};
+      requestsResData.forEach(r => {
+        flareRequestsMap[r.flare_id] = (flareRequestsMap[r.flare_id] || 0) + 1;
+      });
+
+      const scoredFlares = rawFlares.map(flare => {
+        const stats = flareViewsMap[flare.id] || { total: 0, completed: 0 };
+        const sparks = flareSparksMap[flare.id] || 0;
+        const requests = flareRequestsMap[flare.id] || 0;
+
+        const completionRate = stats.total > 0 ? (stats.completed / stats.total) : 0;
+        const sparkRate = stats.total > 0 ? (sparks / stats.total) : 0;
+        const collabRequestRate = stats.total > 0 ? (requests / stats.total) : 0;
+
+        const tags = flare.tags || [];
+        const overlap = tags.filter((t: string) => viewerSkills.has(t.toLowerCase())).length;
+        const skillRelevance = viewerSkills.size > 0 ? (overlap / viewerSkills.size) : 0;
+
+        let freshness = 0;
+        const ageHours = (Date.now() - new Date(flare.created_at).getTime()) / (1000 * 60 * 60);
+        if (ageHours < 6) {
+          freshness = 1.0;
+        } else if (ageHours <= 48) {
+          freshness = Math.max(0, 1.0 - (ageHours / 48));
+        }
+
+        let score = (completionRate * 0.35) + (sparkRate * 0.25) + (collabRequestRate * 0.15) + (skillRelevance * 0.15) + (freshness * 0.10);
+
+        const hasCompleted = stats.completed > 0;
+        if (hasCompleted) {
+          score = score * 0.1;
+        }
+
+        return { ...flare, score };
+      }).sort((a, b) => b.score - a.score);
+
+      setFlares(scoredFlares);
+
+      const formattedCollabs = rawCollabs.map(c => ({
+        id: c.id,
+        title: c.title,
+        description: c.description || "",
+        skills: c.skills || [],
+        type: c.type as "paid" | "collab" | "open-source",
+        budget: c.budget || "",
+        creator: {
+          id: c.user_id,
+          name: c.users?.display_name || "Unknown",
+          handle: c.users?.handle || "unknown",
+          avatar: c.users?.avatar_url || "",
+          verified: c.users?.is_verified || false
+        },
+        deadline: c.expires_at ? new Date(c.expires_at).toLocaleDateString() : undefined,
+        applicants: 0
+      }));
+      setCollabs(formattedCollabs);
+
+      const networkFeed = scoredPosts.filter(p => p.isNetwork).sort((a, b) => b.score - a.score);
+      const discoveryFeed = scoredPosts.filter(p => !p.isNetwork).sort((a, b) => b.score - a.score);
+
+      const mergedFeed: any[] = [];
+      let netIdx = 0;
+      let discIdx = 0;
+
+      while (netIdx < networkFeed.length || discIdx < discoveryFeed.length) {
+        for (let i = 0; i < 7 && netIdx < networkFeed.length; i++) {
+          mergedFeed.push(networkFeed[netIdx++]);
+        }
+        for (let i = 0; i < 3 && discIdx < discoveryFeed.length; i++) {
+          mergedFeed.push(discoveryFeed[discIdx++]);
+        }
+      }
+
+      setDbPosts(mergedFeed);
+    } catch (err) {
+      console.error("Error fetching feed posts:", err);
+    } finally {
+      setLoading(false);
     }
-
-    let sparkCounts: Record<string, number> = {};
-    promises.push(
-      supabase.from('sparks').select('target_id').in('target_id', postIds).eq('target_type', 'post')
-        .then(({ data }) => {
-          data?.forEach(s => {
-            sparkCounts[s.target_id] = (sparkCounts[s.target_id] || 0) + 1;
-          });
-        })
-    );
-
-    let impressionCounts: Record<string, number> = {};
-    promises.push(
-      supabase.from('post_impressions').select('post_id').in('post_id', postIds)
-        .then(({ data }) => {
-          data?.forEach(i => {
-            impressionCounts[i.post_id] = (impressionCounts[i.post_id] || 0) + 1;
-          });
-        })
-    );
-
-    promises.push(
-      supabase.from('follows').select('follower_id, following_id').in('following_id', authorIds)
-        .then(({ data }) => {
-          data?.forEach(f => {
-            if (!mutualFollowers[f.following_id]) mutualFollowers[f.following_id] = [];
-            mutualFollowers[f.following_id].push(f.follower_id);
-          });
-        })
-    );
-
-    // Fetch Flares and Collab calls for injections
-    let rawFlares: any[] = [];
-    let rawCollabs: any[] = [];
-
-    promises.push(
-      supabase.from('flares').select('*, users(*)').limit(30)
-        .then(({ data }) => { if (data) rawFlares = data; })
-    );
-
-    promises.push(
-      supabase.from('collab_calls').select('*, users(*)').limit(10)
-        .then(({ data }) => { if (data) rawCollabs = data; })
-    );
-
-    await Promise.all(promises);
-
-    // Score Feed Posts
-    const scoredPosts = postsData.map(post => {
-      // 1. RecencyScore (30%)
-      let recencyScore = 0;
-      const ageHours = (Date.now() - new Date(post.created_at).getTime()) / (1000 * 60 * 60);
-      if (ageHours < 2) {
-        recencyScore = 1.0;
-      } else if (ageHours <= 48) {
-        recencyScore = Math.max(0, 1.0 - 0.15 * (ageHours - 2));
-      }
-
-      // 2. SparkVelocity (25%)
-      const sparks = sparkCounts[post.id] || 0;
-      const impressions = impressionCounts[post.id] || 0;
-      const sparkVelocity = impressions > 0 ? (sparks / impressions) : 0;
-
-      // 3. NetworkBoost (20%)
-      let networkBoost = 0;
-      if (followedIds.has(post.user_id)) {
-        networkBoost += 0.20;
-      }
-      const authorFollowers = mutualFollowers[post.user_id] || [];
-      const mutualCount = authorFollowers.filter(fid => followedIds.has(fid)).length;
-      if (mutualCount >= 3) {
-        networkBoost += 0.10;
-      }
-
-      // 4. SkillRelevance (15%)
-      const postTags = [post.category.toLowerCase()];
-      const hashtags = post.caption?.match(/#\w+/g);
-      if (hashtags) {
-        hashtags.forEach((tag: string) => postTags.push(tag.replace('#', '').toLowerCase()));
-      }
-      const overlap = postTags.filter(t => viewerSkills.has(t)).length;
-      const skillRelevance = viewerSkills.size > 0 ? (overlap / viewerSkills.size) : 0;
-
-      // 5. IntentMatch (10%)
-      let intentMatch = 0;
-      const authorUser = Array.isArray(post.users) ? post.users[0] : post.users;
-      const authorIntent = authorUser?.intent_status || 'available';
-      if (authorIntent === 'hiring' && ['available', 'looking_for_team', 'open_to_gigs'].includes(viewerIntent)) {
-        intentMatch = 1.0;
-      } else if (['available', 'open_to_gigs'].includes(authorIntent) && viewerIntent === 'hiring') {
-        intentMatch = 1.0;
-      } else if (authorIntent === viewerIntent) {
-        intentMatch = 0.5;
-      }
-
-      let score = (recencyScore * 0.30) + (sparkVelocity * 0.25) + (networkBoost * 0.20) + (skillRelevance * 0.15) + (intentMatch * 0.10);
-
-      // SeenPenalty
-      if (seenPostIds.has(post.id)) {
-        score = score * 0.05;
-      }
-
-      return {
-        ...post,
-        score,
-        isNetwork: followedIds.has(post.user_id)
-      };
-    });
-
-    // Score Flares Algorithmic Discovery
-    // Fetch Flares metrics
-    const [viewsRes, flaresSparksRes, requestsRes] = await Promise.all([
-      supabase.from('flare_views').select('flare_id, completed'),
-      supabase.from('sparks').select('target_id').eq('target_type', 'flare'),
-      supabase.from('collab_requests').select('flare_id')
-    ]);
-
-    const flareViewsMap: Record<string, { total: number; completed: number }> = {};
-    viewsRes.data?.forEach(v => {
-      if (!flareViewsMap[v.flare_id]) flareViewsMap[v.flare_id] = { total: 0, completed: 0 };
-      flareViewsMap[v.flare_id].total++;
-      if (v.completed) flareViewsMap[v.flare_id].completed++;
-    });
-
-    const flareSparksMap: Record<string, number> = {};
-    flaresSparksRes.data?.forEach(s => {
-      flareSparksMap[s.target_id] = (flareSparksMap[s.target_id] || 0) + 1;
-    });
-
-    const flareRequestsMap: Record<string, number> = {};
-    requestsRes.data?.forEach(r => {
-      flareRequestsMap[r.flare_id] = (flareRequestsMap[r.flare_id] || 0) + 1;
-    });
-
-    const scoredFlares = rawFlares.map(flare => {
-      const stats = flareViewsMap[flare.id] || { total: 0, completed: 0 };
-      const sparks = flareSparksMap[flare.id] || 0;
-      const requests = flareRequestsMap[flare.id] || 0;
-
-      // CompletionRate (35%)
-      const completionRate = stats.total > 0 ? (stats.completed / stats.total) : 0;
-      // SparkRate (25%)
-      const sparkRate = stats.total > 0 ? (sparks / stats.total) : 0;
-      // CollabRequestRate (15%)
-      const collabRequestRate = stats.total > 0 ? (requests / stats.total) : 0;
-
-      // SkillRelevance (15%)
-      const tags = flare.tags || [];
-      const overlap = tags.filter((t: string) => viewerSkills.has(t.toLowerCase())).length;
-      const skillRelevance = viewerSkills.size > 0 ? (overlap / viewerSkills.size) : 0;
-
-      // Freshness (10%)
-      let freshness = 0;
-      const ageHours = (Date.now() - new Date(flare.created_at).getTime()) / (1000 * 60 * 60);
-      if (ageHours < 6) {
-        freshness = 1.0;
-      } else if (ageHours <= 48) {
-        freshness = Math.max(0, 1.0 - (ageHours / 48));
-      }
-
-      let score = (completionRate * 0.35) + (sparkRate * 0.25) + (collabRequestRate * 0.15) + (skillRelevance * 0.15) + (freshness * 0.10);
-
-      // RepeatPenalty
-      const hasCompleted = stats.completed > 0; // Simple session / user track
-      if (hasCompleted) {
-        score = score * 0.1;
-      }
-
-      return { ...flare, score };
-    }).sort((a, b) => b.score - a.score);
-
-    setFlares(scoredFlares);
-
-    // Format Collabs
-    const formattedCollabs = rawCollabs.map(c => ({
-      id: c.id,
-      title: c.title,
-      description: c.description || "",
-      skills: c.skills || [],
-      type: c.type as "paid" | "collab" | "open-source",
-      budget: c.budget || "",
-      creator: {
-        id: c.user_id,
-        name: c.users?.display_name || "Unknown",
-        handle: c.users?.handle || "unknown",
-        avatar: c.users?.avatar_url || "",
-        verified: c.users?.is_verified || false
-      },
-      deadline: c.expires_at ? new Date(c.expires_at).toLocaleDateString() : undefined,
-      applicants: 0
-    }));
-    setCollabs(formattedCollabs);
-
-    // Mix feed 70% network / 30% discovery
-    const networkFeed = scoredPosts.filter(p => p.isNetwork).sort((a, b) => b.score - a.score);
-    const discoveryFeed = scoredPosts.filter(p => !p.isNetwork).sort((a, b) => b.score - a.score);
-
-    const mergedFeed: any[] = [];
-    let netIdx = 0;
-    let discIdx = 0;
-
-    while (netIdx < networkFeed.length || discIdx < discoveryFeed.length) {
-      for (let i = 0; i < 7 && netIdx < networkFeed.length; i++) {
-        mergedFeed.push(networkFeed[netIdx++]);
-      }
-      for (let i = 0; i < 3 && discIdx < discoveryFeed.length; i++) {
-        mergedFeed.push(discoveryFeed[discIdx++]);
-      }
-    }
-
-    setDbPosts(mergedFeed);
   };
 
   const handlePostSubmit = async (e: React.FormEvent) => {
@@ -644,7 +692,9 @@ export default function FeedPage() {
             </div>
 
             {/* Posting actions */}
-            {user ? (
+            {user === undefined ? (
+              <div className="w-28 h-9 bg-white/5 border border-white/10 rounded-xl animate-pulse" />
+            ) : user ? (
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -698,7 +748,24 @@ export default function FeedPage() {
 
       <div className="max-w-[680px] mx-auto px-4 sm:px-6">
         <div className="flex flex-col">
-          {feedMode === "posts" ? (
+          {loading ? (
+            <div className="space-y-8">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="p-6 rounded-2xl border border-white/5 bg-white/3 space-y-4" style={{ backgroundColor: "var(--bg-frosted)", borderColor: "var(--glass-border)", backdropFilter: "blur(8px)" }}>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/10 animate-pulse" />
+                    <div className="space-y-2">
+                      <div className="h-3 w-28 bg-white/10 rounded animate-pulse" />
+                      <div className="h-2.5 w-16 bg-white/10 rounded animate-pulse" />
+                    </div>
+                  </div>
+                  <div className="h-4 w-3/4 bg-white/10 rounded animate-pulse" />
+                  <div className="h-3 w-5/6 bg-white/10 rounded animate-pulse" />
+                  <div className="w-full aspect-video rounded-xl bg-white/5 border border-white/10 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : feedMode === "posts" ? (
             combinedPosts.map((post, i) => {
               if (post.type === "flare_preview") {
                 return (
@@ -847,7 +914,9 @@ export default function FeedPage() {
           <p className="mb-8 max-w-sm mx-auto" style={{ color: "var(--text-secondary)" }}>
             You've seen all the latest updates from your network. Now go build something amazing.
           </p>
-          {user ? (
+          {user === undefined ? (
+            <div className="w-32 h-10 bg-white/5 border border-white/10 rounded-xl animate-pulse mx-auto" />
+          ) : user ? (
             <Button variant="primary" className="mx-auto" onClick={() => setIsPostModalOpen(true)}>
               Post your work
             </Button>
