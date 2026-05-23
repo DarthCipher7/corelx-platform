@@ -115,7 +115,7 @@ export default function CollabsPage() {
       .from('collab_calls')
       .insert(insertData)
       .select(`
-        id, title, description, type, budget, skills, time_commitment, spots, created_at, user_id,
+        id, title, description, type, budget, skills, time_commitment, spots, created_at, user_id, collab_status,
         users ( id, display_name, handle, avatar_url, tagline )
       `)
       .single();
@@ -148,7 +148,7 @@ export default function CollabsPage() {
     budget: collab.budget || undefined,
     deadline: collab.time_commitment || undefined,
     applicants: collab.collab_status === 'has_responses' ? 1 : 0,
-    collab_status: collab.collab_status || 'active',
+    collab_status: collab.collab_status || 'open',
     creator: {
       id: collab.users?.id || collab.user_id,
       name: collab.users?.display_name || "Creator",

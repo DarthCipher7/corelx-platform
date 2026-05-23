@@ -20,6 +20,8 @@ import {
   ArrowLeft,
   Loader2,
   Lock,
+  Heart,
+  Mic,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
@@ -193,8 +195,8 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
       };
     }
 
-    if (currentSlide === 3) {
-      // Simulating Geofenced GPS Check-in on Slide 3
+    if (currentSlide === 6) {
+      // Simulating Geofenced GPS Check-in on Slide 6
       setGpsScan("scanning");
       const scanTimer = setTimeout(() => {
         setGpsScan("verified");
@@ -203,23 +205,6 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
       return () => {
         clearTimeout(scanTimer);
         setGpsScan("idle");
-      };
-    }
-
-    if (currentSlide === 4) {
-      // Simulating DM attachment and preview on Slide 4
-      setDmUploadState("idle");
-      const uploadTimer = setTimeout(() => {
-        setDmUploadState("uploading");
-        const finishedTimer = setTimeout(() => {
-          setDmUploadState("finished");
-        }, 1800);
-        return () => clearTimeout(finishedTimer);
-      }, 1000);
-
-      return () => {
-        clearTimeout(uploadTimer);
-        setDmUploadState("idle");
       };
     }
   }, [currentSlide]);
@@ -264,7 +249,7 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
       router.push("/");
       return;
     }
-    setCurrentSlide(5);
+    setCurrentSlide(7);
   };
 
   if (!isOpen) return null;
@@ -281,7 +266,7 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
         className="relative w-full max-w-5xl h-[85vh] max-h-[750px] rounded-3xl border border-[var(--glass-border)] bg-[#030308]/85 shadow-[0_0_80px_rgba(108,92,231,0.15)] flex flex-col md:flex-row overflow-hidden backdrop-blur-2xl"
       >
         {/* Skip button in corner */}
-        {currentSlide < 5 && (
+        {currentSlide < 7 && (
           <button
             onClick={skipIntro}
             className="absolute top-6 right-6 z-30 text-xs font-mono text-[var(--text-muted)] hover:text-white transition-colors flex items-center gap-1 cursor-pointer bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl hover:bg-white/10"
@@ -343,10 +328,10 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
                     👥 Permanent Collaboration
                   </span>
                   <h2 className="text-3xl sm:text-4xl font-display font-black text-white leading-tight tracking-tight">
-                    Collaborative Pods
+                    Pods & Aesthetic DMs
                   </h2>
                   <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
-                    Create permanent groups called Pods for hackathons, startups, projects, or classes. Pin important roadmap notices, and lock critical properties like Hub structures. Chat messages remain secure until deleted by admins.
+                    Create permanent groups called Pods for hackathons, classes, or startups. Pin roadmaps, lock properties, and message collaborators directly with custom-styled chat bubbles and media attachments (up to 50MB).
                   </p>
                 </motion.div>
               )}
@@ -354,6 +339,66 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
               {currentSlide === 3 && (
                 <motion.div
                   key="slide3"
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 15 }}
+                  className="space-y-4"
+                >
+                  <span className="text-[10px] font-mono text-pink-400 tracking-widest uppercase block font-bold">
+                    ✦ Ephemeral Moments
+                  </span>
+                  <h2 className="text-3xl sm:text-4xl font-display font-black text-white leading-tight tracking-tight">
+                    Traces ✦ Fades in 24h
+                  </h2>
+                  <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
+                    Share honest, contextual snippets of your daily process: "Stuck on this bug," "Just shipped," or "Vibe check." Not a highlight reel. Support for rich media attachment sharing (picture, video, and audio).
+                  </p>
+                </motion.div>
+              )}
+
+              {currentSlide === 4 && (
+                <motion.div
+                  key="slide4"
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 15 }}
+                  className="space-y-4"
+                >
+                  <span className="text-[10px] font-mono text-cyan-400 tracking-widest uppercase block font-bold">
+                    🔥 Reputation Engine
+                  </span>
+                  <h2 className="text-3xl sm:text-4xl font-display font-black text-white leading-tight tracking-tight">
+                    Aura & Activity Score
+                  </h2>
+                  <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
+                    Your reputation score dynamically updates based on contribution: earn +2 Aura for posting traces, +5 for milestone resonances (10+), and +3 when your trace leads to a collab application. View full event history logs.
+                  </p>
+                </motion.div>
+              )}
+
+              {currentSlide === 5 && (
+                <motion.div
+                  key="slide5"
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 15 }}
+                  className="space-y-4"
+                >
+                  <span className="text-[10px] font-mono text-purple-400 tracking-widest uppercase block font-bold">
+                    🛡️ Verified Verification
+                  </span>
+                  <h2 className="text-3xl sm:text-4xl font-display font-black text-white leading-tight tracking-tight">
+                    Official Identity
+                  </h2>
+                  <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
+                    Stand out with verifiable entities and official roles. Earn verified status badges, official category tags, and campus-validated affiliations to establish credibility and security across the grid.
+                  </p>
+                </motion.div>
+              )}
+
+              {currentSlide === 6 && (
+                <motion.div
+                  key="slide6"
                   initial={{ opacity: 0, x: -15 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 15 }}
@@ -371,35 +416,15 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
                 </motion.div>
               )}
 
-              {currentSlide === 4 && (
+              {currentSlide === 7 && (
                 <motion.div
-                  key="slide4"
+                  key="slide7"
                   initial={{ opacity: 0, x: -15 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 15 }}
                   className="space-y-4"
                 >
-                  <span className="text-[10px] font-mono text-cyan-400 tracking-widest uppercase block font-bold">
-                    💬 Aesthetic DMs
-                  </span>
-                  <h2 className="text-3xl sm:text-4xl font-display font-black text-white leading-tight tracking-tight">
-                    Rich Media Sharing
-                  </h2>
-                  <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
-                    Message collaborators directly using custom-styled chat bubbles, file uploads (up to 50MB), and high-resolution photo/video preview overlays. Maintain smooth navigation with quick "Back" links.
-                  </p>
-                </motion.div>
-              )}
-
-              {currentSlide === 5 && (
-                <motion.div
-                  key="slide5"
-                  initial={{ opacity: 0, x: -15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 15 }}
-                  className="space-y-4"
-                >
-                  <span className="text-[10px] font-mono text-purple-400 tracking-widest uppercase block font-bold">
+                  <span className="text-[10px] font-mono text-indigo-400 tracking-widest uppercase block font-bold">
                     🏁 System Activation
                   </span>
                   <h2 className="text-3xl sm:text-4xl font-display font-black text-white leading-tight tracking-tight">
@@ -424,7 +449,7 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
                     </div>
                   ) : (
                     <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
-                      Your workspace is ready. Tap launch to dive into the Discovery Feed, inspect community collab calls, share flares, and create your studio.
+                      Your workspace is ready. Tap launch to dive into the Discovery Feed, inspect community collab calls, share flares, post traces, and build your reputation.
                     </p>
                   )}
                 </motion.div>
@@ -436,7 +461,7 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
           <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/5">
             {/* Slide Indicator Dots */}
             <div className="flex gap-2">
-              {[1, 2, 3, 4, 5].map((s) => (
+              {[1, 2, 3, 4, 5, 6, 7].map((s) => (
                 <button
                   key={s}
                   onClick={() => setCurrentSlide(s)}
@@ -458,7 +483,7 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
                 </button>
               )}
 
-              {currentSlide < 5 ? (
+              {currentSlide < 7 ? (
                 <Button
                   variant="primary"
                   className="flex items-center gap-1.5 text-xs py-2.5 px-5 shadow-[0_0_15px_rgba(108,92,231,0.3)]"
@@ -644,10 +669,202 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
               </motion.div>
             )}
 
-            {/* SLIDE 3 MOCKUP: Tech Event Detail Card & Pulse GPS Radar */}
+            {/* SLIDE 3 MOCKUP: Traces ✦ Ephemeral Moments */}
             {currentSlide === 3 && (
               <motion.div
                 key="mockup3"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="w-full max-w-[340px] rounded-2xl border border-[var(--glass-border)] bg-[#0a0a14]/95 p-4 shadow-2xl flex flex-col space-y-4 relative"
+              >
+                {/* Story header */}
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-[10px] text-pink-400 font-bold font-mono">
+                      L
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-white">Luna Voss</p>
+                      <p className="text-[9px] text-[var(--text-muted)] font-mono">@lunavisuals</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-mono font-bold bg-pink-500/10 border border-pink-500/20 text-pink-400 px-2 py-0.5 rounded-full">
+                    ✦ fades in 12h
+                  </span>
+                </div>
+
+                {/* Content type tag */}
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🧱</span>
+                  <span className="text-[10px] font-mono font-bold text-amber-300 uppercase tracking-widest bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-md">
+                    stuck
+                  </span>
+                </div>
+
+                {/* Content text */}
+                <p className="text-xs text-white leading-relaxed italic">
+                  "styling 3D glassmorphic cards at 2am, gradients are throwing off index..."
+                </p>
+
+                {/* Media element preview: Audio Player mockup */}
+                <div className="rounded-xl border border-white/10 bg-black/40 p-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 shrink-0">
+                      <Mic className="w-4 h-4 animate-pulse" />
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-white font-semibold">audio_trace.mp3</p>
+                      <p className="text-[8px] text-[var(--text-muted)] font-mono">AUDIO • 1.2 MB</p>
+                    </div>
+                  </div>
+                  {/* Mock waveforms */}
+                  <div className="flex items-end gap-0.5 h-6">
+                    <div className="w-0.5 bg-pink-400 h-3 animate-pulse" style={{ animationDelay: "0.1s" }} />
+                    <div className="w-0.5 bg-pink-400 h-5 animate-pulse" style={{ animationDelay: "0.3s" }} />
+                    <div className="w-0.5 bg-pink-400 h-2 animate-pulse" style={{ animationDelay: "0.5s" }} />
+                    <div className="w-0.5 bg-pink-400 h-4 animate-pulse" style={{ animationDelay: "0.2s" }} />
+                    <div className="w-0.5 bg-pink-400 h-3 animate-pulse" style={{ animationDelay: "0.4s" }} />
+                  </div>
+                </div>
+
+                {/* Reactions */}
+                <div className="flex items-center justify-between border-t border-white/5 pt-2">
+                  <motion.div
+                    animate={{ scale: [1, 1.08, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="flex items-center gap-1.5 text-pink-400 bg-pink-500/10 border border-pink-500/20 px-3 py-1 rounded-full text-[10px] font-bold"
+                  >
+                    <Heart className="w-3.5 h-3.5 fill-pink-400" />
+                    <span>14 Resonated</span>
+                  </motion.div>
+                  <span className="text-[8px] text-[var(--text-muted)] font-mono">
+                    Aura Reward Active (+5)
+                  </span>
+                </div>
+              </motion.div>
+            )}
+
+            {/* SLIDE 4 MOCKUP: Aura Score & History Logs */}
+            {currentSlide === 4 && (
+              <motion.div
+                key="mockup4"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="w-full max-w-[340px] rounded-2xl border border-[var(--glass-border)] bg-[#0d0d15]/95 p-4 shadow-2xl flex flex-col space-y-4"
+              >
+                {/* Aura Header */}
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <span className="text-[10px] font-mono text-[var(--accent-primary)] font-bold tracking-widest uppercase">
+                    aura telemetry
+                  </span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                </div>
+
+                {/* Score Big Display */}
+                <div className="text-center py-2 relative overflow-hidden bg-white/3 rounded-xl border border-white/5">
+                  <motion.div
+                    animate={{ opacity: [0.7, 1, 0.7] }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                    className="absolute -inset-10 bg-radial-gradient from-indigo-500/10 via-transparent to-transparent pointer-events-none"
+                  />
+                  <p className="text-[10px] text-[var(--text-muted)] uppercase tracking-widest font-mono">
+                    total reputation
+                  </p>
+                  <h1 className="text-4xl font-display font-black text-white mt-1 shadow-glow flex items-center justify-center gap-1.5">
+                    <span>🔥</span> 754 <span className="text-xs font-mono text-cyan-400 font-bold bg-cyan-500/10 border border-cyan-500/30 px-1.5 py-0.5 rounded-full">+8 today</span>
+                  </h1>
+                  <p className="text-[9px] font-semibold text-purple-300 font-mono uppercase tracking-wider mt-1.5">
+                    LEVEL 4 • RATED SENIOR MAKER
+                  </p>
+                </div>
+
+                {/* History list */}
+                <div className="space-y-2">
+                  <p className="text-[9px] text-[var(--text-muted)] font-mono uppercase tracking-wider">
+                    Recent Reputation Events
+                  </p>
+                  <div className="space-y-1.5 max-h-[120px] overflow-y-auto pr-1">
+                    <div className="p-1.5 rounded bg-white/5 border border-white/5 flex items-center justify-between text-[10px]">
+                      <span className="text-white font-medium">Trace Posted (+2 Cap)</span>
+                      <span className="text-cyan-400 font-mono font-bold">+2 Aura</span>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-white/5 flex items-center justify-between text-[10px]">
+                      <span className="text-white font-medium">10+ Resonates Milestone</span>
+                      <span className="text-pink-400 font-mono font-bold">+5 Aura</span>
+                    </div>
+                    <div className="p-1.5 rounded bg-white/5 border border-white/5 flex items-center justify-between text-[10px]">
+                      <span className="text-white font-medium">Collab Applied from Trace</span>
+                      <span className="text-purple-400 font-mono font-bold">+3 Aura</span>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* SLIDE 5 MOCKUP: Official Identity & Verification */}
+            {currentSlide === 5 && (
+              <motion.div
+                key="mockup5"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="w-full max-w-[340px] rounded-2xl border border-[var(--glass-border)] bg-[#0d0d15]/95 p-4 shadow-2xl flex flex-col space-y-4"
+              >
+                {/* Verification Header */}
+                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                  <span className="text-[10px] font-mono text-cyan-400 font-bold tracking-widest uppercase">
+                    verified identity layers
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-400 font-bold">SECURE GRID</span>
+                </div>
+
+                {/* Profile Card Mockup */}
+                <div className="p-4 rounded-xl border border-white/5 bg-white/3 flex flex-col items-center text-center space-y-3 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-cyan-500/10 to-transparent blur-xl pointer-events-none" />
+                  
+                  {/* Avatar with Verified check badge */}
+                  <div className="relative">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-indigo-500 p-0.5 shadow-[0_0_20px_rgba(6,182,212,0.3)]">
+                      <div className="w-full h-full rounded-full bg-[#0d0d15] flex items-center justify-center text-white text-xl font-bold">
+                        K
+                      </div>
+                    </div>
+                    <div className="absolute -bottom-0.5 -right-0.5 w-5 h-5 bg-[#0d0d15] rounded-full flex items-center justify-center p-0.5">
+                      <CheckCircle className="w-4 h-4 fill-cyan-500 text-[#0d0d15]" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center justify-center gap-1.5">
+                      Kira Nakamura
+                    </h3>
+                    <p className="text-[10px] text-[var(--text-muted)] font-mono">@kira.dev</p>
+                  </div>
+
+                  {/* Vetted Entity Tag Badge */}
+                  <div className="flex items-center gap-2 mt-1">
+                    <div className="px-2.5 py-1 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-[10px] font-semibold tracking-wider uppercase shadow-[0_0_10px_rgba(6,182,212,0.15)] flex items-center gap-1">
+                      <span>🛡️ Vetted Entity</span>
+                    </div>
+                    <div className="px-2.5 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-300 text-[10px] font-semibold tracking-wider uppercase flex items-center gap-1">
+                      <span>AI ENGINEER</span>
+                    </div>
+                  </div>
+
+                  {/* Campus details */}
+                  <p className="text-[10px] text-[var(--text-secondary)] font-mono flex items-center justify-center gap-1">
+                    MIT Tech Hub • <span className="text-emerald-400">Verified Campus</span>
+                  </p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* SLIDE 6 MOCKUP: Tech Event Detail Card & Pulse GPS Radar */}
+            {currentSlide === 6 && (
+              <motion.div
+                key="mockup6"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
@@ -722,116 +939,10 @@ export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPa
               </motion.div>
             )}
 
-            {/* SLIDE 4 MOCKUP: Direct Message Screen & Attachment Preview */}
-            {currentSlide === 4 && (
+            {/* SLIDE 7 MOCKUP: Setup Complete & Pulse CTA Button */}
+            {currentSlide === 7 && (
               <motion.div
-                key="mockup4"
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="w-full max-w-[340px] rounded-2xl border border-[var(--glass-border)] bg-[#0d0d15]/95 overflow-hidden shadow-2xl flex flex-col h-[280px]"
-              >
-                {/* DM Header */}
-                <div className="p-3 border-b border-white/5 flex items-center gap-2.5 bg-black/20">
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-bold text-white block truncate leading-tight">
-                      Sophia Chen
-                    </span>
-                    <span className="text-[9px] text-cyan-400 font-mono block">
-                      active now
-                    </span>
-                  </div>
-                  {/* Mini Back Button */}
-                  <span className="text-[8px] font-mono text-[var(--text-muted)] border border-white/10 px-2 py-0.5 rounded hover:text-white cursor-pointer">
-                    ← Back
-                  </span>
-                </div>
-
-                {/* Messages Body */}
-                <div className="flex-1 p-3 space-y-3 overflow-y-auto relative">
-                  <div className="flex items-start gap-2 max-w-[85%]">
-                    <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-cyan-500 shrink-0 mt-0.5" />
-                    <div className="bg-white/5 border border-white/10 text-xs px-2.5 py-1.5 rounded-xl rounded-tl-none text-gray-300">
-                      Hey! Can you send me the latest UI mockups for the landing page? ✦
-                    </div>
-                  </div>
-
-                  {/* Simulated Upload attachment */}
-                  <AnimatePresence>
-                    {dmUploadState === "uploading" && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 5 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="flex flex-col items-end"
-                      >
-                        <div className="bg-white/5 border border-white/10 rounded-xl p-2.5 flex items-center gap-2.5">
-                          <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />
-                          <div className="text-left">
-                            <p className="text-[10px] text-white font-bold leading-tight truncate max-w-[120px]">
-                              landing_v2_glow.png
-                            </p>
-                            <p className="text-[8px] text-[var(--text-muted)] font-mono leading-none mt-0.5">
-                              Uploading (2.4MB / 5.2MB)
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-
-                    {dmUploadState === "finished" && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="flex flex-col items-end"
-                      >
-                        <div className="rounded-xl border border-[var(--glass-border)] overflow-hidden bg-black/40 w-36 shadow-lg">
-                          <img
-                            src="https://images.unsplash.com/photo-1541701494587-cb58502866ab?q=80&w=300&auto=format&fit=crop"
-                            alt="Uploaded attachment preview"
-                            className="w-full h-20 object-cover"
-                          />
-                          <div className="p-1.5 flex items-center justify-between bg-black/85">
-                            <span className="text-[8px] font-mono text-cyan-400 font-bold">
-                              PREVIEW OVERLAY
-                            </span>
-                            <span className="text-[8px] font-mono text-[var(--text-muted)]">
-                              5.2MB
-                            </span>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                {/* DM Input panel with highlighted paperclip */}
-                <div className="p-2 border-t border-white/5 bg-black/40 flex items-center gap-2">
-                  <motion.div
-                    animate={
-                      dmUploadState === "uploading"
-                        ? { scale: [1, 1.1, 1], rotate: [0, 15, -15, 0] }
-                        : {}
-                    }
-                    transition={{ duration: 0.5, repeat: dmUploadState === "uploading" ? Infinity : 0 }}
-                    className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center cursor-pointer shadow-[0_0_8px_rgba(6,182,212,0.15)]"
-                  >
-                    <Paperclip className="w-3.5 h-3.5" />
-                  </motion.div>
-                  <div className="flex-1 h-7 bg-white/5 border border-white/10 rounded-lg px-2 text-[10px] text-white/50 flex items-center font-mono">
-                    {dmUploadState === "idle" ? "Write a message..." : "File attachment loaded"}
-                  </div>
-                  <div className="w-7 h-7 rounded-lg bg-white/5 border border-white/10 text-white/40 flex items-center justify-center">
-                    <Send className="w-3.5 h-3.5" />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* SLIDE 5 MOCKUP: Setup Complete & Pulse CTA Button */}
-            {currentSlide === 5 && (
-              <motion.div
-                key="mockup5"
+                key="mockup7"
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }}
