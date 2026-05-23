@@ -43,12 +43,21 @@ export default function MessagesPage() {
   
   const [loading, setLoading] = useState(true);
   
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const scrollToBottom = () => {
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: "smooth"
+      });
+    }
+  };
 
   // Auto-scroll
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    setTimeout(scrollToBottom, 50);
   }, [messages]);
 
   // Handle textarea auto-resize
@@ -454,7 +463,10 @@ export default function MessagesPage() {
               </div>
 
               {/* Chat Log Area */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-[var(--bg-void)]">
+              <div 
+                ref={chatScrollContainerRef}
+                className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar bg-[var(--bg-void)]"
+              >
                 {/* Handshake/Spark Warning Area (Optional context) */}
                 <div className="flex flex-col items-center justify-center my-6">
                   <div className="bg-[rgba(108,92,231,0.05)] border border-[rgba(108,92,231,0.2)] rounded-full px-4 py-1.5 flex items-center gap-2">
@@ -508,7 +520,7 @@ export default function MessagesPage() {
                     );
                   })}
                 </AnimatePresence>
-                <div ref={messagesEndRef} />
+                <div className="h-2" />
               </div>
 
               {/* Input Area */}
