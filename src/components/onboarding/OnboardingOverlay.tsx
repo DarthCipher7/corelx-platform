@@ -24,11 +24,11 @@ import {
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
 
-export default function OnboardingOverlay() {
+export default function OnboardingOverlay({ isStaticPage = false }: { isStaticPage?: boolean }) {
   const supabase = createClient();
   const router = useRouter();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(isStaticPage);
   const [currentSlide, setCurrentSlide] = useState(1);
   const [user, setUser] = useState<any>(null);
   
@@ -59,23 +59,27 @@ export default function OnboardingOverlay() {
 
   // 1. Initial configuration check
   useEffect(() => {
-    // Check local storage and session storage
-    const introSeen = localStorage.getItem("corelx_intro_seen") === "true";
-    const pendingType = sessionStorage.getItem("pending_invite_type");
-    const pendingId = sessionStorage.getItem("pending_invite_id");
-
-    setInviteType(pendingType);
-    setInviteId(pendingId);
-
-    // Show onboarding if never seen before, OR if there is an active invite they just accepted
-    if (!introSeen || (pendingType && pendingId)) {
+    if (isStaticPage) {
       setIsOpen(true);
+    } else {
+      // Check local storage and session storage
+      const introSeen = localStorage.getItem("corelx_intro_seen") === "true";
+      const pendingType = sessionStorage.getItem("pending_invite_type");
+      const pendingId = sessionStorage.getItem("pending_invite_id");
+
+      setInviteType(pendingType);
+      setInviteId(pendingId);
+
+      // Show onboarding if never seen before, OR if there is an active invite they just accepted
+      if (!introSeen || (pendingType && pendingId)) {
+        setIsOpen(true);
+      }
     }
 
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setUser(user);
     });
-  }, []);
+  }, [isStaticPage]);
 
   // 2. Auto-Join engine trigger
   useEffect(() => {
@@ -236,6 +240,10 @@ export default function OnboardingOverlay() {
   };
 
   const handleDismiss = () => {
+    if (isStaticPage) {
+      router.push("/");
+      return;
+    }
     localStorage.setItem("corelx_intro_seen", "true");
     sessionStorage.removeItem("pending_invite_type");
     sessionStorage.removeItem("pending_invite_id");
@@ -252,6 +260,10 @@ export default function OnboardingOverlay() {
   };
 
   const skipIntro = () => {
+    if (isStaticPage) {
+      router.push("/");
+      return;
+    }
     setCurrentSlide(5);
   };
 

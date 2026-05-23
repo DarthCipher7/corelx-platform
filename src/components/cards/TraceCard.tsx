@@ -10,6 +10,8 @@ interface TraceCardProps {
     content: string;
     expires_at: string;
     created_at: string;
+    media_url?: string;
+    media_type?: string;
     users: {
       id: string;
       handle: string;
@@ -95,6 +97,24 @@ export default function TraceCard({ trace, onClick }: TraceCardProps) {
         <p className="text-sm text-[var(--text-primary)] leading-relaxed italic select-none">
           "{trace.content}"
         </p>
+
+        {trace.media_url && (
+          <div className="mt-3.5 rounded-xl border border-white/5 bg-black/20 overflow-hidden max-w-xs flex items-center justify-center p-1">
+            {trace.media_type === "image" && (
+              <img src={trace.media_url} className="w-full h-auto max-h-36 object-contain rounded-lg" alt="Trace Attachment" />
+            )}
+            {trace.media_type === "video" && (
+              <div className="text-[10px] font-mono text-[var(--text-secondary)] py-2.5 px-3 flex items-center gap-1.5 bg-white/5 rounded-lg w-full">
+                <span>🎥</span> Vertical Video Attached (Click to watch)
+              </div>
+            )}
+            {trace.media_type === "audio" && (
+              <div className="text-[10px] font-mono text-pink-400 py-2.5 px-3 flex items-center gap-1.5 bg-white/5 rounded-lg w-full">
+                <span>🎵</span> Voice Note / Audio Attached (Click to play)
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Card Footer: Hints of interactions */}

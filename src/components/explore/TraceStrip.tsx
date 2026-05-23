@@ -153,7 +153,9 @@ export default function TraceStrip({
             scope: trace.scope,
             pod_id: trace.pod_id,
             expires_at: trace.expires_at,
-            created_at: trace.created_at
+            created_at: trace.created_at,
+            media_url: trace.media_url,
+            media_type: trace.media_type
           });
         });
 

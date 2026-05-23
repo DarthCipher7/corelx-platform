@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Globe, Home, ShieldAlert, Sparkles, ChevronDown, Check } from "lucide-react";
+import { X, Globe, Home, ShieldAlert, Sparkles, ChevronDown, Check, Paperclip, Mic, Trash2 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 
 interface ComposeModalProps {
@@ -42,6 +42,12 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
   const [submitting, setSubmitting] = useState(false);
   const [errorText, setErrorText] = useState("");
 
+  // Media sharing states
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"image" | "video" | "audio" | null>(null);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+
   useEffect(() => {
     async function loadUserAndPods() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -70,6 +76,9 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
       setScope("public");
       setExpiryHours(24);
       setErrorText("");
+      setMediaFile(null);
+      setMediaUrl(null);
+      setMediaType(null);
     }
   }, [isOpen, supabase]);
 
@@ -98,6 +107,33 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
     const expiresAt = new Date();
     expiresAt.setHours(expiresAt.getHours() + expiryHours);
 
+    let finalMediaUrl = null;
+    if (mediaFile) {
+      setUploadingMedia(true);
+      try {
+        const fileExt = mediaFile.name.split(".").pop();
+        const fileName = `${currentUser.id}_${Date.now()}.${fileExt}`;
+        const filePath = `traces/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("media")
+          .upload(filePath, mediaFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage.from("media").getPublicUrl(filePath);
+        finalMediaUrl = urlData.publicUrl;
+      } catch (err: any) {
+        console.error("Storage upload failed:", err);
+        setErrorText("Failed to upload media. Please try again.");
+        setSubmitting(false);
+        setUploadingMedia(false);
+        return;
+      } finally {
+        setUploadingMedia(false);
+      }
+    }
+
     try {
       const { error } = await supabase.from("traces").insert({
         user_id: currentUser.id,
@@ -105,7 +141,9 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
         content: content.trim(),
         scope,
         pod_id: scope === "pod_only" ? selectedPodId : null,
-        expires_at: expiresAt.toISOString()
+        expires_at: expiresAt.toISOString(),
+        media_url: finalMediaUrl,
+        media_type: mediaType
       });
 
       if (error) throw error;
@@ -222,6 +260,87 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
                 {140 - content.length}
               </span>
             </div>
+          </div>
+
+          {/* Step 2.5: Media Uploader */}
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Attach Media (Optional)</span>
+            {!mediaFile ? (
+              <div 
+                onClick={() => document.getElementById("trace-media-upload")?.click()}
+                className="w-full py-4 border border-dashed border-white/10 hover:border-[var(--accent-primary)] hover:bg-[var(--accent-primary-glow)] rounded-xl flex items-center justify-center gap-2 cursor-pointer text-xs font-medium text-[var(--text-secondary)] hover:text-white transition-all bg-white/3"
+              >
+                <Paperclip className="w-4 h-4 text-purple-400 animate-pulse" />
+                <span>Upload Picture, Video, or Audio (Max 50MB)</span>
+                <input 
+                  id="trace-media-upload" 
+                  type="file" 
+                  accept="image/*,video/*,audio/*" 
+                  className="hidden" 
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setErrorText("");
+                    if (file.size > 50 * 1024 * 1024) {
+                      setErrorText("File size too large. Max 50MB allowed.");
+                      return;
+                    }
+                    let type: "image" | "video" | "audio" | null = null;
+                    if (file.type.startsWith("image/")) type = "image";
+                    else if (file.type.startsWith("video/")) type = "video";
+                    else if (file.type.startsWith("audio/")) type = "audio";
+                    else {
+                      setErrorText("Unsupported file type. Please upload a picture, video, or audio file.");
+                      return;
+                    }
+                    setMediaFile(file);
+                    setMediaType(type);
+                    setMediaUrl(URL.createObjectURL(file));
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="relative rounded-xl border border-white/10 bg-black/40 overflow-hidden p-3 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0 flex items-center gap-3">
+                  {mediaType === "image" && (
+                    <img src={mediaUrl!} className="w-12 h-12 object-cover rounded-lg border border-white/5 shrink-0" alt="Preview" />
+                  )}
+                  {mediaType === "video" && (
+                    <div className="w-12 h-12 rounded-lg border border-white/5 shrink-0 bg-indigo-500/10 flex items-center justify-center text-xs text-white font-mono uppercase">
+                      vdo
+                    </div>
+                  )}
+                  {mediaType === "audio" && (
+                    <div className="w-12 h-12 rounded-lg border border-white/5 shrink-0 bg-pink-500/10 flex items-center justify-center text-xs text-pink-400">
+                      <Mic className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-white font-semibold truncate leading-tight">{mediaFile.name}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] font-mono uppercase mt-0.5">
+                      {mediaType} &mdash; {(mediaFile.size / (1024 * 1024)).toFixed(2)} MB
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {mediaType === "audio" && (
+                    <audio src={mediaUrl!} controls className="h-8 max-w-[120px] sm:max-w-[160px]" />
+                  )}
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setMediaFile(null);
+                      setMediaUrl(null);
+                      setMediaType(null);
+                    }}
+                    className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition-all cursor-pointer shrink-0"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Step 3: Scope and Expiry Picker in a Row */}

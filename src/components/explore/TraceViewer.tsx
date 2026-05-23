@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Send, Heart, MessageSquare, Zap, ShieldAlert, Flag, Check, Flame } from "lucide-react";
+import { X, Send, Heart, MessageSquare, Zap, ShieldAlert, Flag, Check, Flame, Mic } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import TraceRing from "@/components/ui/TraceRing";
 
@@ -24,6 +24,8 @@ interface TraceViewerProps {
       pod_id?: string;
       expires_at: string;
       created_at: string;
+      media_url?: string;
+      media_type?: string;
     }>;
   }>;
   initialUserIndex?: number;
@@ -414,6 +416,27 @@ export default function TraceViewer({
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 rounded-full blur-[100px] pointer-events-none opacity-20 bg-indigo-500" />
           
           <span className="text-5xl mb-6 select-none animate-bounce">{typeConfig.emoji}</span>
+          
+          {/* Media Display */}
+          {activeTrace.media_url && (
+            <div className="w-full max-w-[280px] rounded-2xl overflow-hidden border border-white/10 bg-black/40 mb-6 flex items-center justify-center relative shadow-lg">
+              {activeTrace.media_type === "image" && (
+                <img src={activeTrace.media_url} className="w-full h-auto max-h-[200px] object-contain" alt="Trace media" />
+              )}
+              {activeTrace.media_type === "video" && (
+                <video src={activeTrace.media_url} className="w-full h-auto max-h-[200px] object-contain" autoPlay loop muted playsInline controls />
+              )}
+              {activeTrace.media_type === "audio" && (
+                <div className="w-full p-4 flex flex-col justify-center items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-pink-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400">
+                    <Mic className="w-5 h-5 animate-pulse" />
+                  </div>
+                  <audio src={activeTrace.media_url} controls className="h-8 max-w-full" />
+                </div>
+              )}
+            </div>
+          )}
+
           <h1
             className="text-lg sm:text-xl font-medium tracking-wide leading-relaxed text-white whitespace-pre-wrap select-text break-words"
             style={{ fontFamily: "'Inter', sans-serif" }}
