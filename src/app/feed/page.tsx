@@ -13,6 +13,9 @@ import { createClient } from "@/utils/supabase/client";
 import { X, Image as ImageIcon, Play, Flame, AlertCircle } from "lucide-react";
 import { FeedPostData, Flare } from "@/types";
 import OnboardingOverlay from "@/components/onboarding/OnboardingOverlay";
+import TraceStrip from "@/components/explore/TraceStrip";
+import TraceCard from "@/components/cards/TraceCard";
+import TraceViewer from "@/components/explore/TraceViewer";
 
 const FILTERS = [
   "All",
@@ -31,7 +34,7 @@ export default function FeedPage() {
   const [collabs, setCollabs] = useState<any[]>([]);
   
   const [isPostModalOpen, setIsPostModalOpen] = useState(false);
-  const [feedMode, setFeedMode] = useState<"posts" | "flares">("posts");
+  const [feedMode, setFeedMode] = useState<"posts" | "flares" | "traces">("posts");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   
   const [postTitle, setPostTitle] = useState("");
@@ -45,6 +48,37 @@ export default function FeedPage() {
 
   // Flares viewer state
   const [selectedFlareIndex, setSelectedFlareIndex] = useState<number | null>(null);
+
+  // Traces state
+  const [followedTraces, setFollowedTraces] = useState<any[]>([]);
+  const [loadingTraces, setLoadingTraces] = useState(false);
+  const [viewerUserTraces, setViewerUserTraces] = useState<any[]>([]);
+  const [viewerUserIndex, setViewerUserIndex] = useState(0);
+  const [isViewerOpen, setIsViewerOpen] = useState(false);
+
+  const handleOpenTraceViewer = (userId: string) => {
+    const grouped: Record<string, { user: any; traces: any[] }> = {};
+    followedTraces.forEach((trace) => {
+      const u = trace.users;
+      if (!u) return;
+      if (!grouped[u.id]) {
+        grouped[u.id] = {
+          user: u,
+          traces: []
+        };
+      }
+      grouped[u.id].traces.push(trace);
+    });
+    
+    const list = Object.values(grouped);
+    const targetIdx = list.findIndex(item => item.user.id === userId);
+    
+    if (targetIdx > -1) {
+      setViewerUserTraces(list);
+      setViewerUserIndex(targetIdx);
+      setIsViewerOpen(true);
+    }
+  };
   
   const supabase = createClient();
 
@@ -53,6 +87,55 @@ export default function FeedPage() {
       if (user) setUser(user);
     });
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    
+    async function loadFollowedTraces() {
+      setLoadingTraces(true);
+      try {
+        const { data: follows } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', user.id);
+        
+        const followedIds = follows?.map(f => f.following_id) || [];
+        followedIds.push(user.id);
+        
+        const { data, error } = await supabase
+          .from('traces')
+          .select('*, users:users(id, handle, display_name, avatar_url)')
+          .in('user_id', followedIds)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false });
+        
+        if (!error && data) {
+          setFollowedTraces(data);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoadingTraces(false);
+      }
+    }
+    
+    loadFollowedTraces();
+    
+    const channel = supabase
+      .channel('followed-traces-realtime')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'traces'
+      }, () => {
+        loadFollowedTraces();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, supabase]);
 
   useEffect(() => {
     fetchPosts();
@@ -518,12 +601,12 @@ export default function FeedPage() {
               <span>✦</span> Discovery Network
             </p>
             <h1 className="display-sm text-white font-bold tracking-tight">
-              {feedMode === "posts" ? "Discovery Feed 👥" : feedMode === "flares" ? "Trending Flares 🔥" : "Campus Events 🗓️"}
+              {feedMode === "posts" ? "Discovery Feed 👥" : feedMode === "flares" ? "Trending Flares 🔥" : feedMode === "traces" ? "Ephemeral Traces ✦" : "Campus Events 🗓️"}
             </h1>
           </div>
           
           <div className="flex flex-wrap items-center gap-3">
-            {/* Posts / Flares / Events Selector */}
+            {/* Posts / Flares / Traces Selector */}
             <div className="flex items-center p-1 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-md">
               <button
                 type="button"
@@ -546,6 +629,17 @@ export default function FeedPage() {
                 }`}
               >
                 Flares 🔥
+              </button>
+              <button
+                type="button"
+                onClick={() => setFeedMode("traces")}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 flex items-center gap-1 ${
+                  feedMode === "traces"
+                    ? "bg-white text-[#030308] shadow-[0_4px_15px_rgba(255,255,255,0.15)]"
+                    : "text-[var(--text-secondary)] hover:text-white"
+                }`}
+              >
+                Traces ✦
               </button>
             </div>
 
@@ -685,7 +779,7 @@ export default function FeedPage() {
 
               return <FeedPost key={post.id} post={post} index={i} />;
             })
-          ) : (
+          ) : feedMode === "flares" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
               {filteredFlares.length > 0 ? (
                 filteredFlares.map((flare, idx) => (
@@ -706,6 +800,32 @@ export default function FeedPage() {
                   <p className="text-xs text-[var(--text-secondary)]">Be the first to upload a Flare in this category!</p>
                 </div>
               )}
+            </div>
+          ) : (
+            <div className="flex flex-col gap-6">
+              <TraceStrip scope="public" />
+              
+              <div className="flex flex-col gap-4 mt-2">
+                {loadingTraces ? (
+                  <div className="py-20 flex justify-center items-center">
+                    <div className="w-8 h-8 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : followedTraces.length > 0 ? (
+                  followedTraces.map((trace) => (
+                    <TraceCard
+                      key={trace.id}
+                      trace={trace}
+                      onClick={() => handleOpenTraceViewer(trace.user_id)}
+                    />
+                  ))
+                ) : (
+                  <div className="py-16 text-center text-[var(--text-muted)] border border-dashed border-[var(--border-subtle)] rounded-3xl bg-[var(--bg-frosted)] backdrop-blur-xl">
+                    <span className="text-4xl block mb-3">✦</span>
+                    <h4 className="text-base font-semibold text-white mb-1">No active Traces from your network</h4>
+                    <p className="text-xs text-[var(--text-secondary)] font-medium">Post your first Trace to start leaving marks!</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -745,6 +865,17 @@ export default function FeedPage() {
           flares={flares} 
           initialIndex={selectedFlareIndex} 
           onClose={() => setSelectedFlareIndex(null)} 
+        />
+      )}
+
+      {/* Traces Viewer Overlay */}
+      {isViewerOpen && (
+        <TraceViewer
+          isOpen={isViewerOpen}
+          onClose={() => setIsViewerOpen(false)}
+          userTraces={viewerUserTraces}
+          initialUserIndex={viewerUserIndex}
+          initialTraceIndex={0}
         />
       )}
 

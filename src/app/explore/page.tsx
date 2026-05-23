@@ -7,6 +7,7 @@ import CreatorCard from "@/components/cards/CreatorCard";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
 import { SKILLS_ALL } from "@/lib/data";
+import TraceStrip from "@/components/explore/TraceStrip";
 
 const FILTER_ROLES = [
   "All",
@@ -115,6 +116,9 @@ export default function ExplorePage() {
             </h1>
           </motion.div>
         </div>
+
+        {/* Trending now Traces strip */}
+        <TraceStrip isExploreTrending={true} className="mb-8" />
 
         {/* Search + filter bar */}
         <motion.div

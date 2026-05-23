@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import OfficialTag from "@/components/ui/OfficialTag";
+import TraceStrip from "@/components/explore/TraceStrip";
 import {
   Users,
   MessageSquare,
@@ -965,6 +966,9 @@ export default function PodDetailPage() {
                 exit={{ opacity: 0, y: -10 }}
                 className="flex flex-col rounded-3xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] overflow-hidden shadow-2xl h-[550px]"
               >
+                {/* Pod-only Trace Strip */}
+                <TraceStrip scope="pod_only" podId={podId} className="border-b border-white/5 bg-black/10 py-2" />
+
                 {/* Pinned Messages Header */}
                 {pinnedMessages.length > 0 && (
                   <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex flex-col gap-1.5 transition-all">
