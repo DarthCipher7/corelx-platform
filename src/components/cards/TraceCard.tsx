@@ -2,6 +2,8 @@
 
 import { Heart, MessageSquare, Zap, Clock } from "lucide-react";
 import TraceRing from "@/components/ui/TraceRing";
+import { getMediaType } from "@/lib/utils";
+
 
 interface TraceCardProps {
   trace: {
@@ -98,23 +100,26 @@ export default function TraceCard({ trace, onClick }: TraceCardProps) {
           "{trace.content}"
         </p>
 
-        {trace.media_url && (
-          <div className="mt-3.5 rounded-xl border border-white/5 bg-black/20 overflow-hidden max-w-xs flex items-center justify-center p-1">
-            {trace.media_type === "image" && (
-              <img src={trace.media_url} className="w-full h-auto max-h-36 object-contain rounded-lg" alt="Trace Attachment" />
-            )}
-            {trace.media_type === "video" && (
-              <div className="text-[10px] font-mono text-[var(--text-secondary)] py-2.5 px-3 flex items-center gap-1.5 bg-white/5 rounded-lg w-full">
-                <span>🎥</span> Vertical Video Attached (Click to watch)
-              </div>
-            )}
-            {trace.media_type === "audio" && (
-              <div className="text-[10px] font-mono text-pink-400 py-2.5 px-3 flex items-center gap-1.5 bg-white/5 rounded-lg w-full">
-                <span>🎵</span> Voice Note / Audio Attached (Click to play)
-              </div>
-            )}
-          </div>
-        )}
+        {trace.media_url && (() => {
+          const resolvedType = trace.media_type || getMediaType(trace.media_url);
+          return (
+            <div className="mt-3.5 rounded-xl border border-white/5 bg-black/20 overflow-hidden max-w-xs flex items-center justify-center p-1">
+              {resolvedType === "image" && (
+                <img src={trace.media_url} className="w-full h-auto max-h-36 object-contain rounded-lg" alt="Trace Attachment" />
+              )}
+              {resolvedType === "video" && (
+                <div className="text-[10px] font-mono text-[var(--text-secondary)] py-2.5 px-3 flex items-center gap-1.5 bg-white/5 rounded-lg w-full">
+                  <span>🎥</span> Vertical Video Attached (Click to watch)
+                </div>
+              )}
+              {resolvedType === "audio" && (
+                <div className="text-[10px] font-mono text-pink-400 py-2.5 px-3 flex items-center gap-1.5 bg-white/5 rounded-lg w-full">
+                  <span>🎵</span> Voice Note / Audio Attached (Click to play)
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Card Footer: Hints of interactions */}

@@ -94,6 +94,13 @@ function getAuraTier(score: number) {
   return AURA_TIERS.find(t => normalizedScore >= t.min && normalizedScore <= t.max) || AURA_TIERS[0];
 }
 
+const DEFAULT_AVATARS = [
+  { name: "Cyberpunk", path: "/avatars/cyber_avatar.png" },
+  { name: "Cosmic", path: "/avatars/cosmic_avatar.png" },
+  { name: "Synthwave", path: "/avatars/synthwave_avatar.png" },
+  { name: "Glassmorphic", path: "/avatars/glassmorphic_avatar.png" }
+];
+
 const TABS = [
   { id: "profile", name: "Profile Settings", icon: User },
   { id: "aura", name: "Aura Telemetry", icon: Flame },
@@ -507,6 +514,40 @@ export default function SettingsPage() {
                       <span className="text-[10px] text-purple-400 font-bold font-mono tracking-wide uppercase">
                         {currentTier.icon} {currentTier.name} Tier
                       </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 w-full border-t border-white/5 pt-6">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[var(--text-muted)] mb-3 block w-full text-center">
+                      Or Choose Default
+                    </span>
+                    <div className="grid grid-cols-4 gap-2.5 px-2">
+                      {DEFAULT_AVATARS.map((av, index) => {
+                        const isSelected = avatarUrl === av.path;
+                        return (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => {
+                              setAvatarUrl(av.path);
+                              setMessage({ text: `Selected ${av.name} avatar! Remember to Save Changes.`, type: "success" });
+                            }}
+                            className={`relative aspect-square rounded-full overflow-hidden border-2 cursor-pointer transition-all hover:scale-105 ${
+                              isSelected 
+                                ? "border-purple-500 scale-105 shadow-[0_0_12px_rgba(168,85,247,0.4)]" 
+                                : "border-white/10 hover:border-white/30"
+                            }`}
+                            title={av.name}
+                          >
+                            <img src={av.path} alt={av.name} className="w-full h-full object-cover" />
+                            {isSelected && (
+                              <div className="absolute inset-0 bg-purple-600/20 flex items-center justify-center">
+                                <Check className="w-4 h-4 text-white drop-shadow-md" />
+                              </div>
+                            )}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

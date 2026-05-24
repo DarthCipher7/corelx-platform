@@ -142,8 +142,7 @@ export default function ComposeModal({ isOpen, onClose, onPostSuccess }: Compose
         scope,
         pod_id: scope === "pod_only" ? selectedPodId : null,
         expires_at: expiresAt.toISOString(),
-        media_url: finalMediaUrl,
-        media_type: mediaType
+        media_url: finalMediaUrl
       });
 
       if (error) throw error;
