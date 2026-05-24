@@ -62,10 +62,19 @@ export async function GET(request: Request) {
           avatar_url: avatarUrl || `https://api.dicebear.com/8.x/lorelei/svg?seed=${handleToUse}&backgroundColor=6c5ce7`,
         });
       } else {
-        // Update profile if details are missing
+        // Update profile if details are missing or contain placeholder values
         const updatePayload: any = {};
-        if (!existingUser.avatar_url && avatarUrl) updatePayload.avatar_url = avatarUrl;
-        if (!existingUser.display_name && fullName) updatePayload.display_name = fullName;
+        
+        const isDicebear = existingUser.avatar_url?.includes('api.dicebear.com');
+        if ((!existingUser.avatar_url || isDicebear) && avatarUrl) {
+          updatePayload.avatar_url = avatarUrl;
+        }
+        
+        // If display name is missing or matches the handle (often default), update it with full name
+        const isDefaultName = !existingUser.display_name || existingUser.display_name === existingUser.handle;
+        if (isDefaultName && fullName) {
+          updatePayload.display_name = fullName;
+        }
         
         if (Object.keys(updatePayload).length > 0) {
           await supabase.from('users').update(updatePayload).eq('id', user.id);
