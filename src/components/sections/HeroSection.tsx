@@ -211,15 +211,24 @@ export default function HeroSection({
             variants={item}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link href="/explore">
-              <Button variant="primary" size="lg" iconRight={<ArrowRight className="w-4 h-4" />}>
+            <Link href="/explore" className="block sm:inline-block w-full sm:w-auto">
+              <motion.div
+                className="btn-primary !py-4 !px-8 !text-base w-full sm:w-auto inline-flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+              >
                 Start Building
-              </Button>
+                <ArrowRight className="w-4 h-4" />
+              </motion.div>
             </Link>
-            <Link href="/showcase">
-              <Button variant="ghost" size="lg">
+            <Link href="/showcase" className="block sm:inline-block w-full sm:w-auto">
+              <motion.div
+                className="btn-ghost !py-4 !px-8 !text-base w-full sm:w-auto inline-flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.97 }}
+              >
                 See the Showcase
-              </Button>
+              </motion.div>
             </Link>
           </motion.div>
 

@@ -129,9 +129,9 @@ export default function CTASection() {
             </p>
 
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <Link href="/signup">
-                <motion.button
-                  className="btn-primary"
+              <Link href="/signup" className="block sm:inline-block w-full sm:w-auto">
+                <motion.div
+                  className="btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto"
                   style={{ fontSize: "15px", padding: "14px 32px" }}
                   whileHover={{ scale: 1.04 }}
                   whileTap={{ scale: 0.97 }}
@@ -139,7 +139,7 @@ export default function CTASection() {
                   <Sparkles className="w-4 h-4" />
                   Get Early Access
                   <ArrowRight className="w-4 h-4" />
-                </motion.button>
+                </motion.div>
               </Link>
               <p className="text-sm" style={{ color: "var(--text-dim)" }}>
                 Free forever · No credit card · Ship in 5 minutes

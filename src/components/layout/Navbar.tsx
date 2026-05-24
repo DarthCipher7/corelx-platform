@@ -1,6 +1,6 @@
 "use client";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Zap,
@@ -61,6 +61,10 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadNotifs, setUnreadNotifs] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const [showMobileNotifs, setShowMobileNotifs] = useState(false);
+
+  const notificationsRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   const { theme, setTheme } = useTheme();
   const router = useRouter();
@@ -73,6 +77,30 @@ export default function Navbar() {
     window.addEventListener("scroll", handler);
     return () => window.removeEventListener("scroll", handler);
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        notificationsOpen &&
+        notificationsRef.current &&
+        !notificationsRef.current.contains(event.target as Node)
+      ) {
+        setNotificationsOpen(false);
+      }
+      if (
+        profileDropdownOpen &&
+        profileRef.current &&
+        !profileRef.current.contains(event.target as Node)
+      ) {
+        setProfileDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [notificationsOpen, profileDropdownOpen]);
 
   useEffect(() => {
     let activeUserId: string | null = null;
@@ -371,7 +399,7 @@ export default function Navbar() {
             </Link>
 
             {/* Notifications Bell */}
-            <div className="relative">
+            <div className="relative" ref={notificationsRef}>
               <button
                 id="navbar-notifications-btn"
                 onClick={() => setNotificationsOpen(!notificationsOpen)}
@@ -521,7 +549,7 @@ export default function Navbar() {
 
             {/* Profile */}
             {user ? (
-              <div className="relative">
+              <div className="relative" ref={profileRef}>
                 <button
                   id="navbar-profile-btn"
                   className="h-9 flex items-center gap-2 rounded-full overflow-hidden transition-colors p-0.5 pr-3"
@@ -615,9 +643,13 @@ export default function Navbar() {
                   Log In
                 </Link>
                 <Link href="/signup">
-                  <Button variant="primary" size="sm">
+                  <motion.span
+                    className="btn-primary !py-2 !px-4 !text-xs inline-flex items-center"
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
                     Sign Up Free
-                  </Button>
+                  </motion.span>
                 </Link>
               </>
             )}
@@ -636,16 +668,52 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       <motion.div
-        className="fixed inset-x-0 top-16 z-40 md:hidden"
+        className="fixed inset-x-0 top-16 z-40 md:hidden h-[calc(100vh-4rem)] overflow-y-auto"
         style={{
           background: "rgba(5,5,15,0.98)",
           backdropFilter: "blur(24px)",
           pointerEvents: mobileOpen ? "auto" : "none",
+          borderBottom: "1px solid var(--border-subtle)",
         }}
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: mobileOpen ? 1 : 0, y: mobileOpen ? 0 : -20 }}
       >
         <div className="px-4 py-6 flex flex-col gap-2">
+          {user && (
+            <div className="p-4 mb-2 rounded-2xl border border-white/5 bg-white/3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[var(--accent-primary)] flex items-center justify-center font-bold text-sm text-white">
+                {userProfile?.avatar_url ? (
+                  <img
+                    src={userProfile.avatar_url}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  (userProfile?.display_name || userProfile?.handle || user.email)
+                    ?.charAt(0)
+                    .toUpperCase()
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-white truncate">
+                  {userProfile?.display_name || "Creator"}
+                </p>
+                {userProfile?.handle && (
+                  <p className="text-xs text-[var(--text-muted)] truncate">
+                    @{userProfile.handle}
+                  </p>
+                )}
+              </div>
+              <Link
+                href="/studio/me"
+                onClick={() => setMobileOpen(false)}
+                className="text-xs text-purple-400 font-bold hover:underline"
+              >
+                View
+              </Link>
+            </div>
+          )}
+
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
@@ -657,9 +725,148 @@ export default function Navbar() {
               {link.label}
             </Link>
           ))}
-          <Button variant="primary" className="mt-2 justify-center">
-            Sign Up Free
-          </Button>
+
+          {user ? (
+            <>
+              <Link
+                href="/messages"
+                className="px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-between"
+                style={{ color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+                onClick={() => setMobileOpen(false)}
+              >
+                <span className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" /> DMs / Messages
+                </span>
+                {unreadMessages > 0 && (
+                  <span className="min-w-4 h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white bg-[var(--accent-primary)]">
+                    {unreadMessages}
+                  </span>
+                )}
+              </Link>
+
+              <button
+                onClick={() => setShowMobileNotifs(!showMobileNotifs)}
+                className="px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-between text-left"
+                style={{ color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+              >
+                <span className="flex items-center gap-2">
+                  <Bell className="w-4 h-4" /> Notifications
+                </span>
+                {unreadNotifs > 0 ? (
+                  <span className="min-w-4 h-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center text-white bg-pink-500">
+                    {unreadNotifs}
+                  </span>
+                ) : (
+                  <span className="text-xs text-[var(--text-muted)] font-mono">View</span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showMobileNotifs && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden border border-white/5 rounded-xl bg-white/3 divide-y divide-white/5 mt-1"
+                  >
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-[var(--text-muted)]">
+                        No notifications.
+                      </div>
+                    ) : (
+                      notifications.slice(0, 10).map((notif: any) => (
+                        <div
+                          key={notif.id}
+                          onClick={() => {
+                            handleNotifClick(notif);
+                            setMobileOpen(false);
+                          }}
+                          className="flex gap-2.5 p-3 cursor-pointer transition-colors"
+                          style={{
+                            background: !notif.read ? "rgba(108,92,231,0.05)" : "transparent",
+                          }}
+                        >
+                          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-white/5">
+                            {notif.from_user?.avatar_url ? (
+                              <img src={notif.from_user.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <User className="w-4 h-4 text-gray-500" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-white line-clamp-2">
+                              <span className="font-semibold">{notif.from_user?.display_name || notif.from_user?.handle || "Someone"}</span>{" "}
+                              {NOTIF_TEXT[notif.type] || notif.message}
+                            </p>
+                            <span className="text-[10px] text-[var(--text-muted)] block mt-0.5">
+                              {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <Link
+                href="/settings"
+                className="px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center gap-2"
+                style={{ color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+                onClick={() => setMobileOpen(false)}
+              >
+                <Settings className="w-4 h-4" /> Account Settings
+              </Link>
+
+              {mounted && (
+                <button
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="px-4 py-3 rounded-xl text-sm font-medium transition-all flex items-center justify-between text-left"
+                  style={{ color: "var(--text-secondary)", border: "1px solid var(--glass-border)" }}
+                >
+                  <span className="flex items-center gap-2">
+                    {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                    Theme: {theme === "dark" ? "Light Mode" : "Dark Mode"}
+                  </span>
+                </button>
+              )}
+
+              <button
+                onClick={() => {
+                  handleLogout();
+                  setMobileOpen(false);
+                }}
+                className="w-full mt-2 py-3 px-4 rounded-xl font-bold text-center text-sm border border-red-500/20 text-red-400 bg-red-500/5 hover:bg-red-500/10 transition-all cursor-pointer"
+              >
+                Log Out
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2 mt-2">
+              <Link
+                href="/login"
+                onClick={() => setMobileOpen(false)}
+                className="w-full py-3 rounded-xl font-semibold text-center text-sm border border-white/10 text-white hover:bg-white/5 transition-all cursor-pointer block"
+              >
+                Log In
+              </Link>
+              <Link
+                href="/signup"
+                onClick={() => setMobileOpen(false)}
+                className="block"
+              >
+                <motion.div
+                  className="btn-primary w-full justify-center py-3 text-center"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Sign Up Free
+                </motion.div>
+              </Link>
+            </div>
+          )}
         </div>
       </motion.div>
 
