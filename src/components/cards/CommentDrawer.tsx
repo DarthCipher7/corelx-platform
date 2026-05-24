@@ -22,6 +22,7 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, ta
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<any | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -71,15 +72,26 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, ta
     if (!content.trim() || !currentUser || isSubmitting) return;
 
     setIsSubmitting(true);
+    
+    // Determine target parent comment ID (always nesting exactly one level below top-level parent comment)
+    const parentCommentId = replyingTo ? (replyingTo.parent_comment_id || replyingTo.id) : null;
+    
+    // Auto-prepend handle if replying to someone
+    const finalContent = replyingTo 
+      ? `@${replyingTo.user?.handle || replyingTo.users?.handle} ${content.trim()}`
+      : content.trim();
+
     const { error } = await supabase.from('comments').insert({
       user_id: currentUser.id,
       target_type: targetType,
       target_id: postId,
-      content: content.trim()
+      content: finalContent,
+      parent_comment_id: parentCommentId
     });
 
     if (!error) {
       setContent("");
+      setReplyingTo(null);
       await loadComments();
       onCommentAdded?.();
     } else {
@@ -125,74 +137,145 @@ export default function CommentDrawer({ isOpen, onClose, postId, postOwnerId, ta
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-[var(--accent-primary)]" />
               </div>
-            ) : comments.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
-                <MessageSquare className="w-12 h-12 mb-4 opacity-50" />
-                <p>No comments yet. Be the first to spark a conversation!</p>
-              </div>
-            ) : (
-              comments.map(comment => (
-                <div key={comment.id} className="flex gap-3">
-                  <Link href={`/studio/${comment.user?.handle}`}>
-                    <img 
-                      src={comment.user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.handle}`} 
-                      className="w-10 h-10 rounded-full object-cover border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] transition-colors" 
-                      alt={comment.user?.handle}
-                    />
-                  </Link>
-                  <div className="flex-1">
-                    <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl rounded-tl-sm px-4 py-3">
-                      <div className="flex items-baseline justify-between mb-1">
-                        <Link href={`/studio/${comment.user?.handle}`} className="text-sm font-semibold text-white hover:text-[var(--accent-primary)] transition-colors">
-                          {comment.user?.display_name || comment.user?.handle}
-                        </Link>
-                        <span className="text-[10px] text-[var(--text-muted)]">
-                          {new Date(comment.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">
-                        {comment.content}
-                      </p>
-                    </div>
+            ) : (() => {
+              const topLevelComments = comments.filter(c => !c.parent_comment_id);
+              const replies = comments.filter(c => c.parent_comment_id);
+
+              if (topLevelComments.length === 0) {
+                return (
+                  <div className="flex flex-col items-center justify-center h-full text-[var(--text-muted)]">
+                    <MessageSquare className="w-12 h-12 mb-4 opacity-50" />
+                    <p>No comments yet. Be the first to spark a conversation!</p>
                   </div>
-                </div>
-              ))
-            )}
+                );
+              }
+
+              return topLevelComments.map(comment => {
+                const commentReplies = replies.filter(r => r.parent_comment_id === comment.id);
+                return (
+                  <div key={comment.id} className="space-y-4">
+                    {/* Top Level Comment Card */}
+                    <div className="flex gap-3">
+                      <Link href={`/studio/${comment.user?.handle}`}>
+                        <img 
+                          src={comment.user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${comment.user?.handle}`} 
+                          className="w-10 h-10 rounded-full object-cover border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] transition-colors" 
+                          alt={comment.user?.handle}
+                        />
+                      </Link>
+                      <div className="flex-1">
+                        <div className="bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl rounded-tl-sm px-4 py-3">
+                          <div className="flex items-baseline justify-between mb-1">
+                            <Link href={`/studio/${comment.user?.handle}`} className="text-sm font-semibold text-white hover:text-[var(--accent-primary)] transition-colors">
+                              {comment.user?.display_name || comment.user?.handle}
+                            </Link>
+                            <span className="text-[10px] text-[var(--text-muted)]">
+                              {new Date(comment.created_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-sm text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">
+                            {comment.content}
+                          </p>
+                        </div>
+                        {currentUser && (
+                          <button
+                            onClick={() => setReplyingTo(comment)}
+                            className="text-[10px] text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors font-medium mt-1 ml-2 uppercase tracking-wider"
+                          >
+                            Reply
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Indented Replies */}
+                    {commentReplies.length > 0 && (
+                      <div className="pl-8 space-y-4 border-l border-white/5 ml-5 mt-2">
+                        {commentReplies.map(reply => (
+                          <div key={reply.id} className="flex gap-3">
+                            <Link href={`/studio/${reply.user?.handle}`}>
+                              <img 
+                                src={reply.user?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${reply.user?.handle}`} 
+                                className="w-8 h-8 rounded-full object-cover border border-[var(--border-subtle)] hover:border-[var(--accent-primary)] transition-colors" 
+                                alt={reply.user?.handle}
+                              />
+                            </Link>
+                            <div className="flex-1">
+                              <div className="bg-[var(--bg-surface)]/60 border border-[var(--border-subtle)]/60 rounded-2xl rounded-tl-sm px-3.5 py-2.5">
+                                <div className="flex items-baseline justify-between mb-1">
+                                  <Link href={`/studio/${reply.user?.handle}`} className="text-xs font-semibold text-white hover:text-[var(--accent-primary)] transition-colors">
+                                    {reply.user?.display_name || reply.user?.handle}
+                                  </Link>
+                                  <span className="text-[9px] text-[var(--text-muted)]">
+                                    {new Date(reply.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-[var(--text-secondary)] whitespace-pre-wrap leading-relaxed">
+                                  {reply.content}
+                                </p>
+                              </div>
+                              {currentUser && (
+                                <button
+                                  onClick={() => setReplyingTo(reply)}
+                                  className="text-[9px] text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors font-medium mt-1 ml-2 uppercase tracking-wider"
+                                >
+                                  Reply
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
             <div ref={messagesEndRef} />
           </div>
 
           {/* Input Area */}
           <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-deep)] sm:rounded-b-3xl">
             {currentUser ? (
-              <form onSubmit={handleSubmit} className="flex items-end gap-3">
-                <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus-within:border-[var(--accent-primary)] rounded-2xl overflow-hidden transition-colors">
-                  <textarea
-                    value={content}
-                    onChange={e => setContent(e.target.value)}
-                    placeholder="Add a comment..."
-                    className="w-full bg-transparent p-3 text-sm text-white placeholder-[var(--text-muted)] focus:outline-none resize-none custom-scrollbar"
-                    rows={1}
-                    style={{ minHeight: '48px', maxHeight: '120px' }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSubmit(e);
-                      }
-                    }}
-                  />
-                </div>
-                <button 
-                  type="submit"
-                  disabled={!content.trim() || isSubmitting}
-                  className={`p-3 rounded-full flex-shrink-0 transition-all ${
-                    content.trim() 
-                      ? "bg-[var(--accent-primary)] text-white shadow-[0_0_15px_var(--accent-primary-glow)] hover:bg-[#5b4bc4]" 
-                      : "bg-[var(--bg-surface)] text-[var(--text-muted)]"
-                  }`}
-                >
-                  {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                </button>
-              </form>
+              <div className="space-y-2">
+                {replyingTo && (
+                  <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[rgba(108,92,231,0.08)] border border-[rgba(108,92,231,0.2)] text-xs text-[var(--text-secondary)]">
+                    <span>Replying to <span className="font-semibold text-white">@{replyingTo.user?.handle || replyingTo.users?.handle}</span></span>
+                    <button type="button" onClick={() => setReplyingTo(null)} className="text-[var(--text-muted)] hover:text-white transition-colors">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                <form onSubmit={handleSubmit} className="flex items-end gap-3">
+                  <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] focus-within:border-[var(--accent-primary)] rounded-2xl overflow-hidden transition-colors">
+                    <textarea
+                      value={content}
+                      onChange={e => setContent(e.target.value)}
+                      placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+                      className="w-full bg-transparent p-3 text-sm text-white placeholder-[var(--text-muted)] focus:outline-none resize-none custom-scrollbar"
+                      rows={1}
+                      style={{ minHeight: '48px', maxHeight: '120px' }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          handleSubmit(e);
+                        }
+                      }}
+                    />
+                  </div>
+                  <button 
+                    type="submit"
+                    disabled={!content.trim() || isSubmitting}
+                    className={`p-3 rounded-full flex-shrink-0 transition-all ${
+                      content.trim() 
+                        ? "bg-[var(--accent-primary)] text-white shadow-[0_0_15px_var(--accent-primary-glow)] hover:bg-[#5b4bc4]" 
+                        : "bg-[var(--bg-surface)] text-[var(--text-muted)]"
+                    }`}
+                  >
+                    {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  </button>
+                </form>
+              </div>
             ) : (
               <div className="text-center py-2">
                 <p className="text-sm text-[var(--text-muted)]">

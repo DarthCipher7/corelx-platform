@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Send, CheckCheck, MoreVertical, Flame, ArrowLeft, Paperclip, X, Loader2 } from "lucide-react";
+import { Search, Send, CheckCheck, MoreVertical, Flame, ArrowLeft, Paperclip, X, Loader2, CornerUpLeft } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -24,11 +24,28 @@ interface Message {
   media_url?: string;
 }
 
+function parseMessageContent(content: string) {
+  const match = content.match(/^\[reply:([a-f0-9-]+)\]\s+([^\n]+)\n([\s\S]*)/);
+  if (match) {
+    return {
+      replyToId: match[1],
+      replyToSummary: match[2],
+      actualContent: match[3]
+    };
+  }
+  return {
+    replyToId: null,
+    replyToSummary: null,
+    actualContent: content
+  };
+}
+
 export default function MessagesPage() {
   const supabase = createClient();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [search, setSearch] = useState("");
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   
   // Data
   const [threads, setThreads] = useState<UserProfile[]>([]);
@@ -52,6 +69,17 @@ export default function MessagesPage() {
         top: chatScrollContainerRef.current.scrollHeight,
         behavior: "smooth"
       });
+    }
+  };
+
+  const scrollToMessage = (msgId: string) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('bg-[rgba(108,92,231,0.25)]');
+      setTimeout(() => {
+        el.classList.remove('bg-[rgba(108,92,231,0.25)]');
+      }, 1500);
     }
   };
 
@@ -247,11 +275,31 @@ export default function MessagesPage() {
     let previewToUse = mediaPreviewUrl;
     clearAttachment();
 
+    // Format final content with reply metadata if replying
+    let finalContent = messageText;
+    const currentReplying = replyingTo;
+    setReplyingTo(null); // Clear replying state immediately
+
+    if (currentReplying) {
+      const excerptText = currentReplying.content || "";
+      const cleanedExcerpt = excerptText.startsWith("[reply:") 
+        ? parseMessageContent(excerptText).actualContent 
+        : excerptText;
+      const truncatedExcerpt = cleanedExcerpt.substring(0, 60) + (cleanedExcerpt.length > 60 ? "..." : "");
+      const excerpt = truncatedExcerpt || (currentReplying.media_url ? "📷 Attachment" : "");
+      
+      const senderHandle = currentReplying.sender_id === currentUser.id 
+        ? "You" 
+        : (activeThread?.handle || "user");
+      
+      finalContent = `[reply:${currentReplying.id}] @${senderHandle}: ${excerpt}\n${messageText}`;
+    }
+
     const newMessage: Message = {
       id: `temp-${Date.now()}`,
       sender_id: currentUser.id,
       recipient_id: activeThread.id,
-      content: messageText,
+      content: finalContent,
       media_url: previewToUse || undefined,
       is_read: false,
       created_at: new Date().toISOString()
@@ -327,7 +375,7 @@ export default function MessagesPage() {
         const { error } = await supabase.from('messages').insert({
           sender_id: currentUser.id,
           recipient_id: activeThread.id,
-          content: messageText || "",
+          content: finalContent || "",
           media_url: uploadedMediaUrl
         });
 
@@ -478,43 +526,66 @@ export default function MessagesPage() {
                 <AnimatePresence initial={false}>
                   {messages.map((msg, index) => {
                     const isMe = msg.sender_id === currentUser?.id || msg.sender_id === "me";
+                    const { replyToId, replyToSummary, actualContent } = parseMessageContent(msg.content);
                     return (
                       <motion.div
                         key={msg.id}
+                        id={`msg-${msg.id}`}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className={`flex w-full ${isMe ? 'justify-end' : 'justify-start'}`}
+                        className={`flex w-full group relative transition-all duration-300 rounded-2xl ${isMe ? 'justify-end' : 'justify-start'}`}
                       >
-                        <div
-                          className={`max-w-[70%] px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                            isMe 
-                              ? "bg-[rgba(108,92,231,0.1)] border border-[rgba(108,92,231,0.4)] text-[var(--text-primary)] rounded-br-sm shadow-[0_4px_20px_rgba(108,92,231,0.1)] backdrop-blur-md"
-                              : "bg-[var(--bg-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] rounded-bl-sm backdrop-blur-md"
-                          }`}
-                        >
-                          {msg.media_url && (
-                            <div className="mb-2 rounded-xl overflow-hidden border border-[var(--glass-border)] bg-black/30 max-w-full max-h-[300px] flex items-center justify-center">
-                              {msg.media_url.match(/\.(mp4|webm|quicktime|ogg)/i) || msg.media_url.includes("video") ? (
-                                <video
-                                  src={msg.media_url}
-                                  controls
-                                  className="max-w-full max-h-[300px] object-contain rounded-xl"
-                                />
-                              ) : (
-                                <img
-                                  src={msg.media_url}
-                                  alt="Shared media"
-                                  className="max-w-full max-h-[300px] object-contain rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
-                                  onClick={() => window.open(msg.media_url, '_blank')}
-                                />
-                              )}
+                        <div className={`flex items-center gap-2 max-w-[75%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div
+                            className={`px-4 py-3 rounded-2xl text-sm leading-relaxed border backdrop-blur-md transition-all duration-300 ${
+                              isMe 
+                                ? "bg-[rgba(108,92,231,0.1)] border-[rgba(108,92,231,0.4)] text-[var(--text-primary)] rounded-br-sm shadow-[0_4px_20px_rgba(108,92,231,0.1)]"
+                                : "bg-[var(--bg-surface)] border border-[var(--glass-border)] text-[var(--text-secondary)] rounded-bl-sm"
+                            }`}
+                          >
+                            {/* Reply Header inside Bubble */}
+                            {replyToId && (
+                              <div 
+                                onClick={() => scrollToMessage(replyToId)}
+                                className="mb-2 p-2 rounded-lg bg-black/35 border-l-2 border-[var(--accent-primary)] text-[10px] text-[var(--text-muted)] cursor-pointer hover:bg-black/50 transition-all font-mono select-none"
+                              >
+                                {replyToSummary}
+                              </div>
+                            )}
+
+                            {msg.media_url && (
+                              <div className="mb-2 rounded-xl overflow-hidden border border-[var(--glass-border)] bg-black/30 max-w-full max-h-[300px] flex items-center justify-center">
+                                {msg.media_url.match(/\.(mp4|webm|quicktime|ogg)/i) || msg.media_url.includes("video") ? (
+                                  <video
+                                    src={msg.media_url}
+                                    controls
+                                    className="max-w-full max-h-[300px] object-contain rounded-xl"
+                                  />
+                                ) : (
+                                  <img
+                                    src={msg.media_url}
+                                    alt="Shared media"
+                                    className="max-w-full max-h-[300px] object-contain rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                                    onClick={() => window.open(msg.media_url, '_blank')}
+                                  />
+                                )}
+                              </div>
+                            )}
+                            {actualContent && <p className="whitespace-pre-wrap">{actualContent}</p>}
+                            <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? "justify-end text-[var(--accent-primary)] opacity-80" : "justify-start text-[var(--text-muted)]"}`}>
+                              {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              {isMe && <CheckCheck className="w-3 h-3 ml-0.5" />}
                             </div>
-                          )}
-                          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
-                          <div className={`flex items-center gap-1 mt-1 text-[10px] ${isMe ? "justify-end text-[var(--accent-primary)] opacity-80" : "justify-start text-[var(--text-muted)]"}`}>
-                            {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            {isMe && <CheckCheck className="w-3 h-3 ml-0.5" />}
                           </div>
+
+                          {/* Reply trigger button */}
+                          <button
+                            onClick={() => setReplyingTo(msg)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-2 rounded-full bg-[var(--bg-surface)] border border-[var(--border-subtle)] text-[var(--text-secondary)] hover:text-white hover:border-white transition-all cursor-pointer shadow-md self-center"
+                            title="Reply to message"
+                          >
+                            <CornerUpLeft className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </motion.div>
                     );
@@ -527,6 +598,27 @@ export default function MessagesPage() {
               <div className="p-4 border-t border-[var(--border-subtle)] bg-[var(--bg-deep)]">
                 <div className="relative flex items-end gap-3 max-w-4xl mx-auto">
                   <div className="flex-1 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-2xl overflow-hidden focus-within:border-[var(--accent-primary)] transition-colors shadow-inner flex flex-col">
+                    {/* Replying Banner */}
+                    {replyingTo && (
+                      <div className="flex items-center justify-between px-4 py-2 bg-black/35 border-b border-[var(--border-subtle)] text-xs text-[var(--text-secondary)]">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-[var(--accent-primary)]">
+                            Replying to @{replyingTo.sender_id === currentUser?.id || replyingTo.sender_id === "me" ? "You" : (activeThread?.handle || "user")}
+                          </span>
+                          <span className="truncate text-[10px] text-[var(--text-muted)] font-mono">
+                            {replyingTo.content ? (replyingTo.content.startsWith("[reply:") ? parseMessageContent(replyingTo.content).actualContent : replyingTo.content) : "Attachment"}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setReplyingTo(null)}
+                          className="p-1 rounded-full text-[var(--text-muted)] hover:text-white hover:bg-white/5 transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+
                     {/* Media Preview Container */}
                     {mediaPreviewUrl && (
                       <div className="relative p-3 bg-[var(--bg-void)] border-b border-[var(--border-subtle)] flex items-center gap-3">

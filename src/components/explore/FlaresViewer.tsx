@@ -98,7 +98,12 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
   const [sparkCount, setSparkCount] = useState(flare.spark_count || 0);
   const [showHeartOverlay, setShowHeartOverlay] = useState(false);
   const [shareText, setShareText] = useState("Share");
-  const [isSloMo, setIsSloMo] = useState(false);
+  const [is2xSpeed, setIs2xSpeed] = useState(false);
+  const [isHoldingPause, setIsHoldingPause] = useState(false);
+  const pressTimerRef = useRef<any>(null);
+  const pressStartTimeRef = useRef<number>(0);
+  const pressStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isHoldingActiveRef = useRef<boolean>(false);
   const [commentDrawerOpen, setCommentDrawerOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(0);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -239,19 +244,95 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
     }
   };
 
-  // Slo-mo speed mechanics
-  const startSloMo = () => {
+  // Gesture control handlers (tap to play/pause, middle hold to pause, side hold to 2x speed)
+  const handlePressStart = (clientX: number, clientY: number, container: HTMLDivElement) => {
     const video = videoRef.current;
     if (!video) return;
-    video.playbackRate = 0.5;
-    setIsSloMo(true);
+
+    pressStartTimeRef.current = Date.now();
+    pressStartPosRef.current = { x: clientX, y: clientY };
+    isHoldingActiveRef.current = false;
+
+    const rect = container.getBoundingClientRect();
+    const pct = (clientX - rect.left) / rect.width;
+    const isSide = pct < 0.25 || pct > 0.75;
+
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
+
+    pressTimerRef.current = setTimeout(() => {
+      isHoldingActiveRef.current = true;
+      if (isSide) {
+        video.playbackRate = 2.0;
+        setIs2xSpeed(true);
+      } else {
+        video.pause();
+        setIsHoldingPause(true);
+      }
+    }, 200);
   };
 
-  const endSloMo = () => {
+  const handlePressMove = (clientX: number, clientY: number) => {
+    if (!pressStartPosRef.current) return;
+    const dx = clientX - pressStartPosRef.current.x;
+    const dy = clientY - pressStartPosRef.current.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    if (distance > 10) {
+      // Swiping or scrolling, cancel hold/tap detection
+      handlePressCancel();
+    }
+  };
+
+  const handlePressEnd = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+
     const video = videoRef.current;
     if (!video) return;
-    video.playbackRate = 1.0;
-    setIsSloMo(false);
+
+    const duration = Date.now() - pressStartTimeRef.current;
+
+    if (isHoldingActiveRef.current) {
+      if (video.playbackRate !== 1.0) {
+        video.playbackRate = 1.0;
+        setIs2xSpeed(false);
+      }
+      if (isHoldingPause) {
+        video.play().catch((err) => console.log("Video resume failed", err));
+        setIsHoldingPause(false);
+      }
+    } else if (pressStartTimeRef.current > 0 && duration < 200) {
+      // Tap behavior: toggle play/pause
+      if (video.paused) {
+        video.play().catch((err) => console.log("Video play failed", err));
+      } else {
+        video.pause();
+      }
+    }
+
+    isHoldingActiveRef.current = false;
+    pressStartTimeRef.current = 0;
+    pressStartPosRef.current = null;
+  };
+
+  const handlePressCancel = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    const video = videoRef.current;
+    if (video) {
+      video.playbackRate = 1.0;
+      if (isHoldingPause && video.paused) {
+        video.play().catch((err) => console.log("Video play failed", err));
+      }
+    }
+    setIs2xSpeed(false);
+    setIsHoldingPause(false);
+    isHoldingActiveRef.current = false;
+    pressStartTimeRef.current = 0;
+    pressStartPosRef.current = null;
   };
 
   return (
@@ -261,11 +342,35 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
         scrollSnapAlign: "start",
         height: "100dvh",
       }}
-      onMouseDown={startSloMo}
-      onMouseUp={endSloMo}
-      onMouseLeave={endSloMo}
-      onTouchStart={startSloMo}
-      onTouchEnd={endSloMo}
+      onMouseDown={(e) => {
+        if (e.button === 0) { // Left click only
+          handlePressStart(e.clientX, e.clientY, e.currentTarget);
+        }
+      }}
+      onMouseMove={(e) => {
+        handlePressMove(e.clientX, e.clientY);
+      }}
+      onMouseUp={(e) => {
+        handlePressEnd();
+      }}
+      onMouseLeave={(e) => {
+        handlePressCancel();
+      }}
+      onTouchStart={(e) => {
+        const touch = e.touches[0];
+        handlePressStart(touch.clientX, touch.clientY, e.currentTarget);
+      }}
+      onTouchMove={(e) => {
+        const touch = e.touches[0];
+        handlePressMove(touch.clientX, touch.clientY);
+      }}
+      onTouchEnd={(e) => {
+        e.preventDefault(); // Prevent double tap zoom / click emulation
+        handlePressEnd();
+      }}
+      onTouchCancel={(e) => {
+        handlePressCancel();
+      }}
     >
       {/* Video element */}
       <video
@@ -276,23 +381,39 @@ function FlareItem({ flare, isActive, isMuted, toggleMute }: FlareItemProps) {
         loop
         playsInline
         onTimeUpdate={handleTimeUpdate}
-        onClick={(e) => {
-          e.stopPropagation();
-          toggleMute();
-        }}
-        className="w-full h-full object-cover cursor-pointer"
+        className="w-full h-full object-cover cursor-pointer select-none"
       />
 
-      {/* Slo-mo indicator */}
+      {/* 2x Speed Indicator */}
       <AnimatePresence>
-        {isSloMo && (
+        {is2xSpeed && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: -10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: -10 }}
-            className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-black/60 border border-[var(--accent-primary)] text-[var(--accent-primary)] font-mono text-xs px-4 py-2 rounded-full uppercase tracking-widest animate-pulse shadow-[0_0_20px_rgba(108,92,231,0.6)]"
+            className="absolute top-20 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-black/60 border border-purple-500 text-purple-400 font-mono text-xs px-4 py-2 rounded-full uppercase tracking-widest animate-pulse shadow-[0_0_20px_rgba(168,85,247,0.6)]"
           >
-            SLO-MO ACTIVE
+            2x SPEED ACTIVE ⏩
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pause Indicator overlay */}
+      <AnimatePresence>
+        {isHoldingPause && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.5 }}
+            className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center bg-black/30"
+          >
+            <div className="p-5 rounded-full bg-black/50 border border-white/10 flex items-center justify-center shadow-lg">
+              <svg className="w-8 h-8 text-white fill-white" viewBox="0 0 24 24">
+                <rect x="6" y="4" width="4" height="16" rx="1" />
+                <rect x="14" y="4" width="4" height="16" rx="1" />
+              </svg>
+            </div>
+            <span className="text-white text-xs font-mono tracking-widest uppercase mt-3 drop-shadow">PAUSED</span>
           </motion.div>
         )}
       </AnimatePresence>

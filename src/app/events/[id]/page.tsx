@@ -26,6 +26,7 @@ import {
   MessageSquare,
   Paperclip,
   Share2,
+  CornerUpLeft,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import Button from "@/components/ui/Button";
@@ -80,6 +81,22 @@ const isVideoUrl = (url: string) => {
   return videoExtensions.some((ext) => cleanUrl.toLowerCase().endsWith(ext));
 };
 
+function parseMessageContent(content: string) {
+  const match = content.match(/^\[reply:([a-f0-9-]+)\]\s+([^\n]+)\n([\s\S]*)/);
+  if (match) {
+    return {
+      replyToId: match[1],
+      replyToSummary: match[2],
+      actualContent: match[3]
+    };
+  }
+  return {
+    replyToId: null,
+    replyToSummary: null,
+    actualContent: content
+  };
+}
+
 export default function EventDetailPage() {
   const { id: eventId } = useParams() as { id: string };
   const supabase = createClient();
@@ -88,6 +105,18 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<any>(null);
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [replyingTo, setReplyingTo] = useState<EventMessage | null>(null);
+
+  const scrollToMessage = (msgId: string) => {
+    const el = document.getElementById(`msg-${msgId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('bg-[rgba(108,92,231,0.25)]');
+      setTimeout(() => {
+        el.classList.remove('bg-[rgba(108,92,231,0.25)]');
+      }, 1500);
+    }
+  };
   const [organiserProfile, setOrganiserProfile] = useState<any>(null);
   const organiserProfileRef = useRef(organiserProfile);
   useEffect(() => {
@@ -496,6 +525,26 @@ export default function EventDetailPage() {
     const text = inputMsg.trim();
     const file = selectedFile;
 
+    // Formatting if replying
+    let finalContent = text || (file ? file.name : "");
+    const currentReplying = replyingTo;
+    setReplyingTo(null);
+
+    if (currentReplying) {
+      const excerptText = currentReplying.content || "";
+      const cleanedExcerpt = excerptText.startsWith("[reply:")
+        ? parseMessageContent(excerptText).actualContent
+        : excerptText;
+      const truncatedExcerpt = cleanedExcerpt.substring(0, 60) + (cleanedExcerpt.length > 60 ? "..." : "");
+      const excerpt = truncatedExcerpt || (currentReplying.media_url ? "📷 Attachment" : "");
+
+      const senderHandle = currentReplying.sender_id === currentUser.id
+        ? "You"
+        : (currentReplying.sender?.handle || "user");
+
+      finalContent = `[reply:${currentReplying.id}] @${senderHandle}: ${excerpt}\n${finalContent}`;
+    }
+
     setInputMsg("");
     handleClearMedia();
     setSubmittingMsg(true);
@@ -526,7 +575,7 @@ export default function EventDetailPage() {
         .insert({
           event_id: eventId,
           sender_id: currentUser.id,
-          content: text || (file ? file.name : ""),
+          content: finalContent,
           media_url: uploadedUrl || null,
         })
         .select("*, sender:users(handle, display_name, avatar_url)")
@@ -1100,8 +1149,9 @@ export default function EventDetailPage() {
                   ) : (
                     chatMessages.map((msg) => {
                       const isMe = msg.sender_id === currentUser?.id;
+                      const { replyToId, replyToSummary, actualContent } = parseMessageContent(msg.content);
                       return (
-                        <div key={msg.id} className={`flex gap-3 max-w-[80%] ${isMe ? "ml-auto flex-row-reverse" : ""}`}>
+                        <div key={msg.id} id={`msg-${msg.id}`} className={`flex gap-3 max-w-[80%] transition-all duration-300 rounded-2xl ${isMe ? "ml-auto flex-row-reverse" : ""}`}>
                           {/* Avatar */}
                           <div className="w-8 h-8 rounded-full overflow-hidden bg-purple-500 flex items-center justify-center font-bold text-xs flex-shrink-0">
                             {msg.sender?.avatar_url ? (
@@ -1130,7 +1180,16 @@ export default function EventDetailPage() {
                                   : "bg-[var(--bg-surface)] border-[var(--glass-border)] text-[var(--text-secondary)] rounded-tl-sm"
                               }`}
                             >
-                              {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                              {replyToId && (
+                                <div 
+                                  onClick={() => scrollToMessage(replyToId)}
+                                  className="mb-2 p-2 rounded-lg bg-black/35 border-l-2 border-[var(--accent-primary)] text-[10px] text-[var(--text-muted)] cursor-pointer hover:bg-black/50 transition-all font-mono select-none"
+                                >
+                                  {replyToSummary}
+                                </div>
+                              )}
+
+                              {actualContent && <p className="whitespace-pre-wrap">{actualContent}</p>}
                               {msg.media_url && (
                                 <div className="mt-1.5 rounded-lg overflow-hidden border border-white/5 bg-black/25">
                                   {isVideoUrl(msg.media_url) ? (
@@ -1150,33 +1209,42 @@ export default function EventDetailPage() {
                                 </div>
                               )}
 
-                              {/* Hover Options (Pin/Delete for Organizer) */}
-                              {isOrganiser && (
-                                <div
-                                  className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover/bubble:opacity-100 transition-opacity flex gap-1 ${
-                                    isMe ? "right-full mr-2" : "left-full ml-2"
-                                  }`}
+                              {/* Hover Options (Pin/Delete for Organizer, Reply for Everyone) */}
+                              <div
+                                className={`absolute top-1/2 -translate-y-1/2 opacity-0 group-hover/bubble:opacity-100 transition-opacity flex gap-1 ${
+                                  isMe ? "right-full mr-2" : "left-full ml-2"
+                                }`}
+                              >
+                                {isOrganiser && (
+                                  <>
+                                    <button
+                                      onClick={() => handleTogglePinEventMsg(msg)}
+                                      className={`p-1.5 rounded-full border bg-[var(--bg-deep)] transition-all hover:scale-105 ${
+                                        msg.is_pinned
+                                          ? "text-amber-400 border-amber-500/30"
+                                          : "text-[var(--text-muted)] border-[var(--border-subtle)] hover:text-amber-400"
+                                      }`}
+                                      title={msg.is_pinned ? "Unpin Announcement" : "Pin Announcement"}
+                                    >
+                                      <Pin className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeleteEventMessage(msg.id)}
+                                      className="p-1.5 rounded-full border border-red-500/30 bg-[var(--bg-deep)] text-red-400 transition-all hover:scale-105 hover:bg-red-500/10"
+                                      title="Delete Message"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                                <button
+                                  onClick={() => setReplyingTo(msg)}
+                                  className="p-1.5 rounded-full border border-[var(--border-subtle)] bg-[var(--bg-deep)] text-[var(--text-muted)] hover:text-[var(--accent-primary)] hover:border-[var(--accent-primary)] transition-all hover:scale-105 cursor-pointer"
+                                  title="Reply to message"
                                 >
-                                  <button
-                                    onClick={() => handleTogglePinEventMsg(msg)}
-                                    className={`p-1.5 rounded-full border bg-[var(--bg-deep)] transition-all hover:scale-105 ${
-                                      msg.is_pinned
-                                        ? "text-amber-400 border-amber-500/30"
-                                        : "text-[var(--text-muted)] border-[var(--border-subtle)] hover:text-amber-400"
-                                    }`}
-                                    title={msg.is_pinned ? "Unpin Announcement" : "Pin Announcement"}
-                                  >
-                                    <Pin className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteEventMessage(msg.id)}
-                                    className="p-1.5 rounded-full border border-red-500/30 bg-[var(--bg-deep)] text-red-400 transition-all hover:scale-105 hover:bg-red-500/10"
-                                    title="Delete Message"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              )}
+                                  <CornerUpLeft className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -1189,6 +1257,27 @@ export default function EventDetailPage() {
                 {/* Input block */}
                 <div className="p-3 bg-[var(--bg-deep)] border-t border-[var(--border-subtle)] flex flex-col gap-2">
                   <>
+                    {/* Replying Banner */}
+                    {replyingTo && (
+                      <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[rgba(108,92,231,0.08)] border border-[rgba(108,92,231,0.2)] text-xs text-[var(--text-secondary)]">
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-semibold text-[var(--accent-primary)]">
+                            Replying to @{replyingTo.sender_id === currentUser?.id ? "You" : (replyingTo.sender?.handle || "user")}
+                          </span>
+                          <span className="truncate text-[10px] text-[var(--text-muted)] font-mono">
+                            {replyingTo.content ? (replyingTo.content.startsWith("[reply:") ? parseMessageContent(replyingTo.content).actualContent : replyingTo.content) : "Attachment"}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setReplyingTo(null)}
+                          className="p-1 rounded-full text-[var(--text-muted)] hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+
                     {/* Media Preview */}
                     {mediaPreviewUrl && (
                       <div className="relative inline-block self-start rounded-xl overflow-hidden border border-[var(--glass-border)] bg-black/45 p-1 group">
@@ -1200,7 +1289,7 @@ export default function EventDetailPage() {
                         <button
                           type="button"
                           onClick={handleClearMedia}
-                          className="absolute -top-1 -right-1 p-1.5 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors shadow-lg"
+                          className="absolute -top-1 -right-1 p-1.5 bg-red-500/80 hover:bg-red-600 rounded-full text-white transition-colors shadow-lg cursor-pointer"
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
