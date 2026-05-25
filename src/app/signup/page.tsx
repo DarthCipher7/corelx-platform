@@ -173,10 +173,20 @@ export default function SignupPage() {
     }
     setUser(authUser);
 
+    // Check sessionStorage for cached userType fallback
+    const cachedType = sessionStorage.getItem("selected_user_type");
+    if (cachedType) {
+      setUserType(cachedType as any);
+      setRoleSelected(true);
+      if (cachedType === 'company') {
+        setShowOnboarding(true);
+      }
+    }
+
     // Check if this user has already completed onboarding
     const { data: profile } = await supabase
       .from('users')
-      .select('handle, display_name, tagline, avatar_url, is_email_verified, college_id, colleges(*)')
+      .select('handle, display_name, tagline, avatar_url, is_email_verified, college_id, user_type, colleges(*)')
       .eq('id', authUser.id)
       .maybeSingle();
 
@@ -189,6 +199,13 @@ export default function SignupPage() {
         if (collegeData) {
           setSelectedCollege(collegeData);
           setDetectedCollege(collegeData);
+        }
+      }
+      if (profile.user_type) {
+        setUserType(profile.user_type as any);
+        setRoleSelected(true);
+        if (profile.user_type === 'company') {
+          setShowOnboarding(true);
         }
       }
       
@@ -281,6 +298,9 @@ export default function SignupPage() {
       password: password,
       options: {
         emailRedirectTo: `${window.location.origin}/auth/callback`,
+        data: {
+          user_type: userType
+        }
       },
     });
 
@@ -303,10 +323,15 @@ export default function SignupPage() {
   const handleOAuthSignup = async (provider: 'google' | 'linkedin_oidc') => {
     setAuthLoading(true);
     setAuthError(null);
+    // Cache selected user type across OAuth redirect
+    sessionStorage.setItem("selected_user_type", userType);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          user_type: userType
+        }
       },
     });
     if (error) {
@@ -657,7 +682,11 @@ export default function SignupPage() {
 
             <div className="space-y-4">
               <button
-                onClick={() => { setUserType('individual'); setRoleSelected(true); }}
+                onClick={() => { 
+                  setUserType('individual'); 
+                  setRoleSelected(true); 
+                  sessionStorage.setItem("selected_user_type", "individual");
+                }}
                 className="w-full text-left p-5 rounded-2xl border border-[var(--glass-border)] bg-white/5 hover:bg-white/10 hover:border-[var(--accent-primary)]/50 transition-all flex gap-4 items-center group cursor-pointer"
               >
                 <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/20 transition-all">
@@ -670,7 +699,11 @@ export default function SignupPage() {
               </button>
 
               <button
-                onClick={() => { setUserType('company'); setRoleSelected(true); }}
+                onClick={() => { 
+                  setUserType('company'); 
+                  setRoleSelected(true); 
+                  sessionStorage.setItem("selected_user_type", "company");
+                }}
                 className="w-full text-left p-5 rounded-2xl border border-[var(--glass-border)] bg-white/5 hover:bg-white/10 hover:border-[var(--accent-primary)]/50 transition-all flex gap-4 items-center group cursor-pointer"
               >
                 <div className="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 group-hover:bg-cyan-500/20 transition-all">
@@ -683,7 +716,11 @@ export default function SignupPage() {
               </button>
 
               <button
-                onClick={() => { setUserType('organisation'); setRoleSelected(true); }}
+                onClick={() => { 
+                  setUserType('organisation'); 
+                  setRoleSelected(true); 
+                  sessionStorage.setItem("selected_user_type", "organisation");
+                }}
                 className="w-full text-left p-5 rounded-2xl border border-[var(--glass-border)] bg-white/5 hover:bg-white/10 hover:border-[var(--accent-primary)]/50 transition-all flex gap-4 items-center group cursor-pointer"
               >
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500/20 transition-all">
@@ -866,7 +903,7 @@ export default function SignupPage() {
   }
 
   // ── Unified Hub Selection Screen ──────────────────────────────
-  if (!showOnboarding) {
+  if (!showOnboarding && userType !== 'company') {
     return (
       <div className="min-h-screen bg-[var(--bg-void)] flex flex-col items-center justify-center p-4">
         <AnimatePresence mode="wait">

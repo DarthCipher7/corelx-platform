@@ -1,4 +1,4 @@
--- Update handle_new_user() trigger function to extract avatar and display name from raw_user_meta_data for OAuth users.
+-- Update handle_new_user() trigger function to extract avatar, display name, and user_type from raw_user_meta_data for OAuth/Signup users.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 DECLARE
@@ -7,8 +7,9 @@ DECLARE
   counter integer := 1;
   meta_fullname text;
   meta_avatar text;
+  meta_user_type text;
 BEGIN
-  -- Extract OAuth metadata details
+  -- Extract OAuth/Signup metadata details
   meta_fullname := new.raw_user_meta_data->>'full_name';
   IF meta_fullname IS NULL OR meta_fullname = '' THEN
     meta_fullname := new.raw_user_meta_data->>'name';
@@ -17,6 +18,11 @@ BEGIN
   meta_avatar := new.raw_user_meta_data->>'avatar_url';
   IF meta_avatar IS NULL OR meta_avatar = '' THEN
     meta_avatar := new.raw_user_meta_data->>'picture';
+  END IF;
+
+  meta_user_type := new.raw_user_meta_data->>'user_type';
+  IF meta_user_type IS NULL OR meta_user_type = '' THEN
+    meta_user_type := 'individual';
   END IF;
 
   -- Generate base handle from email, or fallback to full name, or fallback to 'user'
@@ -45,7 +51,8 @@ BEGIN
     display_name, 
     avatar_url, 
     tagline, 
-    availability_status
+    availability_status,
+    user_type
   )
   VALUES (
     new.id,
@@ -53,7 +60,8 @@ BEGIN
     coalesce(meta_fullname, split_part(new.email, '@', 1), final_handle),
     coalesce(meta_avatar, 'https://api.dicebear.com/7.x/avataaars/svg?seed=' || final_handle),
     '',
-    'open-to-collab'
+    'open-to-collab',
+    meta_user_type
   );
   RETURN new;
 END;
