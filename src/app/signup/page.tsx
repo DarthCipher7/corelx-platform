@@ -553,11 +553,11 @@ export default function SignupPage() {
       return;
     }
 
-    // Insert workspace-specific accounts
+    // Insert/Upsert workspace-specific accounts
     if (userType === 'company') {
       const { error: companyError } = await supabase
         .from('company_accounts')
-        .insert({
+        .upsert({
           id: user.id,
           name: handle || user.email?.split('@')[0] || 'Company',
           industry: companyIndustry.trim() || selectedSkills[0] || 'Technology',
@@ -565,7 +565,7 @@ export default function SignupPage() {
           website: companyWebsite.trim(),
           logo_url: finalAvatarUrl || null,
           verified: false,
-        });
+        }, { onConflict: 'id' });
 
       if (companyError) {
         console.error("Company account creation error:", companyError);
@@ -576,11 +576,11 @@ export default function SignupPage() {
 
       const { error: adminError } = await supabase
         .from('company_admins')
-        .insert({
+        .upsert({
           company_id: user.id,
           user_id: user.id,
           role: 'owner',
-        });
+        }, { onConflict: 'company_id,user_id' });
 
       if (adminError) {
         console.error("Company admin creation error:", adminError);
@@ -591,14 +591,14 @@ export default function SignupPage() {
     } else if (userType === 'organisation') {
       const { error: orgError } = await supabase
         .from('org_accounts')
-        .insert({
+        .upsert({
           id: user.id,
           name: handle || user.email?.split('@')[0] || 'Organisation',
           type: orgType,
           college_id: selectedCollege?.id || null,
           logo_url: finalAvatarUrl || null,
           verified: false,
-        });
+        }, { onConflict: 'id' });
 
       if (orgError) {
         console.error("Organisation account creation error:", orgError);
@@ -609,11 +609,11 @@ export default function SignupPage() {
 
       const { error: memberError } = await supabase
         .from('org_members')
-        .insert({
+        .upsert({
           org_id: user.id,
           user_id: user.id,
           role: 'creator',
-        });
+        }, { onConflict: 'org_id,user_id' });
 
       if (memberError) {
         console.error("Organisation member creation error:", memberError);
