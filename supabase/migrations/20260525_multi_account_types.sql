@@ -170,6 +170,10 @@ CREATE POLICY "Anyone can view organisation profiles"
   ON public.org_accounts FOR SELECT
   USING (true);
 
+CREATE POLICY "Users can insert their own organisation profile"
+  ON public.org_accounts FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
 CREATE POLICY "Admins can update own organisation profiles"
   ON public.org_accounts FOR UPDATE
   USING (
@@ -187,6 +191,10 @@ ALTER TABLE public.org_members ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view organisation memberships"
   ON public.org_members FOR SELECT
   USING (true);
+
+CREATE POLICY "Org creators can insert memberships"
+  ON public.org_members FOR INSERT
+  WITH CHECK (auth.uid() = org_id);
 
 CREATE POLICY "Admins can manage memberships"
   ON public.org_members FOR ALL
@@ -236,6 +244,10 @@ CREATE POLICY "Anyone can view company profiles"
   ON public.company_accounts FOR SELECT
   USING (true);
 
+CREATE POLICY "Users can insert their own company profile"
+  ON public.company_accounts FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
 CREATE POLICY "Admins can update own company profile"
   ON public.company_accounts FOR UPDATE
   USING (
@@ -253,6 +265,10 @@ ALTER TABLE public.company_admins ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can view company team members"
   ON public.company_admins FOR SELECT
   USING (true);
+
+CREATE POLICY "Company owners can insert team members"
+  ON public.company_admins FOR INSERT
+  WITH CHECK (auth.uid() = company_id);
 
 CREATE POLICY "Owners and admins can manage team"
   ON public.company_admins FOR ALL
