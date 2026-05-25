@@ -17,7 +17,8 @@ import {
   Home, 
   Search, 
   ChevronRight, 
-  Clock 
+  Clock,
+  AlertTriangle
 } from "lucide-react";
 
 // Aura Tier Configuration matching the profile/studio system
@@ -104,7 +105,8 @@ const DEFAULT_AVATARS = [
 const TABS = [
   { id: "profile", name: "Profile Settings", icon: User },
   { id: "aura", name: "Aura Telemetry", icon: Flame },
-  { id: "hub", name: "Hub Connectivity", icon: Globe }
+  { id: "hub", name: "Hub Connectivity", icon: Globe },
+  { id: "danger", name: "Danger Zone", icon: AlertTriangle }
 ];
 
 export default function SettingsPage() {
@@ -121,7 +123,11 @@ export default function SettingsPage() {
   const [message, setMessage] = useState({ text: "", type: "" });
   
   // Tabs State
-  const [activeTab, setActiveTab] = useState<"profile" | "aura" | "hub">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "aura" | "hub" | "danger">("profile");
+
+  // Account Deletion State
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   // Hub States
   const [selectedCollege, setSelectedCollege] = useState<any>(null);
@@ -361,6 +367,31 @@ export default function SettingsPage() {
       setMessage({ text: error.message, type: "error" });
     } else {
       setMessage({ text: "Profile settings updated successfully!", type: "success" });
+    }
+  };
+
+  const handleDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (deleteConfirmation !== "DELETE" || deletingAccount || !user) return;
+
+    setDeletingAccount(true);
+    setMessage({ text: "", type: "" });
+
+    try {
+      const { error } = await supabase.rpc("delete_current_user");
+      if (error) throw error;
+
+      // Sign out on client and clear local state
+      await supabase.auth.signOut();
+      router.push("/signup");
+      router.refresh();
+    } catch (err: any) {
+      console.error("Account deletion failed:", err);
+      setMessage({ 
+        text: err.message || "Failed to delete account. Please try again.", 
+        type: "error" 
+      });
+      setDeletingAccount(false);
     }
   };
 
@@ -970,6 +1001,59 @@ export default function SettingsPage() {
                     {saving ? "Saving Changes..." : "Save Changes"}
                   </Button>
                 </form>
+              </motion.div>
+            )}
+
+            {/* 4. Danger Zone Tab */}
+            {activeTab === "danger" && (
+              <motion.div
+                key="danger"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                transition={{ duration: 0.2 }}
+                className="space-y-6 text-left"
+              >
+                <div className="p-6 rounded-2xl border border-red-500/20 bg-red-500/[0.02]">
+                  <h3 className="text-lg font-bold text-red-500 flex items-center gap-2 mb-2 font-display">
+                    <AlertTriangle className="w-5 h-5" /> Permanent Account Deletion
+                  </h3>
+                  <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-6">
+                    Deleting your account is permanent and cannot be undone. All your project posts, flares, direct messages, settings, and profile details will be permanently wiped from the database.
+                  </p>
+                  
+                  <form onSubmit={handleDeleteAccount} className="space-y-4 max-w-md">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-[var(--text-secondary)] mb-2 font-mono">
+                        Type <span className="text-red-400">DELETE</span> to confirm
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        placeholder="Type DELETE here..."
+                        className="w-full bg-void/50 border border-red-500/20 focus:border-red-500 focus:shadow-[0_0_12px_rgba(239,68,68,0.2)] rounded-xl px-4 py-3 text-sm text-white outline-none transition-all"
+                      />
+                    </div>
+
+                    <div className="pt-2 flex justify-start">
+                      <button
+                        type="submit"
+                        disabled={deleteConfirmation !== "DELETE" || deletingAccount}
+                        className="px-5 py-3 rounded-xl font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-[0_4px_15px_rgba(239,68,68,0.2)] cursor-pointer"
+                      >
+                        {deletingAccount ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Deleting Account...
+                          </span>
+                        ) : (
+                          "Permanently Delete Account"
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </motion.div>
             )}
 

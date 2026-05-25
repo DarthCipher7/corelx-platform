@@ -84,6 +84,12 @@ export default function SignupPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Corporate and Org Step 3 States
+  const [companyWebsite, setCompanyWebsite] = useState("https://");
+  const [companySize, setCompanySize] = useState<"1-10" | "11-50" | "51-200" | "200+">("1-10");
+  const [companyIndustry, setCompanyIndustry] = useState("");
+  const [orgType, setOrgType] = useState<"club" | "society" | "community" | "alumni" | "other">("club");
+  
   // Role & Corporate states
   const [roleSelected, setRoleSelected] = useState(false);
   const [userType, setUserType] = useState<'individual' | 'company' | 'organisation'>('individual');
@@ -440,7 +446,13 @@ export default function SignupPage() {
 
     if (!error) setHandle(normalizedHandle);
     setIsSubmitting(false);
-    if (!error) setCurrentStep(2);
+    if (!error) {
+      if (userType === 'company' || userType === 'organisation') {
+        setCurrentStep(3);
+      } else {
+        setCurrentStep(2);
+      }
+    }
     else console.error('Handle save error:', error);
   };
 
@@ -491,7 +503,7 @@ export default function SignupPage() {
     // (The DB trigger initialises tagline as '' so empty = not yet onboarded)
     let finalTagline = tagline.trim();
     if (userType === 'company' || userType === 'organisation') {
-      const primaryFocus = selectedSkills[0] || 'Technology';
+      const primaryFocus = userType === 'company' ? companyIndustry.trim() : orgType;
       finalTagline = `${primaryFocus} • ${hqLocation.trim()}`;
     }
 
@@ -506,7 +518,59 @@ export default function SignupPage() {
       user_type: userType,
     }).eq('id', user.id);
 
-    if (error) console.error("Profile update error:", error);
+    if (error) {
+      console.error("Profile update error:", error);
+    } else {
+      // Insert workspace-specific accounts
+      if (userType === 'company') {
+        const { error: companyError } = await supabase
+          .from('company_accounts')
+          .insert({
+            id: user.id,
+            name: handle || user.email?.split('@')[0] || 'Company',
+            industry: companyIndustry.trim() || selectedSkills[0] || 'Technology',
+            size_range: companySize,
+            website: companyWebsite.trim(),
+            logo_url: finalAvatarUrl || null,
+            verified: false,
+          });
+
+        if (companyError) {
+          console.error("Company account creation error:", companyError);
+        } else {
+          await supabase
+            .from('company_admins')
+            .insert({
+              company_id: user.id,
+              user_id: user.id,
+              role: 'owner',
+            });
+        }
+      } else if (userType === 'organisation') {
+        const { error: orgError } = await supabase
+          .from('org_accounts')
+          .insert({
+            id: user.id,
+            name: handle || user.email?.split('@')[0] || 'Organisation',
+            type: orgType,
+            college_id: selectedCollege?.id || null,
+            logo_url: finalAvatarUrl || null,
+            verified: false,
+          });
+
+        if (orgError) {
+          console.error("Organisation account creation error:", orgError);
+        } else {
+          await supabase
+            .from('org_members')
+            .insert({
+              org_id: user.id,
+              user_id: user.id,
+              role: 'creator',
+            });
+        }
+      }
+    }
 
     setIsSubmitting(false);
     router.push("/feed");
@@ -1061,7 +1125,7 @@ export default function SignupPage() {
       {/* Onboarding Step Indicator */}
       <div className="w-full max-w-md mx-auto mb-12">
         <div className="flex gap-2">
-          {[1, 2, 3].map((step) => (
+          {(userType === 'individual' ? [1, 2, 3] : [1, 3]).map((step) => (
             <div key={step} className="h-1 flex-1 rounded-full overflow-hidden bg-[var(--bg-deep)] border border-[var(--border-subtle)]">
               <motion.div 
                 className={`h-full rounded-full ${
@@ -1291,8 +1355,45 @@ export default function SignupPage() {
                     className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
                   />
                 </div>
-              ) : (
+              ) : userType === 'company' ? (
                 <div className="space-y-4 mb-8">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Website URL</label>
+                    <input
+                      type="url"
+                      value={companyWebsite}
+                      onChange={(e) => setCompanyWebsite(e.target.value)}
+                      placeholder="https://example.com"
+                      required
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Industry</label>
+                      <input
+                        type="text"
+                        value={companyIndustry}
+                        onChange={(e) => setCompanyIndustry(e.target.value)}
+                        placeholder="e.g. Fintech, DevTools"
+                        required
+                        className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Company Size</label>
+                      <select
+                        value={companySize}
+                        onChange={(e) => setCompanySize(e.target.value as any)}
+                        className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white outline-none transition-colors"
+                      >
+                        <option value="1-10" className="bg-[var(--bg-deep)]">1-10 employees</option>
+                        <option value="11-50" className="bg-[var(--bg-deep)]">11-50 employees</option>
+                        <option value="51-200" className="bg-[var(--bg-deep)]">51-200 employees</option>
+                        <option value="200+" className="bg-[var(--bg-deep)]">200+ employees</option>
+                      </select>
+                    </div>
+                  </div>
                   <div>
                     <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Headquarters / Location</label>
                     <input
@@ -1315,12 +1416,51 @@ export default function SignupPage() {
                     />
                   </div>
                 </div>
+              ) : (
+                /* Organisation Step 3 */
+                <div className="space-y-4 mb-8">
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Organisation Type</label>
+                    <select
+                      value={orgType}
+                      onChange={(e) => setOrgType(e.target.value as any)}
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white outline-none transition-colors"
+                    >
+                      <option value="club" className="bg-[var(--bg-deep)]">Tech Club / Student Chapter 🏫</option>
+                      <option value="society" className="bg-[var(--bg-deep)]">Society / Student Council 🏛️</option>
+                      <option value="community" className="bg-[var(--bg-deep)]">Creative Community 🏡</option>
+                      <option value="alumni" className="bg-[var(--bg-deep)]">Alumni Network 🎓</option>
+                      <option value="other" className="bg-[var(--bg-deep)]">Other Community 🌐</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">Headquarters / Location</label>
+                    <input
+                      type="text"
+                      value={hqLocation}
+                      onChange={(e) => setHqLocation(e.target.value)}
+                      placeholder="e.g. VIT Chennai Campus"
+                      required
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)] block mb-2">About / Description</label>
+                    <textarea
+                      value={tagline}
+                      onChange={(e) => setTagline(e.target.value)}
+                      placeholder="e.g. The official developer student club for VIT."
+                      rows={3}
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] focus:border-[var(--accent-primary)] rounded-xl p-4 text-white placeholder-[var(--text-muted)] outline-none transition-colors resize-none"
+                    />
+                  </div>
+                </div>
               )}
 
               <div className="mt-auto pt-4">
                 <button
                   onClick={handleStep3Submit}
-                  disabled={isSubmitting || (userType === 'individual' ? !tagline : (!hqLocation || !tagline))}
+                  disabled={isSubmitting || (userType === 'individual' ? !tagline : userType === 'company' ? (!hqLocation || !tagline || !companyWebsite || !companyIndustry) : (!hqLocation || !tagline))}
                   className="w-full py-4 rounded-xl font-semibold text-white bg-[var(--accent-primary)] hover:bg-[#5b4bc4] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-[0_0_20px_rgba(108,92,231,0.3)] flex items-center justify-center gap-2"
                 >
                   {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : "Complete Profile"}
