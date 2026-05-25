@@ -196,8 +196,19 @@ CREATE POLICY "Org creators can insert memberships"
   ON public.org_members FOR INSERT
   WITH CHECK (auth.uid() = org_id);
 
-CREATE POLICY "Admins can manage memberships"
-  ON public.org_members FOR ALL
+CREATE POLICY "Admins can update memberships"
+  ON public.org_members FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.org_members admin_check
+      WHERE admin_check.org_id = org_members.org_id
+        AND admin_check.user_id = auth.uid()
+        AND admin_check.role IN ('creator', 'admin')
+    )
+  );
+
+CREATE POLICY "Admins can delete memberships"
+  ON public.org_members FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM public.org_members admin_check
@@ -270,8 +281,19 @@ CREATE POLICY "Company owners can insert team members"
   ON public.company_admins FOR INSERT
   WITH CHECK (auth.uid() = company_id);
 
-CREATE POLICY "Owners and admins can manage team"
-  ON public.company_admins FOR ALL
+CREATE POLICY "Owners and admins can update team members"
+  ON public.company_admins FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.company_admins admin_check
+      WHERE admin_check.company_id = company_admins.company_id
+        AND admin_check.user_id = auth.uid()
+        AND admin_check.role IN ('owner', 'admin')
+    )
+  );
+
+CREATE POLICY "Owners and admins can delete team members"
+  ON public.company_admins FOR DELETE
   USING (
     EXISTS (
       SELECT 1 FROM public.company_admins admin_check
