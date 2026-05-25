@@ -16,6 +16,11 @@ BEGIN
   v_user_type := NEW.raw_user_meta_data->>'user_type';
   
   IF v_user_type IS NOT NULL AND v_user_type IN ('company', 'organisation') THEN
+    -- Allow email testing with addresses containing 'corelx' (e.g., hello.corelx@gmail.com)
+    IF NEW.email ILIKE '%corelx%' THEN
+      RETURN NEW;
+    END IF;
+
     -- Extract email domain
     v_domain := split_part(NEW.email, '@', 2);
     

@@ -37,6 +37,9 @@ const CORPORATE_FOCUS_AREAS = [
 ];
 
 const isConsumerEmail = (emailStr: string) => {
+  if (emailStr.toLowerCase().includes("corelx")) {
+    return false;
+  }
   const consumerDomains = [
     "gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "aol.com", "icloud.com",
     "zoho.com", "mail.com", "protonmail.com", "proton.me", "yandex.com", "gmx.com"
@@ -545,59 +548,84 @@ export default function SignupPage() {
 
     if (error) {
       console.error("Profile update error:", error);
-    } else {
-      // Insert workspace-specific accounts
-      if (userType === 'company') {
-        const { error: companyError } = await supabase
-          .from('company_accounts')
-          .insert({
-            id: user.id,
-            name: handle || user.email?.split('@')[0] || 'Company',
-            industry: companyIndustry.trim() || selectedSkills[0] || 'Technology',
-            size_range: companySize,
-            website: companyWebsite.trim(),
-            logo_url: finalAvatarUrl || null,
-            verified: false,
-          });
+      setAuthError(error.message);
+      setIsSubmitting(false);
+      return;
+    }
 
-        if (companyError) {
-          console.error("Company account creation error:", companyError);
-        } else {
-          await supabase
-            .from('company_admins')
-            .insert({
-              company_id: user.id,
-              user_id: user.id,
-              role: 'owner',
-            });
-        }
-      } else if (userType === 'organisation') {
-        const { error: orgError } = await supabase
-          .from('org_accounts')
-          .insert({
-            id: user.id,
-            name: handle || user.email?.split('@')[0] || 'Organisation',
-            type: orgType,
-            college_id: selectedCollege?.id || null,
-            logo_url: finalAvatarUrl || null,
-            verified: false,
-          });
+    // Insert workspace-specific accounts
+    if (userType === 'company') {
+      const { error: companyError } = await supabase
+        .from('company_accounts')
+        .insert({
+          id: user.id,
+          name: handle || user.email?.split('@')[0] || 'Company',
+          industry: companyIndustry.trim() || selectedSkills[0] || 'Technology',
+          size_range: companySize,
+          website: companyWebsite.trim(),
+          logo_url: finalAvatarUrl || null,
+          verified: false,
+        });
 
-        if (orgError) {
-          console.error("Organisation account creation error:", orgError);
-        } else {
-          await supabase
-            .from('org_members')
-            .insert({
-              org_id: user.id,
-              user_id: user.id,
-              role: 'creator',
-            });
-        }
+      if (companyError) {
+        console.error("Company account creation error:", companyError);
+        setAuthError(companyError.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error: adminError } = await supabase
+        .from('company_admins')
+        .insert({
+          company_id: user.id,
+          user_id: user.id,
+          role: 'owner',
+        });
+
+      if (adminError) {
+        console.error("Company admin creation error:", adminError);
+        setAuthError(adminError.message);
+        setIsSubmitting(false);
+        return;
+      }
+    } else if (userType === 'organisation') {
+      const { error: orgError } = await supabase
+        .from('org_accounts')
+        .insert({
+          id: user.id,
+          name: handle || user.email?.split('@')[0] || 'Organisation',
+          type: orgType,
+          college_id: selectedCollege?.id || null,
+          logo_url: finalAvatarUrl || null,
+          verified: false,
+        });
+
+      if (orgError) {
+        console.error("Organisation account creation error:", orgError);
+        setAuthError(orgError.message);
+        setIsSubmitting(false);
+        return;
+      }
+
+      const { error: memberError } = await supabase
+        .from('org_members')
+        .insert({
+          org_id: user.id,
+          user_id: user.id,
+          role: 'creator',
+        });
+
+      if (memberError) {
+        console.error("Organisation member creation error:", memberError);
+        setAuthError(memberError.message);
+        setIsSubmitting(false);
+        return;
       }
     }
 
     setIsSubmitting(false);
+    sessionStorage.removeItem("selected_user_type");
+    setAuthError(null);
     router.push("/feed");
   };
 
@@ -1180,6 +1208,13 @@ export default function SignupPage() {
 
       {/* Main Container */}
       <div className="w-full max-w-2xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] backdrop-blur-2xl rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        
+        {authError && (
+          <div className="mb-6 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>{authError}</span>
+          </div>
+        )}
         
         <AnimatePresence mode="wait">
           {/* STEP 1: IDENTITY */}
