@@ -48,7 +48,10 @@ export default function OrgClient({
   ]);
 
   // Admin Actions
-  const [joinPolicy, setJoinPolicy] = useState(orgUser.org_accounts?.[0]?.join_policy || "open");
+  const orgAccount = Array.isArray(orgUser.org_accounts)
+    ? orgUser.org_accounts[0]
+    : (orgUser.org_accounts || {});
+  const [joinPolicy, setJoinPolicy] = useState(orgAccount?.join_policy || "open");
   const [updatingPolicy, setUpdatingPolicy] = useState(false);
 
   const isAdmin = memberRole === "admin" || memberRole === "creator";

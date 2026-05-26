@@ -11,7 +11,7 @@ export default async function OrgPage({ params }: { params: Promise<{ handle: st
   // Fetch the user and join with college & org profile details
   const { data: orgUser, error: userError } = await supabase
     .from("users")
-    .select("*, colleges(*), org_accounts(*)")
+    .select("*, colleges(*), org_accounts!org_accounts_id_fkey(*)")
     .eq("handle", handle)
     .maybeSingle();
 

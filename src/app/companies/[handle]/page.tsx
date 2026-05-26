@@ -11,7 +11,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ handle
   // Fetch company profile details
   const { data: companyUser, error: userError } = await supabase
     .from("users")
-    .select("*, company_accounts(*)")
+    .select("*, company_accounts!company_accounts_id_fkey(*)")
     .eq("handle", handle)
     .maybeSingle();
 

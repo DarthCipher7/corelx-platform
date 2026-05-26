@@ -40,7 +40,9 @@ export default function CompanyClient({
   const [reachError, setReachError] = useState<string | null>(null);
   const [reachSuccess, setReachSuccess] = useState(false);
 
-  const company = companyUser.company_accounts?.[0] || {};
+  const company = Array.isArray(companyUser.company_accounts)
+    ? companyUser.company_accounts[0]
+    : (companyUser.company_accounts || {});
   const isCreator = currentUser && currentUser.id !== companyUser.id;
 
   const handleReachStatus = async (reachId: string, newStatus: "connected" | "archived") => {
