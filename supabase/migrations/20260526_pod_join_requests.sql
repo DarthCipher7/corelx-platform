@@ -1,8 +1,8 @@
 -- Join requests table for request-gated pods
 CREATE TABLE IF NOT EXISTS public.pod_join_requests (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pod_id      UUID NOT NULL REFERENCES public.pods(id) ON DELETE CASCADE,
-  user_id     UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  pod_id      UUID NOT NULL,
+  user_id     UUID NOT NULL,
   status      TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(pod_id, user_id),
