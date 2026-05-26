@@ -106,6 +106,11 @@ export default function PodDetailPage() {
   const [isMember, setIsMember] = useState(false);
   const [memberRole, setMemberRole] = useState<"creator" | "admin" | "member" | null>(null);
 
+  // Join Requests states
+  const [userRequestStatus, setUserRequestStatus] = useState<"pending" | "rejected" | null>(null);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [processingRequestId, setProcessingRequestId] = useState<string | null>(null);
+
   // Sharing states
   const [showToast, setShowToast] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -125,7 +130,7 @@ export default function PodDetailPage() {
   const [editing, setEditing] = useState(false);
   const [editName, setEditName] = useState("");
   const [editDesc, setEditDesc] = useState("");
-  const [editVisibility, setEditVisibility] = useState<"open" | "invite">("open");
+  const [editVisibility, setEditVisibility] = useState<"open" | "request" | "invite">("open");
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Chat Tab States
@@ -184,6 +189,9 @@ export default function PodDetailPage() {
       setEditVisibility(podData.visibility || "open");
 
       // Check Membership
+      let isUserMember = false;
+      let activeRole: "creator" | "admin" | "member" | null = null;
+
       if (user) {
         const { data: memData } = await supabase
           .from("pod_members")
@@ -193,20 +201,49 @@ export default function PodDetailPage() {
           .maybeSingle();
 
         if (memData) {
-          setIsMember(true);
-          setMemberRole(memData.role as any);
+          isUserMember = true;
+          activeRole = memData.role as any;
         } else if (user.id === podData.creator_id) {
           // Auto-insert creator into pod_members so RLS policies work correctly
           await supabase.from("pod_members").upsert(
             { pod_id: podId, user_id: user.id, role: "creator" },
             { onConflict: "pod_id,user_id" }
           );
-          setIsMember(true);
-          setMemberRole("creator");
-        } else {
-          setIsMember(false);
-          setMemberRole(null);
+          isUserMember = true;
+          activeRole = "creator";
         }
+      }
+
+      setIsMember(isUserMember);
+      setMemberRole(activeRole);
+
+      // Fetch user's join request status if not a member and request policy active
+      if (user && !isUserMember && podData.visibility === "request") {
+        const { data: requestData } = await supabase
+          .from("pod_join_requests")
+          .select("status")
+          .eq("pod_id", podId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (requestData) {
+          setUserRequestStatus(requestData.status as any);
+        } else {
+          setUserRequestStatus(null);
+        }
+      }
+
+      // Fetch pending join requests (for creator/admin)
+      const isAdminOrCreator = activeRole === "creator" || activeRole === "admin";
+      if (user && isAdminOrCreator) {
+        const { data: reqData } = await supabase
+          .from("pod_join_requests")
+          .select("*, user:users(handle, display_name, avatar_url)")
+          .eq("pod_id", podId)
+          .eq("status", "pending")
+          .order("created_at", { ascending: false });
+
+        setPendingRequests(reqData || []);
       }
 
       // Fetch Members List
@@ -340,6 +377,39 @@ export default function PodDetailPage() {
   const handleJoin = async () => {
     if (!currentUser) {
       router.push("/login");
+      return;
+    }
+
+    if (pod.visibility === "request") {
+      if (userRequestStatus === "pending") {
+        // Cancel request
+        const { error } = await supabase
+          .from("pod_join_requests")
+          .delete()
+          .eq("pod_id", podId)
+          .eq("user_id", currentUser.id);
+
+        if (!error) {
+          setUserRequestStatus(null);
+        } else {
+          alert("Error cancelling request: " + error.message);
+        }
+      } else {
+        // Submit request
+        const { error } = await supabase
+          .from("pod_join_requests")
+          .insert({
+            pod_id: podId,
+            user_id: currentUser.id,
+            status: "pending"
+          });
+
+        if (!error) {
+          setUserRequestStatus("pending");
+        } else {
+          alert("Error sending request: " + error.message);
+        }
+      }
       return;
     }
 
@@ -622,6 +692,54 @@ export default function PodDetailPage() {
     }
   };
 
+  // 6. Pod Join Requests management (Approve/Reject)
+  const handleProcessPodRequest = async (requestId: string, approve: boolean) => {
+    setProcessingRequestId(requestId);
+    const request = pendingRequests.find(r => r.id === requestId);
+    if (!request) return;
+
+    try {
+      if (approve) {
+        // Add to pod_members
+        const { error: memberError } = await supabase
+          .from("pod_members")
+          .insert({
+            pod_id: podId,
+            user_id: request.user_id,
+            role: "member"
+          });
+
+        if (memberError) throw memberError;
+
+        // Update request status to approved
+        const { error: statusError } = await supabase
+          .from("pod_join_requests")
+          .update({ status: "approved" })
+          .eq("id", requestId);
+
+        if (statusError) throw statusError;
+
+        // Refresh crew members list in state
+        await fetchMembers();
+      } else {
+        // Reject - update status
+        const { error: statusError } = await supabase
+          .from("pod_join_requests")
+          .update({ status: "rejected" })
+          .eq("id", requestId);
+
+        if (statusError) throw statusError;
+      }
+
+      // Remove from local pending requests list
+      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
+    } catch (err: any) {
+      alert("Error processing request: " + err.message);
+    } finally {
+      setProcessingRequestId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-void)]">
@@ -709,6 +827,10 @@ export default function PodDetailPage() {
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
                   <Unlock className="w-2.5 h-2.5" /> Open
                 </span>
+              ) : pod.visibility === "request" ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                  <Send className="w-2.5 h-2.5" /> Request to Join
+                </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full border border-amber-500/30 bg-amber-500/10 text-amber-400">
                   <Lock className="w-2.5 h-2.5" /> Invite Only
@@ -759,6 +881,20 @@ export default function PodDetailPage() {
               <Button variant="ghost" className="text-xs py-2 px-4 border-amber-500/30 text-amber-400 bg-amber-500/5">
                 Request Invitation
               </Button>
+            ) : pod.visibility === "request" ? (
+              userRequestStatus === "pending" ? (
+                <Button variant="ghost" className="text-xs py-2 px-4 border-cyan-500/30 text-cyan-400 bg-cyan-500/5" onClick={handleJoin}>
+                  Request Pending (Cancel)
+                </Button>
+              ) : userRequestStatus === "rejected" ? (
+                <Button disabled variant="ghost" className="text-xs py-2 px-4 border-red-500/20 text-red-400">
+                  Request Declined
+                </Button>
+              ) : (
+                <Button variant="primary" className="text-xs py-2 px-5 bg-cyan-500 hover:bg-cyan-400 text-black border-none" onClick={handleJoin}>
+                  Request to Join
+                </Button>
+              )
             ) : (
               <Button variant="primary" className="text-xs py-2 px-5" onClick={handleJoin}>
                 Join Pod
@@ -856,7 +992,13 @@ export default function PodDetailPage() {
                       </div>
                       <div>
                         <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Visibility</p>
-                        <p className="font-medium mt-0.5">{pod.visibility === "open" ? "Public / Open" : "Invite Only"}</p>
+                        <p className="font-medium mt-0.5">
+                          {pod.visibility === "open"
+                            ? "Public / Open"
+                            : pod.visibility === "request"
+                            ? "Request to Join"
+                            : "Invite Only"}
+                        </p>
                       </div>
                       <div>
                         <p className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Scope</p>
@@ -924,6 +1066,7 @@ export default function PodDetailPage() {
                               className="w-full bg-[var(--bg-deep)] text-[var(--text-primary)] border border-[var(--border-subtle)] rounded-lg p-2 text-xs focus:outline-none focus:border-[var(--accent-primary)] mt-1"
                             >
                               <option value="open" className="bg-[var(--bg-void)] text-[var(--text-primary)]">🔓 Open (Public)</option>
+                              <option value="request" className="bg-[var(--bg-void)] text-[var(--text-primary)]">📩 Request to Join (Gated)</option>
                               <option value="invite" className="bg-[var(--bg-void)] text-[var(--text-primary)]">🔒 Invite Only (Private)</option>
                             </select>
                           </div>
@@ -1262,6 +1405,61 @@ export default function PodDetailPage() {
                 exit={{ opacity: 0, y: -10 }}
                 className="rounded-2xl border border-[var(--glass-border)] bg-[var(--bg-frosted)] p-5 space-y-4"
               >
+                {/* Pending Join Requests (Visible to Creators and Admins) */}
+                {isAdmin && pod.visibility === "request" && pendingRequests.length > 0 && (
+                  <div className="space-y-3 pb-5 border-b border-[var(--border-subtle)] mb-4">
+                    <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--accent-primary)] font-mono">
+                      Pending Join Requests ({pendingRequests.length})
+                    </h4>
+                    <div className="space-y-2">
+                      {pendingRequests.map((req) => {
+                        const u = req.user || {};
+                        return (
+                          <div 
+                            key={req.id} 
+                            className="p-3.5 rounded-xl border border-[var(--border-subtle)] bg-black/20 flex items-center justify-between gap-4"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full overflow-hidden bg-purple-500 flex items-center justify-center font-bold text-xs text-white">
+                                {u.avatar_url ? (
+                                  <img src={u.avatar_url} alt={u.handle} className="w-full h-full object-cover" />
+                                ) : (
+                                  u.handle?.charAt(0).toUpperCase()
+                                )}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-sm text-[var(--text-primary)] block">
+                                  {u.display_name || u.handle}
+                                </span>
+                                <span className="text-xs text-[var(--text-muted)] font-mono block">
+                                  @{u.handle}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2">
+                              <button
+                                disabled={processingRequestId === req.id}
+                                onClick={() => handleProcessPodRequest(req.id, false)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold border border-red-500/20 bg-red-500/5 text-red-400 hover:bg-red-500/10 transition-all cursor-pointer"
+                              >
+                                Decline
+                              </button>
+                              <button
+                                disabled={processingRequestId === req.id}
+                                onClick={() => handleProcessPodRequest(req.id, true)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-all cursor-pointer"
+                              >
+                                Approve
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <h3 className="font-semibold text-base font-display">Crew Members</h3>
 
                 <div className="divide-y divide-[var(--border-subtle)]">

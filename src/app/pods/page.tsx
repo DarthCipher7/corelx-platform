@@ -174,7 +174,7 @@ function CreatePodModal({
 
   const [podName, setPodName] = useState("");
   const [podType, setPodType] = useState<PodType>("project");
-  const [visibility, setVisibility] = useState<"open" | "invite">("open");
+  const [visibility, setVisibility] = useState<"open" | "request" | "invite">("open");
   const [maxMembers, setMaxMembers] = useState("");
   const [roleTagsInput, setRoleTagsInput] = useState("");
   const [description, setDescription] = useState("");
@@ -682,7 +682,7 @@ function CreatePodModal({
                     className="inline-flex rounded-xl p-1 gap-1"
                     style={{ background: "var(--bg-deep)", border: "1px solid var(--border-subtle)" }}
                   >
-                    {(["open", "invite"] as const).map((vis) => (
+                    {(["open", "request", "invite"] as const).map((vis) => (
                       <button
                         key={vis}
                         type="button"
@@ -704,7 +704,7 @@ function CreatePodModal({
                           />
                         )}
                         <span className="relative z-10">
-                          {vis === "open" ? "🔓 Open" : "🔒 Invite Only"}
+                          {vis === "open" ? "🔓 Open" : vis === "request" ? "📩 Request" : "🔒 Invite"}
                         </span>
                       </button>
                     ))}
@@ -1126,7 +1126,7 @@ export default function PodsPage() {
 
   /* ── Stats ──────────────────────────────────────────────────── */
   const totalMembers = allPods.reduce((acc, p) => acc + p.memberCount, 0);
-  const openPods = allPods.filter((p) => p.visibility === "open").length;
+  const openPods = allPods.filter((p) => p.visibility === "open" || p.visibility === "request").length;
 
   return (
     <div className="min-h-screen pt-24 pb-28 px-4 sm:px-6">

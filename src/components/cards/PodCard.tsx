@@ -24,7 +24,7 @@ export interface PodCardProps {
   memberCount: number;
   maxMembers?: number;
   roleTags: string[];
-  visibility: "open" | "invite";
+  visibility: "open" | "request" | "invite";
   creator: {
     handle: string;
     displayName: string;
@@ -250,15 +250,35 @@ export default function PodCard({
           <span
             className="inline-flex items-center gap-1 rounded-full text-[11px] font-semibold px-2.5 py-0.5 border ml-auto"
             style={{
-              background: "rgba(253,203,110,0.10)",
-              borderColor: "rgba(253,203,110,0.30)",
-              color: "#fdcb6e",
+              background:
+                visibility === "open"
+                  ? "rgba(253, 203, 110, 0.10)"
+                  : visibility === "request"
+                  ? "rgba(0, 206, 201, 0.10)"
+                  : "rgba(162, 155, 254, 0.10)",
+              borderColor:
+                visibility === "open"
+                  ? "rgba(253, 203, 110, 0.30)"
+                  : visibility === "request"
+                  ? "rgba(0, 206, 201, 0.30)"
+                  : "rgba(162, 155, 254, 0.30)",
+              color:
+                visibility === "open"
+                  ? "#fdcb6e"
+                  : visibility === "request"
+                  ? "#00cec9"
+                  : "#a29bfe",
             }}
           >
             {visibility === "open" ? (
               <>
                 <Unlock className="w-2.5 h-2.5" />
                 Open
+              </>
+            ) : visibility === "request" ? (
+              <>
+                <span className="text-[10px]">📩</span>
+                Request
               </>
             ) : (
               <>
@@ -371,22 +391,45 @@ export default function PodCard({
             <CheckCircle className="w-3 h-3" />
             Member
           </span>
-        ) : visibility === "invite" ? (
+        ) : visibility === "request" ? (
           <motion.button
-            onClick={handleJoin}
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/pods/${id}`);
+            }}
             className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all"
             style={{
-              background: "rgba(253,203,110,0.08)",
-              borderColor: "rgba(253,203,110,0.30)",
-              color: "#fdcb6e",
+              background: "rgba(162, 155, 254, 0.08)",
+              borderColor: "rgba(162, 155, 254, 0.30)",
+              color: "#a29bfe",
             }}
             whileHover={{
-              background: "rgba(253,203,110,0.16)",
-              borderColor: "rgba(253,203,110,0.55)",
+              background: "rgba(162, 155, 254, 0.16)",
+              borderColor: "rgba(162, 155, 254, 0.55)",
             }}
             whileTap={{ scale: 0.96 }}
           >
             Request to Join
+          </motion.button>
+        ) : visibility === "invite" ? (
+          <motion.button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/pods/${id}`);
+            }}
+            className="text-xs font-semibold px-3 py-1.5 rounded-full border transition-all"
+            style={{
+              background: "rgba(253, 203, 110, 0.08)",
+              borderColor: "rgba(253, 203, 110, 0.30)",
+              color: "#fdcb6e",
+            }}
+            whileHover={{
+              background: "rgba(253, 203, 110, 0.16)",
+              borderColor: "rgba(253, 203, 110, 0.55)",
+            }}
+            whileTap={{ scale: 0.96 }}
+          >
+            Request Invite
           </motion.button>
         ) : (
           <motion.button

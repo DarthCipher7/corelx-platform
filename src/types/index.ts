@@ -170,7 +170,7 @@ export interface Pod {
   name: string;
   pod_type: PodType;
   description?: string;
-  visibility: 'open' | 'invite';
+  visibility: 'open' | 'request' | 'invite';
   max_members?: number;
   role_tags: string[];
   is_active: boolean;
