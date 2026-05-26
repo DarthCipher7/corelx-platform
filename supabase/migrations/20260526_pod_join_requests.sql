@@ -1,5 +1,7 @@
 -- Join requests table for request-gated pods
-CREATE TABLE IF NOT EXISTS public.pod_join_requests (
+DROP TABLE IF EXISTS public.pod_join_requests CASCADE;
+
+CREATE TABLE public.pod_join_requests (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   pod_id      UUID NOT NULL,
   user_id     UUID NOT NULL,
