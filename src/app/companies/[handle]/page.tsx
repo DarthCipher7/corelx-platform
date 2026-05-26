@@ -25,15 +25,19 @@ export default async function CompanyPage({ params }: { params: Promise<{ handle
   // Check if current user is an admin of this company
   let isAdmin = false;
   if (currentUser) {
-    const { data: adminRecord } = await supabase
-      .from("company_admins")
-      .select("role")
-      .eq("company_id", companyUser.id)
-      .eq("user_id", currentUser.id)
-      .maybeSingle();
-    
-    if (adminRecord) {
+    if (currentUser.id === companyUser.id) {
       isAdmin = true;
+    } else {
+      const { data: adminRecord } = await supabase
+        .from("company_admins")
+        .select("role")
+        .eq("company_id", companyUser.id)
+        .eq("user_id", currentUser.id)
+        .maybeSingle();
+      
+      if (adminRecord) {
+        isAdmin = true;
+      }
     }
   }
 
@@ -55,11 +59,63 @@ export default async function CompanyPage({ params }: { params: Promise<{ handle
     const { data } = await supabase
       .from("collab_calls")
       .select("*")
-      .eq("user_id", companyUser.id);
+      .eq("user_id", companyUser.id)
+      .order("created_at", { ascending: false });
     
     collabs = data || [];
   } catch (e) {
     console.warn("Could not query collab_calls table:", e);
+  }
+
+  // Fetch company feed posts
+  let feedPosts: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("feed_posts")
+      .select("*")
+      .eq("user_id", companyUser.id)
+      .order("created_at", { ascending: false });
+    feedPosts = data || [];
+  } catch (e) {
+    console.warn("Could not query feed_posts table:", e);
+  }
+
+  // Fetch events organized by this company
+  let events: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("events")
+      .select("*")
+      .eq("organiser_id", companyUser.id)
+      .order("starts_at", { ascending: true });
+    events = data || [];
+  } catch (e) {
+    console.warn("Could not query events table:", e);
+  }
+
+  // Fetch approved campus partnerships
+  let partnerships: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("campus_partnerships")
+      .select("*, org:org_accounts(id, name, logo_url)")
+      .eq("company_id", companyUser.id)
+      .eq("status", "approved");
+    partnerships = data || [];
+  } catch (e) {
+    console.warn("Could not query campus_partnerships table:", e);
+  }
+
+  // Fetch team members (company admins)
+  let teamMembers: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("company_admins")
+      .select("*, profile:users(id, display_name, handle, avatar_url)")
+      .eq("company_id", companyUser.id);
+    teamMembers = data || [];
+  } catch (e) {
+    console.warn("Could not query company_admins table:", e);
   }
 
   return (
@@ -69,6 +125,10 @@ export default async function CompanyPage({ params }: { params: Promise<{ handle
       isAdmin={isAdmin}
       initialReachMessages={reachMessages}
       initialCollabs={collabs}
+      initialFeedPosts={feedPosts}
+      initialEvents={events}
+      initialPartnerships={partnerships}
+      initialTeamMembers={teamMembers}
     />
   );
 }
