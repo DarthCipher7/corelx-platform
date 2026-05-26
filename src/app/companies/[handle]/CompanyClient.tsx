@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { 
   Building, MapPin, Globe, Users, MessageSquare, Award, ArrowLeft, 
   Check, X, Inbox, Briefcase, BarChart2, Edit3, Image, Plus, 
-  Calendar, FileText, Shield, User, ExternalLink, HelpCircle, Trash2
+  Calendar, FileText, Shield, User, ExternalLink, HelpCircle, Trash2,
+  AlertTriangle
 } from "lucide-react";
 import Button from "@/components/ui/Button";
 import NeonBadge from "@/components/ui/NeonBadge";
@@ -83,6 +84,10 @@ export default function CompanyClient({
   const [gatewayWeeklyLimit, setGatewayWeeklyLimit] = useState(company.reach_weekly_limit || 50);
   const [gatewayTopics, setGatewayTopics] = useState<string[]>(company.reach_topic_tags || []);
   const [gatewayCustomPrompt, setGatewayCustomPrompt] = useState(company.reach_custom_prompt || "");
+
+  // Danger Zone Deletion states
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const [savingGateway, setSavingGateway] = useState(false);
   const [gatewaySuccess, setGatewaySuccess] = useState(false);
 
@@ -304,6 +309,22 @@ export default function CompanyClient({
       alert("Error saving gateway settings: " + err.message);
     } finally {
       setSavingGateway(false);
+    }
+  };
+
+  // Handle company deletion (Danger Zone)
+  const handleDeleteCompany = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (deleteConfirmation !== "DELETE" || deletingAccount || currentUser?.id !== companyUser.id) return;
+
+    setDeletingAccount(true);
+    try {
+      const { error } = await supabase.rpc("delete_current_user");
+      if (error) throw error;
+      router.push("/");
+    } catch (err: any) {
+      alert("Error deleting company: " + err.message);
+      setDeletingAccount(false);
     }
   };
 
@@ -1212,6 +1233,41 @@ export default function CompanyClient({
                   </div>
                 </div>
               </div>
+
+              {/* DANGER ZONE (Delete Company) */}
+              {isAdmin && isAdminView && currentUser?.id === companyUser.id && (
+                <div className="p-6 rounded-2xl border border-red-500/20 bg-red-500/[0.02] space-y-6">
+                  <div>
+                    <h3 className="text-lg font-semibold text-red-400 mb-1 flex items-center gap-1.5">
+                      <AlertTriangle className="w-5 h-5 text-red-500 animate-pulse" /> Danger Zone
+                    </h3>
+                    <p className="text-xs text-red-300/60 font-mono">Permanently delete this company page. This action is irreversible.</p>
+                  </div>
+
+                  <form onSubmit={handleDeleteCompany} className="space-y-4 max-w-md">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-red-400 mb-2 font-mono">
+                        Type <span className="text-red-300 font-bold">DELETE</span> to confirm
+                      </label>
+                      <input
+                        type="text"
+                        value={deleteConfirmation}
+                        onChange={(e) => setDeleteConfirmation(e.target.value)}
+                        placeholder="Type DELETE here..."
+                        className="w-full bg-void/50 border border-red-500/20 focus:border-red-500 focus:shadow-[0_0_12px_rgba(239,68,68,0.2)] rounded-xl px-4 py-3 text-sm text-white outline-none transition-all"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={deleteConfirmation !== "DELETE" || deletingAccount}
+                      className="px-5 py-3 rounded-xl font-semibold text-white bg-red-600 hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-[0_4px_15px_rgba(239,68,68,0.2)] cursor-pointer text-xs font-mono"
+                    >
+                      {deletingAccount ? "Deleting Company..." : "Permanently Delete Company"}
+                    </button>
+                  </form>
+                </div>
+              )}
             </motion.div>
           )}
 

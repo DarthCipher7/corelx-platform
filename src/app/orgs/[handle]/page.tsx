@@ -49,6 +49,62 @@ export default async function OrgPage({ params }: { params: Promise<{ handle: st
     .eq("org_id", orgUser.id)
     .order("created_at", { ascending: false });
 
+  // Fetch any collab calls posted by this organization
+  let collabs: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("collab_calls")
+      .select("*")
+      .eq("user_id", orgUser.id)
+      .order("created_at", { ascending: false });
+    collabs = data || [];
+  } catch (e) {
+    console.warn("Could not query collab_calls for organisation:", e);
+  }
+
+  // Fetch all badges issued by this organization
+  let badges: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("org_badges")
+      .select("*, awarded_to_user:users!org_badges_awarded_to_fkey(id, handle, avatar_url, display_name)")
+      .eq("org_id", orgUser.id)
+      .order("created_at", { ascending: false });
+    badges = data || [];
+  } catch (e) {
+    console.warn("Could not query org_badges:", e);
+  }
+
+  // Fetch approved campus partnerships
+  let partnerships: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("campus_partnerships")
+      .select("*, company:company_accounts(*, users!company_accounts_id_fkey(handle, avatar_url, display_name))")
+      .eq("org_id", orgUser.id)
+      .eq("status", "approved");
+    partnerships = data || [];
+  } catch (e) {
+    console.warn("Could not query campus_partnerships for org:", e);
+  }
+
+  // Fetch pending join requests (admin only)
+  let joinRequests: any[] = [];
+  const isAdmin = initialMemberRole === "admin" || initialMemberRole === "creator";
+  if (currentUser && isAdmin) {
+    try {
+      const { data } = await supabase
+        .from("org_join_requests")
+        .select("*, users(*)")
+        .eq("org_id", orgUser.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      joinRequests = data || [];
+    } catch (e) {
+      console.warn("Could not query org_join_requests:", e);
+    }
+  }
+
   return (
     <OrgClient
       orgUser={orgUser}
@@ -56,6 +112,10 @@ export default async function OrgPage({ params }: { params: Promise<{ handle: st
       initialPosts={posts || []}
       currentUser={currentUser}
       initialMemberRole={initialMemberRole}
+      initialCollabs={collabs}
+      initialBadges={badges}
+      initialPartnerships={partnerships}
+      initialJoinRequests={joinRequests}
     />
   );
 }
