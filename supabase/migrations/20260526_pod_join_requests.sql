@@ -3,13 +3,11 @@ DROP TABLE IF EXISTS public.pod_join_requests CASCADE;
 
 CREATE TABLE public.pod_join_requests (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  pod_id      UUID NOT NULL,
-  user_id     UUID NOT NULL,
+  pod_id      UUID NOT NULL REFERENCES public.pods(id) ON DELETE CASCADE,
+  user_id     UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   status      TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at  TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(pod_id, user_id),
-  CONSTRAINT pod_join_requests_pod_id_fkey FOREIGN KEY (pod_id) REFERENCES public.pods(id) ON DELETE CASCADE,
-  CONSTRAINT pod_join_requests_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+  UNIQUE(pod_id, user_id)
 );
 
 -- Enable Row Level Security
