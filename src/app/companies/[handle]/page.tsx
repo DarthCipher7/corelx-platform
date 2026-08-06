@@ -118,6 +118,25 @@ export default async function CompanyPage({ params }: { params: Promise<{ handle
     console.warn("Could not query company_admins table:", e);
   }
 
+  // Fetch pods created by this company
+  let pods: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("pods")
+      .select(`
+        *,
+        creator:users!pods_creator_id_fkey(id, handle, display_name, avatar_url, pulse_score),
+        colleges(name, short_name, hub_type),
+        pod_members(user_id)
+      `)
+      .eq("creator_id", companyUser.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    pods = data || [];
+  } catch (e) {
+    console.warn("Could not query pods for company:", e);
+  }
+
   return (
     <CompanyClient
       companyUser={companyUser}
@@ -129,6 +148,7 @@ export default async function CompanyPage({ params }: { params: Promise<{ handle
       initialEvents={events}
       initialPartnerships={partnerships}
       initialTeamMembers={teamMembers}
+      initialPods={pods}
     />
   );
 }

@@ -105,6 +105,25 @@ export default async function OrgPage({ params }: { params: Promise<{ handle: st
     }
   }
 
+  // Fetch pods created by this organization
+  let pods: any[] = [];
+  try {
+    const { data } = await supabase
+      .from("pods")
+      .select(`
+        *,
+        creator:users!pods_creator_id_fkey(id, handle, display_name, avatar_url, pulse_score),
+        colleges(name, short_name, hub_type),
+        pod_members(user_id)
+      `)
+      .eq("creator_id", orgUser.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+    pods = data || [];
+  } catch (e) {
+    console.warn("Could not query pods for organisation:", e);
+  }
+
   return (
     <OrgClient
       orgUser={orgUser}
@@ -116,6 +135,7 @@ export default async function OrgPage({ params }: { params: Promise<{ handle: st
       initialBadges={badges}
       initialPartnerships={partnerships}
       initialJoinRequests={joinRequests}
+      initialPods={pods}
     />
   );
 }

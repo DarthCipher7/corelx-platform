@@ -13,6 +13,9 @@ import NeonBadge from "@/components/ui/NeonBadge";
 import OfficialTag from "@/components/ui/OfficialTag";
 import { createClient } from "@/utils/supabase/client";
 
+import PodCard from "@/components/cards/PodCard";
+import CreatePodModal from "@/components/cards/CreatePodModal";
+
 interface OrgClientProps {
   orgUser: any;
   initialMembers: any[];
@@ -23,6 +26,7 @@ interface OrgClientProps {
   initialBadges?: any[];
   initialPartnerships?: any[];
   initialJoinRequests?: any[];
+  initialPods?: any[];
 }
 
 const categoryStyles: Record<string, { theme: string; border: string; text: string; bg: string; pulse: string; badge: string }> = {
@@ -98,6 +102,7 @@ export default function OrgClient({
   initialBadges = [],
   initialPartnerships = [],
   initialJoinRequests = [],
+  initialPods = [],
 }: OrgClientProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -110,7 +115,7 @@ export default function OrgClient({
   const styles = categoryStyles[orgType] || categoryStyles.other;
 
   // Active page tabs
-  const [activeTab, setActiveTab] = useState<"broadcasts" | "members" | "collabs" | "badges" | "aura" | "partners" | "admin">("broadcasts");
+  const [activeTab, setActiveTab] = useState<"broadcasts" | "members" | "collabs" | "badges" | "aura" | "partners" | "admin" | "pods">("broadcasts");
   const [isAdminView, setIsAdminView] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -121,6 +126,8 @@ export default function OrgClient({
   const [badges, setBadges] = useState<any[]>(initialBadges);
   const [partnerships, setPartnerships] = useState<any[]>(initialPartnerships);
   const [joinRequests, setJoinRequests] = useState<any[]>(initialJoinRequests);
+  const [pods, setPods] = useState<any[]>(initialPods);
+  const [showCreatePodModal, setShowCreatePodModal] = useState(false);
   const [memberRole, setMemberRole] = useState<string | null>(initialMemberRole);
 
   // Org Settings / Metadata states
@@ -874,6 +881,7 @@ export default function OrgClient({
             { id: "members", label: `Members (${members.length})` },
             { id: "collabs", label: `Collab Calls (${collabs.length})` },
             { id: "badges", label: `Badge Vault (${badges.length})` },
+            { id: "pods", label: `Pods (${pods.length})` },
             { id: "aura", label: "Aura Metrics" },
             { id: "partners", label: `Partners (${partnerships.length})` },
             ...(isOwner && isAdminView ? [{ id: "admin", label: "Admin panel" }] : [])
@@ -1307,6 +1315,64 @@ export default function OrgClient({
             </motion.div>
           )}
 
+          {/* PODS HUB TAB */}
+          {activeTab === "pods" && (
+            <motion.div
+              key="pods-tab"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-white font-display">Pods Space 🚀</h2>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Collaboration groups, project rooms, and clubs hosted by this community.
+                  </p>
+                </div>
+                {isOwner && isAdminView && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setShowCreatePodModal(true)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Launch Pod
+                  </Button>
+                )}
+              </div>
+
+              {pods.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                  {pods.map((pod, idx) => (
+                    <PodCard key={pod.id} {...pod} index={idx} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 rounded-2xl border border-dashed border-[var(--border-subtle)] bg-[var(--bg-frosted)]">
+                  <div className="w-14 h-14 rounded-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <span className="text-2xl">🚀</span>
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-1">No Pods Created</h3>
+                  <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-sm mx-auto">
+                    Launch pod collaboration spaces to bring your organization's projects and meetups together.
+                  </p>
+                  {isOwner && isAdminView && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowCreatePodModal(true)}
+                    >
+                      Create First Pod
+                    </Button>
+                  )}
+                </div>
+              )}
+            </motion.div>
+          )}
+
           {/* ADMIN SETTINGS */}
           {activeTab === "admin" && isOwner && isAdminView && (
             <motion.div
@@ -1600,6 +1666,14 @@ export default function OrgClient({
                 </form>
               </motion.div>
             </div>
+          )}
+          {showCreatePodModal && (
+            <CreatePodModal
+              onClose={() => setShowCreatePodModal(false)}
+              onCreated={(newPod) => setPods((prev) => [newPod, ...prev])}
+              currentUserId={orgUser.id}
+              userCollege={orgUser.colleges}
+            />
           )}
         </AnimatePresence>
       </div>

@@ -14,6 +14,9 @@ import NeonBadge from "@/components/ui/NeonBadge";
 import OfficialTag from "@/components/ui/OfficialTag";
 import { createClient } from "@/utils/supabase/client";
 
+import PodCard from "@/components/cards/PodCard";
+import CreatePodModal from "@/components/cards/CreatePodModal";
+
 interface CompanyClientProps {
   companyUser: any;
   currentUser: any;
@@ -24,6 +27,7 @@ interface CompanyClientProps {
   initialEvents: any[];
   initialPartnerships: any[];
   initialTeamMembers: any[];
+  initialPods?: any[];
 }
 
 export default function CompanyClient({
@@ -36,6 +40,7 @@ export default function CompanyClient({
   initialEvents,
   initialPartnerships,
   initialTeamMembers,
+  initialPods = [],
 }: CompanyClientProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -45,7 +50,7 @@ export default function CompanyClient({
     : (companyUser.company_accounts || {});
 
   // Page layout & navigation states
-  const [activeTab, setActiveTab] = useState<"about" | "collabs" | "feed" | "events" | "partners" | "team" | "reach" | "analytics">("about");
+  const [activeTab, setActiveTab] = useState<"about" | "collabs" | "feed" | "events" | "partners" | "team" | "reach" | "analytics" | "pods">("about");
   const [isAdminView, setIsAdminView] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -56,6 +61,8 @@ export default function CompanyClient({
   const [events, setEvents] = useState<any[]>(initialEvents || []);
   const [partnerships, setPartnerships] = useState<any[]>(initialPartnerships || []);
   const [teamMembers, setTeamMembers] = useState<any[]>(initialTeamMembers || []);
+  const [pods, setPods] = useState<any[]>(initialPods);
+  const [showCreatePodModal, setShowCreatePodModal] = useState(false);
 
   // Profile metadata states
   const [displayName, setDisplayName] = useState(companyUser.display_name || "");
@@ -809,6 +816,7 @@ export default function CompanyClient({
             { id: "collabs", label: `Opportunities (${collabs.length})` },
             { id: "feed", label: `Feed (${feedPosts.length})` },
             { id: "events", label: `Events (${events.length})` },
+            { id: "pods", label: `Pods (${pods.length})` },
             { id: "partners", label: `Partners (${partnerships.length})` },
             { id: "team", label: "Team" },
             ...(isAdmin && isAdminView ? [
@@ -1522,6 +1530,64 @@ export default function CompanyClient({
                   <Shield className="w-12 h-12 mx-auto mb-4 opacity-30 text-cyan-400" />
                   <h3 className="text-lg font-medium text-white mb-1">No Active Partnerships</h3>
                   <p className="text-sm text-white/50">Propose partnerships to college hubs to unlock exclusive campus collaboration pipelines.</p>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* PODS HUB TAB */}
+          {activeTab === "pods" && (
+            <motion.div
+              key="pods-tab"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              <div className="flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-white font-display">Pods Space 🚀</h2>
+                  <p className="text-xs text-[var(--text-muted)] mt-1">
+                    Collaboration groups, project rooms, and squads hosted by this company.
+                  </p>
+                </div>
+                {isAdmin && isAdminView && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => setShowCreatePodModal(true)}
+                  >
+                    <Plus className="w-4 h-4" />
+                    Launch Pod
+                  </Button>
+                )}
+              </div>
+
+              {pods.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                  {pods.map((pod, idx) => (
+                    <PodCard key={pod.id} {...pod} index={idx} />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-20 rounded-2xl border border-dashed border-white/10 bg-white/[0.01]">
+                  <div className="w-14 h-14 rounded-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <span className="text-2xl">🚀</span>
+                  </div>
+                  <h3 className="text-lg font-medium text-white mb-1">No Pods Launched</h3>
+                  <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-sm mx-auto">
+                    Launch pod workspaces to organize external contributors, squads, or class collaborations under your company brand.
+                  </p>
+                  {isAdmin && isAdminView && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setShowCreatePodModal(true)}
+                    >
+                      Create First Pod
+                    </Button>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -2300,6 +2366,18 @@ export default function CompanyClient({
                 )}
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>
+
+        {/* CREATE POD MODAL */}
+        <AnimatePresence>
+          {showCreatePodModal && (
+            <CreatePodModal
+              onClose={() => setShowCreatePodModal(false)}
+              onCreated={(newPod) => setPods((prev) => [newPod, ...prev])}
+              currentUserId={companyUser.id}
+              userCollege={null}
+            />
           )}
         </AnimatePresence>
       </div>
