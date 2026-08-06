@@ -14,7 +14,7 @@ import TraceStrip from "@/components/explore/TraceStrip";
 
 const TABS = [
   { id: "individuals", label: "Individuals", color: "#22d3ee" }, // cyan
-  { id: "pods", label: "Pods", color: "#a78bfa" }, // purple
+  { id: "pods", label: "Comms/Clubs", color: "#a78bfa" }, // purple
   { id: "companies", label: "Companies", color: "#ffffff" } // neon-white
 ];
 
@@ -199,7 +199,7 @@ function ExplorePageContent() {
               id="explore-search"
               className="input-nova pl-11 h-full py-3.5 bg-white/[0.03] border-white/10 hover:border-white/20 focus:border-white/30 text-white rounded-xl placeholder-white/30 transition-all font-sans text-sm outline-none"
               style={{ backdropFilter: "blur(8px)" }}
-              placeholder={`Search ${activeTab} by name, keywords, or tags...`}
+              placeholder={`Search ${activeTab === "pods" ? "comms/clubs" : activeTab} by name, keywords, or tags...`}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
