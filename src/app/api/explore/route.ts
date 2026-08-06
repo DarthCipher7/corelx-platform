@@ -162,51 +162,51 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(rankedResults);
 
     } else if (entityType === 'pods') {
-      // ── PODS SEARCH & FILTER ─────────────────────────────────
-      const activity = searchParams.get('activity') || '';
+      // ── ORGANISATIONS (COMMS/CLUBS) SEARCH & FILTER ─────────
+      const typeParam = searchParams.get('type') || '';
       const size = searchParams.get('size') || '';
-      const tag = searchParams.get('tag') || '';
-      const visibility = searchParams.get('visibility') || '';
+      const joinPolicy = searchParams.get('visibility') || ''; // Maps visibility to join_policy
+      const activity = searchParams.get('activity') || '';
 
-      // Load pods with member counts and creator profiles
+      // Load organisations with member counts and user handle
       let dbQuery = supabase
-        .from('pods')
+        .from('org_accounts')
         .select(`
           *,
-          creator:users(id, handle, display_name, avatar_url, pulse_score),
-          colleges(name, short_name, hub_type),
-          pod_members(user_id)
-        `)
-        .eq('is_active', true);
+          users:users!org_accounts_id_fkey(handle, avatar_url),
+          colleges(name, short_name),
+          org_members(user_id)
+        `);
 
-      const { data: podsData, error } = await dbQuery;
+      const { data: orgsData, error } = await dbQuery;
       if (error) throw error;
 
-      let results = podsData || [];
-
-      // Filter visible pods (invite pods are hidden unless member)
-      results = results.filter(pod => {
-        if (pod.visibility === 'invite') {
-          return user && pod.pod_members.some((m: any) => m.user_id === user.id);
-        }
-        return true;
-      });
+      let results = orgsData || [];
 
       // Filter in memory for keyword matches
       if (q) {
         const queryLower = q.toLowerCase();
-        results = results.filter(p => 
-          (p.name && p.name.toLowerCase().includes(queryLower)) ||
-          (p.description && p.description.toLowerCase().includes(queryLower)) ||
-          (p.pod_type && p.pod_type.toLowerCase().includes(queryLower)) ||
-          (p.role_tags && p.role_tags.some((t: string) => t.toLowerCase().includes(queryLower)))
+        results = results.filter(o => 
+          (o.name && o.name.toLowerCase().includes(queryLower)) ||
+          (o.type && o.type.toLowerCase().includes(queryLower))
         );
       }
 
-      // Filter by pod size
+      // Filter by type
+      if (typeParam && typeParam !== 'All') {
+        const typeLower = typeParam.toLowerCase();
+        results = results.filter(o => o.type && o.type.toLowerCase() === typeLower);
+      }
+
+      // Filter by join policy
+      if (joinPolicy) {
+        results = results.filter(o => o.join_policy === joinPolicy);
+      }
+
+      // Filter by size
       if (size) {
-        results = results.filter(p => {
-          const count = p.pod_members ? p.pod_members.length : 0;
+        results = results.filter(o => {
+          const count = o.org_members ? o.org_members.length : 0;
           if (size === 'small') return count < 10;
           if (size === 'medium') return count >= 10 && count <= 50;
           if (size === 'large') return count > 50;
@@ -214,87 +214,63 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Filter by tag
-      if (tag) {
-        const tagLower = tag.toLowerCase();
-        results = results.filter(p => 
-          (p.role_tags && p.role_tags.some((t: string) => t.toLowerCase() === tagLower)) ||
-          (p.pod_type && p.pod_type.toLowerCase() === tagLower)
-        );
-      }
+      // Fetch org posts counts for activity score (last 30 days)
+      const orgIds = results.map(o => o.id);
+      let postCounts: Record<string, number> = {};
 
-      // Filter by visibility
-      if (visibility) {
-        results = results.filter(p => p.visibility === visibility);
-      }
-
-      // Fetch pod message counts for activity score
-      const podIds = results.map(p => p.id);
-      let messageCounts: Record<string, number> = {};
-      
-      if (podIds.length > 0) {
-        const { data: msgData } = await supabase
-          .from('pod_messages')
-          .select('pod_id')
-          .in('pod_id', podIds)
-          .gt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // last 30 days
+      if (orgIds.length > 0) {
+        const { data: postData } = await supabase
+          .from('org_posts')
+          .select('org_id')
+          .in('org_id', orgIds)
+          .gt('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString());
         
-        if (msgData) {
-          msgData.forEach(m => {
-            messageCounts[m.pod_id] = (messageCounts[m.pod_id] || 0) + 1;
+        if (postData) {
+          postData.forEach(p => {
+            postCounts[p.org_id] = (postCounts[p.org_id] || 0) + 1;
           });
         }
       }
 
       // Filter by activity
       if (activity) {
-        results = results.filter(p => {
-          const msgCount = messageCounts[p.id] || 0;
-          if (activity === 'high') return msgCount >= 10;
-          if (activity === 'medium') return msgCount > 0 && msgCount < 10;
-          if (activity === 'low') return msgCount === 0;
+        results = results.filter(o => {
+          const count = postCounts[o.id] || 0;
+          if (activity === 'high') return count >= 3;
+          if (activity === 'medium') return count > 0 && count < 3;
+          if (activity === 'low') return count === 0;
           return true;
         });
       }
 
       // Rank results
-      const rankedResults = results.map(p => {
-        const creatorAura = p.creator ? (p.creator.pulse_score || 150) / 1000.0 : 0.15;
-        
-        const daysOld = (Date.now() - new Date(p.created_at).getTime()) / (1000 * 60 * 60 * 24);
+      const rankedResults = results.map(o => {
+        const auraScore = o.verified ? 1.0 : 0.5;
+
+        const daysOld = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 60 * 60 * 24);
         const recencyScore = Math.exp(-0.05 * Math.max(0, daysOld));
 
         let proximityScore = 0.0;
-        if (p.creator && followingIds.has(p.creator.id)) {
-          proximityScore = 1.0;
-        } else if (p.pod_members && p.pod_members.some((m: any) => followingIds.has(m.user_id))) {
-          proximityScore = 0.6;
+        if (o.org_members && o.org_members.some((m: any) => followingIds.has(m.user_id))) {
+          proximityScore = 0.8;
+        } else if (currentUserCollegeId && o.college_id === currentUserCollegeId) {
+          proximityScore = 0.5;
         }
 
-        const score = (0.4 * creatorAura) + (0.3 * recencyScore) + (0.3 * proximityScore);
+        const score = (0.4 * auraScore) + (0.3 * recencyScore) + (0.3 * proximityScore);
 
         return {
-          id: p.id,
-          name: p.name,
-          podType: p.pod_type || 'project',
-          description: p.description || '',
-          visibility: p.visibility,
-          memberCount: p.pod_members ? p.pod_members.length : 0,
-          maxMembers: p.max_members,
-          roleTags: p.role_tags || [],
-          creator: p.creator ? {
-            handle: p.creator.handle,
-            displayName: p.creator.display_name || p.creator.handle,
-            avatarUrl: p.creator.avatar_url
-          } : { handle: 'unknown', displayName: 'Creator' },
-          hub: p.colleges ? {
-            name: p.colleges.name,
-            shortName: p.colleges.short_name,
-            hubType: p.colleges.hub_type
-          } : undefined,
-          isMember: user ? p.pod_members.some((m: any) => m.user_id === user.id) : false,
-          created_at: p.created_at,
-          msgCount: messageCounts[p.id] || 0,
+          id: o.id,
+          name: o.name,
+          handle: o.users?.handle || '',
+          logo_url: o.logo_url || '',
+          type: o.type,
+          join_policy: o.join_policy,
+          verified: o.verified,
+          memberCount: o.org_members ? o.org_members.length : 0,
+          college: o.colleges ? o.colleges.short_name || o.colleges.name : null,
+          isMember: user ? o.org_members.some((m: any) => m.user_id === user.id) : false,
+          created_at: o.created_at,
           score
         };
       });

@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/utils/supabase/client";
 
 import CompactIndividualCard from "@/components/cards/CompactIndividualCard";
-import PodCard from "@/components/cards/PodCard";
+import OrgCompactCard from "@/components/cards/OrgCompactCard";
 import CompanyCard from "@/components/cards/CompanyCard";
 import Button from "@/components/ui/Button";
 import TraceStrip from "@/components/explore/TraceStrip";
@@ -27,9 +27,9 @@ const POD_SIZES = [
   { id: "large", label: "Large (50+)" }
 ];
 const POD_VISIBILITIES = [
-  { id: "", label: "All Visibilities" },
-  { id: "open", label: "Open to Join" },
-  { id: "request", label: "Request Access" }
+  { id: "", label: "All Policies" },
+  { id: "open", label: "Open Join" },
+  { id: "gated", label: "Gated Hub" }
 ];
 const POD_ACTIVITIES = [
   { id: "", label: "All Activities" },
@@ -472,7 +472,7 @@ function ExplorePageContent() {
                   );
                 } else if (activeTab === "pods") {
                   return (
-                    <PodCard key={item.id} {...item} index={idx} />
+                    <OrgCompactCard key={item.id} {...item} index={idx} />
                   );
                 } else if (activeTab === "companies") {
                   return (
