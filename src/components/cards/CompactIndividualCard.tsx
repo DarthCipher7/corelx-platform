@@ -173,12 +173,12 @@ export default function CompactIndividualCard({ creator, index = 0 }: CompactInd
       {creator.skills.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-4">
           {creator.skills.slice(0, 3).map((skill) => (
-            <span key={skill} className="text-[10px] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[var(--text-secondary)]">
+            <span key={skill} className="text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] text-[var(--text-secondary)]">
               {skill}
             </span>
           ))}
           {creator.skills.length > 3 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white/5 text-[var(--text-muted)]">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-[var(--bg-frosted)] border border-[var(--glass-border)] text-[var(--text-muted)]">
               +{creator.skills.length - 3}
             </span>
           )}
@@ -188,7 +188,7 @@ export default function CompactIndividualCard({ creator, index = 0 }: CompactInd
       <div className="flex-1" />
 
       {/* Action buttons */}
-      <div className="flex gap-2 pt-2 border-t border-white/5" onClick={e => e.stopPropagation()}>
+      <div className="flex gap-2 pt-2 border-t border-[var(--glass-border)]" onClick={e => e.stopPropagation()}>
         <Button
           variant={isFollowing ? "ghost" : "primary"}
           size="sm"
@@ -216,7 +216,7 @@ export default function CompactIndividualCard({ creator, index = 0 }: CompactInd
         <Button
           variant="ghost"
           size="sm"
-          className="flex-1 justify-center py-1 text-xs gap-1 border-white/10 text-white/70 hover:text-white"
+          className="flex-1 justify-center py-1 text-xs gap-1 border-[var(--glass-border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
           onClick={handleMessageClick}
           disabled={currentUser?.id === creator.id}
         >

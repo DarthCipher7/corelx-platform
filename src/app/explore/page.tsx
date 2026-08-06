@@ -197,7 +197,7 @@ function ExplorePageContent() {
             />
             <input
               id="explore-search"
-              className="input-nova pl-11 h-full py-3.5 bg-white/[0.03] border-white/10 hover:border-white/20 focus:border-white/30 text-white rounded-xl placeholder-white/30 transition-all font-sans text-sm outline-none"
+              className="input-nova pl-11 h-full py-3.5 bg-[var(--bg-frosted)] border-[var(--glass-border)] hover:border-[var(--border-subtle)] focus:border-[var(--accent-primary)] text-[var(--text-primary)] rounded-xl placeholder:text-[var(--text-muted)] transition-all font-sans text-sm outline-none"
               style={{ backdropFilter: "blur(8px)" }}
               placeholder={`Search ${activeTab === "pods" ? "comms/clubs" : activeTab} by name, keywords, or tags...`}
               value={search}
@@ -220,7 +220,7 @@ function ExplorePageContent() {
         </motion.div>
 
         {/* Entity Switcher segment controller tabs */}
-        <div className="relative flex p-1 mb-8 rounded-xl bg-white/5 border border-white/10 max-w-md w-full">
+        <div className="relative flex p-1 mb-8 rounded-xl bg-[var(--bg-frosted)] border border-[var(--glass-border)] max-w-md w-full" style={{ backdropFilter: "blur(8px)" }}>
           {TABS.map((t) => (
             <button
               key={t.id}
@@ -245,7 +245,7 @@ function ExplorePageContent() {
               <span
                 className="relative z-10 transition-colors duration-250 font-display"
                 style={{
-                  color: t.id === activeTab ? t.color : "rgba(255, 255, 255, 0.45)",
+                  color: t.id === activeTab ? t.color : "var(--text-secondary)",
                   textShadow: t.id === activeTab ? `0 0 8px ${t.color}40` : "none",
                 }}
               >
@@ -266,11 +266,7 @@ function ExplorePageContent() {
               className="overflow-hidden mb-8"
             >
               <div
-                className="flex flex-wrap gap-2.5 p-4 rounded-xl border"
-                style={{
-                  background: "rgba(255,255,255,0.02)",
-                  borderColor: "var(--border-subtle)"
-                }}
+                className="flex flex-wrap gap-2.5 p-4 rounded-xl border border-[var(--glass-border)] bg-[var(--bg-frosted)]"
               >
                 {activeTab === "individuals" && (
                   <>
@@ -284,8 +280,8 @@ function ExplorePageContent() {
                           className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
                           style={{
                             background: auraFilter === tier ? "rgba(34, 211, 238, 0.15)" : "transparent",
-                            borderColor: auraFilter === tier ? "#22d3ee" : "rgba(255,255,255,0.1)",
-                            color: auraFilter === tier ? "#22d3ee" : "rgba(255,255,255,0.6)"
+                            borderColor: auraFilter === tier ? "#22d3ee" : "var(--glass-border)",
+                            color: auraFilter === tier ? "#22d3ee" : "var(--text-secondary)"
                           }}
                         >
                           {tier}
@@ -293,7 +289,7 @@ function ExplorePageContent() {
                       ))}
                     </div>
 
-                    <div className="h-4 w-px bg-white/10 self-center hidden sm:block" />
+                    <div className="h-4 w-px bg-[var(--border-subtle)] self-center hidden sm:block" />
 
                     {/* Available for collabs check */}
                     <button
@@ -301,8 +297,8 @@ function ExplorePageContent() {
                       className="px-3.5 py-1 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5"
                       style={{
                         background: collabFilter ? "rgba(34, 211, 238, 0.15)" : "transparent",
-                        borderColor: collabFilter ? "#22d3ee" : "rgba(255,255,255,0.1)",
-                        color: collabFilter ? "#22d3ee" : "rgba(255,255,255,0.6)"
+                        borderColor: collabFilter ? "#22d3ee" : "var(--glass-border)",
+                        color: collabFilter ? "#22d3ee" : "var(--text-secondary)"
                       }}
                     >
                       <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
@@ -323,8 +319,8 @@ function ExplorePageContent() {
                           className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
                           style={{
                             background: podVisFilter === vis.id ? "rgba(167, 139, 250, 0.15)" : "transparent",
-                            borderColor: podVisFilter === vis.id ? "#a78bfa" : "rgba(255,255,255,0.1)",
-                            color: podVisFilter === vis.id ? "#a78bfa" : "rgba(255,255,255,0.6)"
+                            borderColor: podVisFilter === vis.id ? "#a78bfa" : "var(--glass-border)",
+                            color: podVisFilter === vis.id ? "#a78bfa" : "var(--text-secondary)"
                           }}
                         >
                           {vis.label}
@@ -332,7 +328,7 @@ function ExplorePageContent() {
                       ))}
                     </div>
 
-                    <div className="h-4 w-px bg-white/10 self-center hidden sm:block" />
+                    <div className="h-4 w-px bg-[var(--border-subtle)] self-center hidden sm:block" />
 
                     {/* Pod Sizes */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -344,8 +340,8 @@ function ExplorePageContent() {
                           className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
                           style={{
                             background: podSizeFilter === sz.id ? "rgba(167, 139, 250, 0.15)" : "transparent",
-                            borderColor: podSizeFilter === sz.id ? "#a78bfa" : "rgba(255,255,255,0.1)",
-                            color: podSizeFilter === sz.id ? "#a78bfa" : "rgba(255,255,255,0.6)"
+                            borderColor: podSizeFilter === sz.id ? "#a78bfa" : "var(--glass-border)",
+                            color: podSizeFilter === sz.id ? "#a78bfa" : "var(--text-secondary)"
                           }}
                         >
                           {sz.label}
@@ -353,7 +349,7 @@ function ExplorePageContent() {
                       ))}
                     </div>
 
-                    <div className="h-4 w-px bg-white/10 self-center hidden sm:block" />
+                    <div className="h-4 w-px bg-[var(--border-subtle)] self-center hidden sm:block" />
 
                     {/* Pod Activities */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -365,8 +361,8 @@ function ExplorePageContent() {
                           className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
                           style={{
                             background: podActFilter === act.id ? "rgba(167, 139, 250, 0.15)" : "transparent",
-                            borderColor: podActFilter === act.id ? "#a78bfa" : "rgba(255,255,255,0.1)",
-                            color: podActFilter === act.id ? "#a78bfa" : "rgba(255,255,255,0.6)"
+                            borderColor: podActFilter === act.id ? "#a78bfa" : "var(--glass-border)",
+                            color: podActFilter === act.id ? "#a78bfa" : "var(--text-secondary)"
                           }}
                         >
                           {act.label}
@@ -388,8 +384,8 @@ function ExplorePageContent() {
                           className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
                           style={{
                             background: industryFilter === ind ? "rgba(255, 255, 255, 0.15)" : "transparent",
-                            borderColor: industryFilter === ind ? "#ffffff" : "rgba(255,255,255,0.1)",
-                            color: industryFilter === ind ? "#ffffff" : "rgba(255,255,255,0.6)"
+                            borderColor: industryFilter === ind ? "var(--text-primary)" : "var(--glass-border)",
+                            color: industryFilter === ind ? "var(--text-primary)" : "var(--text-secondary)"
                           }}
                         >
                           {ind}
@@ -397,7 +393,7 @@ function ExplorePageContent() {
                       ))}
                     </div>
 
-                    <div className="h-4 w-px bg-white/10 self-center hidden sm:block" />
+                    <div className="h-4 w-px bg-[var(--border-subtle)] self-center hidden sm:block" />
 
                     {/* Reach Thresholds */}
                     <div className="flex flex-wrap items-center gap-1.5">
@@ -409,8 +405,8 @@ function ExplorePageContent() {
                           className="px-3 py-1 rounded-full text-xs font-semibold border transition-all"
                           style={{
                             background: thresholdFilter === th.id ? "rgba(255, 255, 255, 0.15)" : "transparent",
-                            borderColor: thresholdFilter === th.id ? "#ffffff" : "rgba(255,255,255,0.1)",
-                            color: thresholdFilter === th.id ? "#ffffff" : "rgba(255,255,255,0.6)"
+                            borderColor: thresholdFilter === th.id ? "var(--text-primary)" : "var(--glass-border)",
+                            color: thresholdFilter === th.id ? "var(--text-primary)" : "var(--text-secondary)"
                           }}
                         >
                           {th.label}
@@ -418,7 +414,7 @@ function ExplorePageContent() {
                       ))}
                     </div>
 
-                    <div className="h-4 w-px bg-white/10 self-center hidden sm:block" />
+                    <div className="h-4 w-px bg-[var(--border-subtle)] self-center hidden sm:block" />
 
                     {/* Hiring Toggle */}
                     <button
@@ -426,8 +422,8 @@ function ExplorePageContent() {
                       className="px-3.5 py-1 rounded-full text-xs font-semibold border transition-all flex items-center gap-1.5"
                       style={{
                         background: hiringFilter ? "rgba(255, 255, 255, 0.15)" : "transparent",
-                        borderColor: hiringFilter ? "#ffffff" : "rgba(255,255,255,0.1)",
-                        color: hiringFilter ? "#ffffff" : "rgba(255,255,255,0.6)"
+                        borderColor: hiringFilter ? "var(--text-primary)" : "var(--glass-border)",
+                        color: hiringFilter ? "var(--text-primary)" : "var(--text-secondary)"
                       }}
                     >
                       <Sparkles className="w-3.5 h-3.5" />

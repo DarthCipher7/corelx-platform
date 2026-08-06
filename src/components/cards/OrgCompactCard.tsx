@@ -67,11 +67,11 @@ export default function OrgCompactCard({
       {/* Header Info */}
       <div className="flex gap-3 mb-3">
         {/* Logo Container */}
-        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white/5 border border-white/10 flex-shrink-0 flex items-center justify-center">
+        <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-[var(--bg-frosted)] border border-[var(--glass-border)] flex-shrink-0 flex items-center justify-center">
           {logo_url ? (
             <img src={logo_url} alt={name} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-xl font-bold text-purple-400">
+            <span className="text-xl font-bold text-[var(--accent-primary)]">
               {name.charAt(0).toUpperCase()}
             </span>
           )}
@@ -94,7 +94,7 @@ export default function OrgCompactCard({
 
       {/* Stats/Badges row */}
       <div className="flex flex-wrap gap-1.5 mb-4">
-        <span className="inline-flex items-center gap-1 rounded-full text-[10px] font-semibold px-2 py-0.5 border border-white/5 bg-white/5 text-[var(--text-secondary)]">
+        <span className="inline-flex items-center gap-1 rounded-full text-[10px] font-semibold px-2 py-0.5 border border-[var(--glass-border)] bg-[var(--bg-frosted)] text-[var(--text-secondary)]">
           <Users className="w-3 h-3 text-purple-400" />
           {memberCount} {memberCount === 1 ? "member" : "members"}
         </span>
@@ -122,7 +122,7 @@ export default function OrgCompactCard({
       <div className="flex-1" />
 
       {/* Action CTA */}
-      <div className="pt-2 border-t border-white/5" onClick={e => e.stopPropagation()}>
+      <div className="flex gap-2 pt-2 border-t border-[var(--glass-border)]" onClick={e => e.stopPropagation()}>
         <Button
           variant="primary"
           size="sm"
