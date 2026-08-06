@@ -172,6 +172,52 @@ export default function OrgClient({
   const isMember = !!memberRole;
   const isOwner = currentUser?.id === orgUser.id;
 
+  // Filter invite-only pods
+  const visiblePods = pods.filter((pod) => {
+    if (pod.visibility !== "invite") return true;
+    if (currentUser) {
+      if (pod.creator_id === currentUser.id) return true;
+      if (Array.isArray(pod.pod_members) && pod.pod_members.some((m: any) => m.user_id === currentUser.id)) {
+        return true;
+      }
+    }
+    if (isOwner) return true;
+    return false;
+  });
+
+  const mapDbPod = (pod: any, idx: number) => {
+    const isMemberOfPod = currentUser && (
+      pod.creator_id === currentUser.id ||
+      (Array.isArray(pod.pod_members) && pod.pod_members.some((m: any) => m.user_id === currentUser.id))
+    );
+
+    return {
+      id: pod.id,
+      name: pod.name,
+      podType: pod.pod_type ?? "project",
+      description: pod.description ?? "",
+      memberCount: Array.isArray(pod.pod_members) ? pod.pod_members.length : 0,
+      maxMembers: pod.max_members ?? undefined,
+      roleTags: pod.role_tags ?? [],
+      visibility: pod.visibility ?? "open",
+      creator: {
+        handle: pod.creator?.handle ?? "unknown",
+        displayName: pod.creator?.display_name ?? pod.creator?.handle ?? "Creator",
+        avatarUrl: pod.creator?.avatar_url ?? undefined,
+      },
+      isMember: isMemberOfPod,
+      hub: pod.colleges ? {
+        name: pod.colleges.name,
+        shortName: pod.colleges.short_name,
+        hubType: pod.colleges.hub_type,
+      } : undefined,
+      index: idx,
+      podStatus: (pod.is_active ? "active" : "archived") as "active" | "archived",
+      startsAt: pod.starts_at,
+      endsAt: pod.ends_at,
+    };
+  };
+
   // Real join request status for current user if gated
   const [userRequestStatus, setUserRequestStatus] = useState<string | null>(null);
   const [checkingRequest, setCheckingRequest] = useState(false);
@@ -881,7 +927,7 @@ export default function OrgClient({
             { id: "members", label: `Members (${members.length})` },
             { id: "collabs", label: `Collab Calls (${collabs.length})` },
             { id: "badges", label: `Badge Vault (${badges.length})` },
-            { id: "pods", label: `Pods (${pods.length})` },
+            { id: "pods", label: `Pods (${visiblePods.length})` },
             { id: "aura", label: "Aura Metrics" },
             { id: "partners", label: `Partners (${partnerships.length})` },
             ...(isOwner && isAdminView ? [{ id: "admin", label: "Admin panel" }] : [])
@@ -1344,10 +1390,10 @@ export default function OrgClient({
                 )}
               </div>
 
-              {pods.length > 0 ? (
+              {visiblePods.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-                  {pods.map((pod, idx) => (
-                    <PodCard key={pod.id} {...pod} index={idx} />
+                  {visiblePods.map((pod, idx) => (
+                    <PodCard key={pod.id} {...mapDbPod(pod, idx)} />
                   ))}
                 </div>
               ) : (

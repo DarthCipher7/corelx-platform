@@ -64,6 +64,52 @@ export default function CompanyClient({
   const [pods, setPods] = useState<any[]>(initialPods);
   const [showCreatePodModal, setShowCreatePodModal] = useState(false);
 
+  // Filter invite-only pods
+  const visiblePods = pods.filter((pod) => {
+    if (pod.visibility !== "invite") return true;
+    if (currentUser) {
+      if (pod.creator_id === currentUser.id) return true;
+      if (Array.isArray(pod.pod_members) && pod.pod_members.some((m: any) => m.user_id === currentUser.id)) {
+        return true;
+      }
+    }
+    if (isAdmin) return true;
+    return false;
+  });
+
+  const mapDbPod = (pod: any, idx: number) => {
+    const isMemberOfPod = currentUser && (
+      pod.creator_id === currentUser.id ||
+      (Array.isArray(pod.pod_members) && pod.pod_members.some((m: any) => m.user_id === currentUser.id))
+    );
+
+    return {
+      id: pod.id,
+      name: pod.name,
+      podType: pod.pod_type ?? "project",
+      description: pod.description ?? "",
+      memberCount: Array.isArray(pod.pod_members) ? pod.pod_members.length : 0,
+      maxMembers: pod.max_members ?? undefined,
+      roleTags: pod.role_tags ?? [],
+      visibility: pod.visibility ?? "open",
+      creator: {
+        handle: pod.creator?.handle ?? "unknown",
+        displayName: pod.creator?.display_name ?? pod.creator?.handle ?? "Creator",
+        avatarUrl: pod.creator?.avatar_url ?? undefined,
+      },
+      isMember: isMemberOfPod,
+      hub: pod.colleges ? {
+        name: pod.colleges.name,
+        shortName: pod.colleges.short_name,
+        hubType: pod.colleges.hub_type,
+      } : undefined,
+      index: idx,
+      podStatus: (pod.is_active ? "active" : "archived") as "active" | "archived",
+      startsAt: pod.starts_at,
+      endsAt: pod.ends_at,
+    };
+  };
+
   // Profile metadata states
   const [displayName, setDisplayName] = useState(companyUser.display_name || "");
   const [tagline, setTagline] = useState(companyUser.tagline || "");
@@ -816,7 +862,7 @@ export default function CompanyClient({
             { id: "collabs", label: `Opportunities (${collabs.length})` },
             { id: "feed", label: `Feed (${feedPosts.length})` },
             { id: "events", label: `Events (${events.length})` },
-            { id: "pods", label: `Pods (${pods.length})` },
+            { id: "pods", label: `Pods (${visiblePods.length})` },
             { id: "partners", label: `Partners (${partnerships.length})` },
             { id: "team", label: "Team" },
             ...(isAdmin && isAdminView ? [
@@ -1564,10 +1610,10 @@ export default function CompanyClient({
                 )}
               </div>
 
-              {pods.length > 0 ? (
+              {visiblePods.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
-                  {pods.map((pod, idx) => (
-                    <PodCard key={pod.id} {...pod} index={idx} />
+                  {visiblePods.map((pod, idx) => (
+                    <PodCard key={pod.id} {...mapDbPod(pod, idx)} />
                   ))}
                 </div>
               ) : (
