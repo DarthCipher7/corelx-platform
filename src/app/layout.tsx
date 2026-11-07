@@ -1,13 +1,39 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  variable: "--font-display",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#02020a",
+};
+
 export const metadata: Metadata = {
+  metadataBase: new URL("https://corelx.app"),
   title: "CORELX — The Creator Identity Layer",
   description:
-    "CORELX is the AI-native network where designers, engineers, artists, and builders discover each other, collaborate in real time, and grow their reputation.",
+    "The identity layer for the next generation of creators, builders, and visionaries.",
   keywords: [
     "creator network",
     "portfolio",
@@ -20,8 +46,25 @@ export const metadata: Metadata = {
   openGraph: {
     title: "CORELX — The Creator Identity Layer",
     description:
-      "The AI-native network for next-generation creators. Build your legacy.",
+      "The identity layer for the next generation of creators, builders, and visionaries.",
     type: "website",
+    url: "https://corelx.app",
+    siteName: "CORELX",
+    images: [
+      {
+        url: "/og.png",
+        width: 1200,
+        height: 630,
+        alt: "CORELX — The Creator Identity Layer",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CORELX — The Creator Identity Layer",
+    description:
+      "The identity layer for the next generation of creators, builders, and visionaries.",
+    images: ["/og.png"],
   },
 };
 
@@ -31,19 +74,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html
+      lang="en"
+      className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
+      suppressHydrationWarning
+    >
       <body className="transition-colors duration-500">
         <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
           <Navbar />

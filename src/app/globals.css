@@ -116,10 +116,7 @@
   --shadow-glow-lg: 0 0 64px rgba(108, 92, 231, 0.25);
   --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255,255,255,0.04);
 
-  /* Typography */
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-display: "Space Grotesk", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  /* Typography provided via next/font variables on <html> (--font-sans, --font-display, --font-mono) */
 
   /* Radii */
   --radius-sm: 8px;
@@ -628,6 +625,37 @@ body {
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--accent-cyan);
+}
+
+/* ═══════════════════════════════════════════════════
+   FOOTER LINK UNDERLINE SLIDE ANIMATION
+═══════════════════════════════════════════════════ */
+.footer-link {
+  position: relative;
+  display: inline-block;
+  color: var(--text-secondary);
+  transition: color 200ms var(--ease-smooth);
+}
+
+.footer-link:hover {
+  color: var(--text-primary);
+}
+
+.footer-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -2px;
+  width: 100%;
+  height: 1px;
+  background: var(--accent-cyan);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 200ms var(--ease-smooth);
+}
+
+.footer-link:hover::after {
+  transform: scaleX(1);
 }
 
 /* ═══════════════════════════════════════════════════
