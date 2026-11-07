@@ -40,7 +40,7 @@ export default function Footer() {
 
   return (
     <footer
-      className="relative mt-32 border-t"
+      className="relative mt-32 border-t pb-28 md:pb-16"
       style={{
         borderColor: "rgba(108, 92, 231, 0.12)",
         background: "var(--bg-void)",

@@ -191,7 +191,7 @@ export default async function CommunityPage() {
           <div className="flex flex-wrap items-center gap-4">
             <Link
               href="/pods"
-              className="px-6 py-3.5 rounded-2xl text-xs font-mono font-bold text-white flex items-center gap-2 transition-transform hover:scale-105"
+              className="px-6 py-3.5 rounded-2xl text-xs font-mono font-bold text-[var(--text-primary)] flex items-center gap-2 transition-transform hover:scale-105"
               style={{
                 background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                 boxShadow: "0 4px 20px rgba(108,92,231,0.4)",
@@ -202,7 +202,7 @@ export default async function CommunityPage() {
             </Link>
             <Link
               href="/collabs"
-              className="px-6 py-3.5 rounded-2xl text-xs font-mono font-medium text-[var(--text-secondary)] hover:text-white border border-[var(--glass-border)] bg-[var(--bg-frosted)] transition-colors"
+              className="px-6 py-3.5 rounded-2xl text-xs font-mono font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] bg-[var(--bg-frosted)] transition-colors"
             >
               Browse Collab Board &rarr;
             </Link>
@@ -214,7 +214,7 @@ export default async function CommunityPage() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2
-                className="text-2xl sm:text-3xl font-bold text-white"
+                className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Active Public Pods
@@ -283,7 +283,7 @@ export default async function CommunityPage() {
               Proof of Craft
             </span>
             <h2
-              className="text-3xl sm:text-4xl font-bold text-white mt-1"
+              className="text-3xl sm:text-4xl font-bold text-[var(--text-primary)] mt-1"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Voices from the Network
@@ -311,7 +311,7 @@ export default async function CommunityPage() {
 
                 <div className="pt-4 border-t border-[var(--border-subtle)] flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-bold text-white">{story.author}</p>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{story.author}</p>
                     <p className="text-xs text-[var(--text-secondary)]">
                       {story.role} • <span className="text-[var(--text-muted)]">{story.institution}</span>
                     </p>
@@ -333,7 +333,7 @@ export default async function CommunityPage() {
                 Satellite Nodes
               </span>
               <h3
-                className="text-2xl sm:text-3xl font-bold text-white mt-1"
+                className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mt-1"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Community Transmission Channels
@@ -355,7 +355,7 @@ export default async function CommunityPage() {
               >
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-bold text-white">{ch.name}</p>
+                    <p className="text-sm font-bold text-[var(--text-primary)]">{ch.name}</p>
                     <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[var(--bg-frosted)] text-[var(--accent-cyan)] border border-[var(--border-subtle)]">
                       {ch.tag}
                     </span>

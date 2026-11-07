@@ -650,7 +650,7 @@ export default function FeedPage() {
               <p className="label-mono mb-1 text-[var(--accent-primary)] flex items-center gap-1.5 text-xs uppercase tracking-wider font-bold">
                 <span className="text-cyan-400">✦</span> Discovery Network
               </p>
-              <h1 className="text-3xl font-display font-bold text-white tracking-tight">
+              <h1 className="text-3xl font-display font-bold text-[var(--text-primary)] tracking-tight">
                 {feedMode === "posts" ? "Discovery Feed 👥" : feedMode === "flares" ? "Trending Flares 🔥" : "Ephemeral Traces ✦"}
               </h1>
             </div>
@@ -738,6 +738,38 @@ export default function FeedPage() {
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Pods Rail at Top of Feed */}
+      <div className="max-w-[680px] mx-auto px-4 sm:px-6 mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--accent-cyan)] flex items-center gap-1.5">
+            <span>✦</span> ACTIVE PODS
+          </span>
+          <a href="/community" className="text-xs font-mono text-[var(--text-muted)] hover:text-[var(--accent-primary)] transition-colors">
+            All Pods →
+          </a>
+        </div>
+        <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-none snap-x">
+          {[
+            { name: "Dev Squad", count: "14 online", bg: "from-purple-500/20 to-indigo-500/10", border: "border-purple-500/30" },
+            { name: "Design Club", count: "8 online", bg: "from-cyan-500/20 to-blue-500/10", border: "border-cyan-500/30" },
+            { name: "AI Polymaths", count: "21 online", bg: "from-pink-500/20 to-rose-500/10", border: "border-pink-500/30" },
+            { name: "Founders Hub", count: "12 online", bg: "from-amber-500/20 to-orange-500/10", border: "border-amber-500/30" },
+          ].map((pod, i) => (
+            <a
+              key={i}
+              href="/community"
+              className={`flex-shrink-0 flex items-center gap-2.5 px-3.5 py-2 rounded-2xl border ${pod.border} bg-gradient-to-r ${pod.bg} hover:scale-[1.02] active:scale-95 transition-all snap-start`}
+            >
+              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="text-left">
+                <div className="text-xs font-bold text-[var(--text-primary)] font-display whitespace-nowrap">{pod.name}</div>
+                <div className="text-[10px] font-mono text-[var(--text-muted)]">{pod.count}</div>
+              </div>
+            </a>
+          ))}
         </div>
       </div>
 

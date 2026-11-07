@@ -122,7 +122,7 @@ export default function BlogHubPage() {
 
               <div className="flex items-center justify-between pt-6 border-t border-[var(--border-subtle)]">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#6c5ce7] to-[#00d2ff] flex items-center justify-center font-mono font-bold text-xs text-white">
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#6c5ce7] to-[#00d2ff] flex items-center justify-center font-mono font-bold text-xs text-[var(--text-primary)]">
                     C✦X
                   </div>
                   <div>
@@ -219,7 +219,7 @@ export default function BlogHubPage() {
             </div>
             <Link
               href="/signup"
-              className="px-6 py-3 rounded-full text-sm font-semibold text-white whitespace-nowrap transition-transform hover:scale-105"
+              className="px-6 py-3 rounded-full text-sm font-semibold text-[var(--text-primary)] whitespace-nowrap transition-transform hover:scale-105"
               style={{
                 background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                 boxShadow: "0 0 20px rgba(108,92,231,0.4)",

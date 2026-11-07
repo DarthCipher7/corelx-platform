@@ -29,7 +29,8 @@ export const NAV_LINKS: readonly NavLink[] = [
   { label: "Feed", href: "/feed", requiresAuth: true },
   { label: "Explore", href: "/explore" },
   { label: "Collab Board", href: "/collabs" },
-  { label: "Pods", href: "/pods", requiresAuth: true },
+  { label: "Flares", href: "/flares" },
+  { label: "Pods", href: "/community" },
   { label: "Showcase", href: "/showcase" },
 ] as const;
 

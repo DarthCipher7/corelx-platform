@@ -136,7 +136,7 @@ export default function PricingPage() {
                   FOUNDING PASS
                 </span>
                 <h2
-                  className="text-2xl sm:text-3xl font-bold text-white mt-2"
+                  className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mt-2"
                   style={{ fontFamily: "var(--font-display)" }}
                 >
                   Early Access Creator
@@ -148,7 +148,7 @@ export default function PricingPage() {
 
               <div className="text-left sm:text-right">
                 <div className="flex items-baseline gap-1">
-                  <span className="text-4xl sm:text-5xl font-extrabold text-white" style={{ fontFamily: "var(--font-display)" }}>
+                  <span className="text-4xl sm:text-5xl font-extrabold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
                     $0
                   </span>
                   <span className="text-sm font-mono text-[var(--text-muted)]">/ forever free</span>
@@ -177,7 +177,7 @@ export default function PricingPage() {
             {/* CTA Button */}
             <Link
               href="/signup"
-              className="w-full py-4 px-6 rounded-2xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.99]"
+              className="w-full py-4 px-6 rounded-2xl font-bold text-sm text-[var(--text-primary)] flex items-center justify-center gap-2 transition-all hover:scale-[1.02] active:scale-[0.99]"
               style={{
                 background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                 boxShadow: "0 8px 30px rgba(108,92,231,0.45)",
@@ -202,7 +202,7 @@ export default function PricingPage() {
               <Mail className="w-5 h-5" />
             </div>
             <h3
-              className="text-xl sm:text-2xl font-bold text-white mb-2"
+              className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-2"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Want early access to premium features?
@@ -223,7 +223,7 @@ export default function PricingPage() {
                 <button
                   type="submit"
                   disabled={waitlistStatus === "loading"}
-                  className="px-6 py-3 rounded-xl text-xs font-mono font-bold text-white transition-all disabled:opacity-50 whitespace-nowrap"
+                  className="px-6 py-3 rounded-xl text-xs font-mono font-bold text-[var(--text-primary)] transition-all disabled:opacity-50 whitespace-nowrap"
                   style={{
                     background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                   }}
@@ -237,7 +237,7 @@ export default function PricingPage() {
               )}
 
               {waitlistStatus === "success" && (
-                <div className="p-3 rounded-xl bg-[#00cec9]/15 border border-[#00cec9]/30 text-xs text-white">
+                <div className="p-3 rounded-xl bg-[#00cec9]/15 border border-[#00cec9]/30 text-xs text-[var(--text-primary)]">
                   ✓ Priority spot confirmed! We will dispatch an invite as premium tooling ships.
                 </div>
               )}
@@ -248,7 +248,7 @@ export default function PricingPage() {
         {/* FAQ Accordion */}
         <div className="max-w-2xl mx-auto">
           <h3
-            className="text-2xl sm:text-3xl font-bold text-center mb-8 text-white"
+            className="text-2xl sm:text-3xl font-bold text-center mb-8 text-[var(--text-primary)]"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Frequently Asked Questions

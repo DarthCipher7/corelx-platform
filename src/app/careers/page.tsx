@@ -131,7 +131,7 @@ export default function CareersPage() {
               How We Work
             </span>
             <h2
-              className="text-2xl sm:text-3xl font-bold text-white mt-1"
+              className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mt-1"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Our Operational Values
@@ -148,7 +148,7 @@ export default function CareersPage() {
                 >
                   <div>
                     <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 text-white"
+                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-4 text-[var(--text-primary)]"
                       style={{
                         background: `linear-gradient(135deg, ${v.color}, #0a0a18)`,
                         boxShadow: `0 0 16px ${v.color}35`,
@@ -156,7 +156,7 @@ export default function CareersPage() {
                     >
                       <Icon className="w-5 h-5" />
                     </div>
-                    <h3 className="text-base font-bold text-white mb-2">{v.title}</h3>
+                    <h3 className="text-base font-bold text-[var(--text-primary)] mb-2">{v.title}</h3>
                     <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
                       {v.desc}
                     </p>
@@ -175,7 +175,7 @@ export default function CareersPage() {
                 Active Openings
               </span>
               <h2
-                className="text-2xl sm:text-4xl font-bold text-white mt-1"
+                className="text-2xl sm:text-4xl font-bold text-[var(--text-primary)] mt-1"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Open Collaborations
@@ -195,7 +195,7 @@ export default function CareersPage() {
                 <div className="max-w-2xl">
                   <div className="flex flex-wrap items-center gap-3 mb-2">
                     <h3
-                      className="text-xl font-bold text-white"
+                      className="text-xl font-bold text-[var(--text-primary)]"
                       style={{ fontFamily: "var(--font-display)" }}
                     >
                       {role.title}
@@ -227,7 +227,7 @@ export default function CareersPage() {
                 <div className="flex-shrink-0">
                   <Link
                     href="/collabs"
-                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-mono font-bold text-white transition-transform hover:scale-105 whitespace-nowrap"
+                    className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-xs font-mono font-bold text-[var(--text-primary)] transition-transform hover:scale-105 whitespace-nowrap"
                     style={{
                       background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                     }}
@@ -250,7 +250,7 @@ export default function CareersPage() {
               <Mail className="w-5 h-5" />
             </div>
             <h3
-              className="text-2xl font-bold text-white mb-2"
+              className="text-2xl font-bold text-[var(--text-primary)] mb-2"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Don&apos;t see your specific role?
@@ -260,7 +260,7 @@ export default function CareersPage() {
             </p>
             <a
               href="mailto:careers@corelx.app"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-mono font-bold text-white border border-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10 hover:bg-[var(--accent-cyan)]/20 transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-xs font-mono font-bold text-[var(--text-primary)] border border-[var(--accent-cyan)] bg-[var(--accent-cyan)]/10 hover:bg-[var(--accent-cyan)]/20 transition-colors"
             >
               <span>Email careers@corelx.app</span>
               <ArrowRight className="w-3.5 h-3.5" />

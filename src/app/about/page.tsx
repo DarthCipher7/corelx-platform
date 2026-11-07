@@ -54,7 +54,7 @@ export default function AboutPage() {
             01 / The Fragmentation Trap
           </span>
           <h2
-            className="text-2xl sm:text-4xl font-bold text-white tracking-tight"
+            className="text-2xl sm:text-4xl font-bold text-[var(--text-primary)] tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Shattered across a dozen tabs.
@@ -67,7 +67,7 @@ export default function AboutPage() {
             <p>
               You post stiff headshots and hollow career updates on LinkedIn to appease corporate recruiters. You post aesthetic stories on Instagram for your friends. You commit code to GitHub that nobody outside engineering knows how to evaluate. You upload visual drafts to Dribbble or Behance, where they get buried under agency case studies. And when you want to actually build something real on your campus, you are stuck scrambling through a chaotic WhatsApp group with 400 unread messages.
             </p>
-            <p className="text-white font-medium">
+            <p className="text-[var(--text-primary)] font-medium">
               None of these platforms talk to each other. More critically: none of them understand what a builder actually is.
             </p>
           </div>
@@ -85,7 +85,7 @@ export default function AboutPage() {
             className="absolute top-0 right-0 w-64 h-64 opacity-20 blur-3xl pointer-events-none"
             style={{ background: "#00d2ff" }}
           />
-          <blockquote className="relative z-10 text-2xl sm:text-3xl font-semibold text-white leading-relaxed tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
+          <blockquote className="relative z-10 text-2xl sm:text-3xl font-semibold text-[var(--text-primary)] leading-relaxed tracking-tight" style={{ fontFamily: "var(--font-display)" }}>
             &ldquo;Where a designer at a tier-3 college has the exact same visibility as one at an elite institute. Where output speaks louder than institutional pedigree.&rdquo;
           </blockquote>
           <p className="text-xs font-mono text-[var(--accent-cyan)] mt-6 uppercase tracking-wider">
@@ -99,7 +99,7 @@ export default function AboutPage() {
             02 / The Mission
           </span>
           <h2
-            className="text-2xl sm:text-4xl font-bold text-white tracking-tight"
+            className="text-2xl sm:text-4xl font-bold text-[var(--text-primary)] tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
             One unified identity layer.
@@ -122,7 +122,7 @@ export default function AboutPage() {
               03 / The Integrated Stack
             </span>
             <h2
-              className="text-2xl sm:text-4xl font-bold text-white tracking-tight"
+              className="text-2xl sm:text-4xl font-bold text-[var(--text-primary)] tracking-tight"
               style={{ fontFamily: "var(--font-display)" }}
             >
               Everything connected. Nothing siloed.
@@ -178,7 +178,7 @@ export default function AboutPage() {
             04 / The Builders
           </span>
           <h2
-            className="text-2xl sm:text-4xl font-bold text-white tracking-tight"
+            className="text-2xl sm:text-4xl font-bold text-[var(--text-primary)] tracking-tight"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Who we build for.
@@ -195,7 +195,7 @@ export default function AboutPage() {
             05 / Core Conviction
           </span>
           <h2
-            className="text-2xl sm:text-3xl font-bold text-white mb-4"
+            className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-4"
             style={{ fontFamily: "var(--font-display)" }}
           >
             A small team with big conviction.
@@ -219,7 +219,7 @@ export default function AboutPage() {
         {/* Primary CTA */}
         <div className="text-center pt-8 border-t border-[var(--border-subtle)]">
           <h3
-            className="text-3xl sm:text-4xl font-bold text-white mb-4"
+            className="text-3xl sm:text-4xl font-bold text-[var(--text-primary)] mb-4"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Build your legacy on <span className="gradient-text">CORELX.</span>
@@ -229,7 +229,7 @@ export default function AboutPage() {
           </p>
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-sm font-bold text-white transition-transform hover:scale-105"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-sm font-bold text-[var(--text-primary)] transition-transform hover:scale-105"
             style={{
               background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
               boxShadow: "0 0 25px rgba(108,92,231,0.5)",

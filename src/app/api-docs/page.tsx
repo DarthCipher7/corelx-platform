@@ -158,7 +158,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
               </div>
               <button
                 onClick={handleCopyCode}
-                className="flex items-center gap-1.5 text-xs font-mono text-[var(--text-secondary)] hover:text-white transition-colors"
+                className="flex items-center gap-1.5 text-xs font-mono text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
               >
                 {copiedCode ? (
                   <>
@@ -186,7 +186,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
               <div className="w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] flex items-center justify-center text-[var(--accent-cyan)] mb-4">
                 <Cpu className="w-5 h-5" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-2" style={{ fontFamily: "var(--font-display)" }}>
+              <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2" style={{ fontFamily: "var(--font-display)" }}>
                 Cryptographic Identity Engine
               </h3>
               <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed mb-4">
@@ -206,7 +206,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
           <div className="flex items-center justify-between mb-8">
             <div>
               <h2
-                className="text-2xl sm:text-3xl font-bold text-white"
+                className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]"
                 style={{ fontFamily: "var(--font-display)" }}
               >
                 Planned Endpoints
@@ -238,7 +238,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
                       >
                         {endpoint.method}
                       </span>
-                      <code className="text-xs font-mono font-bold text-white">{endpoint.path}</code>
+                      <code className="text-xs font-mono font-bold text-[var(--text-primary)]">{endpoint.path}</code>
                     </div>
                   </div>
                   <p className="text-xs text-[var(--text-secondary)] leading-relaxed mb-4">
@@ -274,7 +274,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
           </div>
 
           <h3
-            className="text-2xl sm:text-3xl font-bold text-white mb-2"
+            className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] mb-2"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Apply for Developer Early Access
@@ -288,7 +288,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="p-6 rounded-2xl bg-[#00cec9]/15 border border-[#00cec9]/40 text-center text-white"
+                className="p-6 rounded-2xl bg-[#00cec9]/15 border border-[#00cec9]/40 text-center text-[var(--text-primary)]"
               >
                 <CheckCircle2 className="w-8 h-8 text-[#00cec9] mx-auto mb-2" />
                 <h4 className="text-base font-bold">Application Registered</h4>
@@ -309,7 +309,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
                       placeholder="Kabir Sen"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-sm text-white placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]"
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]"
                     />
                   </div>
                   <div>
@@ -322,7 +322,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
                       placeholder="kabir@dev.in"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-sm text-white placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]"
+                      className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl px-4 py-3 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)]"
                     />
                   </div>
                 </div>
@@ -337,7 +337,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
                     placeholder="Describe your planned application, hackathon project, or integration..."
                     value={formData.project}
                     onChange={(e) => setFormData({ ...formData, project: e.target.value })}
-                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl p-4 text-sm text-white placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] resize-none"
+                    className="w-full bg-[var(--bg-deep)] border border-[var(--border-subtle)] rounded-xl p-4 text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-primary)] focus:ring-1 focus:ring-[var(--accent-primary)] resize-none"
                   />
                 </div>
 
@@ -348,7 +348,7 @@ console.log(creator.campus);   // "IIT Delhi"`;
                 <button
                   type="submit"
                   disabled={formStatus === "loading"}
-                  className="w-full py-3.5 px-6 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] disabled:opacity-50"
+                  className="w-full py-3.5 px-6 rounded-xl font-bold text-sm text-[var(--text-primary)] flex items-center justify-center gap-2 transition-transform hover:scale-[1.01] disabled:opacity-50"
                   style={{
                     background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                     boxShadow: "0 0 20px rgba(108,92,231,0.4)",

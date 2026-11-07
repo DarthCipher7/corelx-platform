@@ -156,7 +156,7 @@ export default function ContactClient() {
                   >
                     <CheckCircle2 className="w-5 h-5 text-[#00cec9] flex-shrink-0 mt-0.5" />
                     <div>
-                      <p className="font-semibold text-white">Transmission Delivered</p>
+                      <p className="font-semibold text-[var(--text-primary)]">Transmission Delivered</p>
                       <p className="text-[var(--text-secondary)] text-xs mt-0.5">{serverSuccess}</p>
                     </div>
                   </motion.div>
@@ -294,7 +294,7 @@ export default function ContactClient() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full py-3.5 px-6 rounded-xl font-medium text-sm text-white flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full py-3.5 px-6 rounded-xl font-medium text-sm text-[var(--text-primary)] flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                   style={{
                     background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                     boxShadow: "0 0 20px rgba(108,92,231,0.35)",
@@ -382,7 +382,7 @@ export default function ContactClient() {
                 <div>
                   <h4 className="text-sm font-bold text-[var(--text-primary)]">Response SLA</h4>
                   <p className="text-xs text-[var(--text-secondary)] mt-1 leading-relaxed">
-                    We respond within <strong className="text-white">48 hours</strong> to all creator and partner inquiries. Critical security or SafeMode flags are escalated immediately.
+                    We respond within <strong className="text-[var(--text-primary)]">48 hours</strong> to all creator and partner inquiries. Critical security or SafeMode flags are escalated immediately.
                   </p>
                 </div>
               </div>

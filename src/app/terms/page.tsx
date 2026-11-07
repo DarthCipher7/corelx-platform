@@ -39,7 +39,7 @@ export default function TermsPage() {
         <div className="mb-10 p-4 sm:p-5 rounded-2xl border border-[#fdcb6e]/40 bg-[#fdcb6e]/10 flex items-start gap-3.5">
           <AlertCircle className="w-5 h-5 text-[#fdcb6e] flex-shrink-0 mt-0.5" />
           <div className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
-            <strong className="text-white block font-medium mb-0.5">Pre-Launch Legal Notice:</strong>
+            <strong className="text-[var(--text-primary)] block font-medium mb-0.5">Pre-Launch Legal Notice:</strong>
             These terms are a draft. They have been reviewed by the CORELX team but not yet by legal counsel. Final terms will be published before launch.
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function TermsPage() {
             <span>Platform Agreement</span>
           </div>
           <h1
-            className="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3"
+            className="text-3xl sm:text-5xl font-bold tracking-tight text-[var(--text-primary)] mb-3"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Terms of Service
@@ -64,7 +64,7 @@ export default function TermsPage() {
         {/* Terms Body */}
         <div className="space-y-10 text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               1. Acceptance of Terms
             </h2>
             <p>
@@ -73,19 +73,19 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               2. Account Types &amp; Eligibility
             </h2>
             <p>CORELX provides three distinct account classifications:</p>
             <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm">
               <li>
-                <strong className="text-white">Individual Creator:</strong> For student builders, designers, engineers, and digital polymaths showcasing original work and collaborating in pods.
+                <strong className="text-[var(--text-primary)]">Individual Creator:</strong> For student builders, designers, engineers, and digital polymaths showcasing original work and collaborating in pods.
               </li>
               <li>
-                <strong className="text-white">Organisation (Comms):</strong> For campus clubs, university student societies, hackathon organizers, and academic labs.
+                <strong className="text-[var(--text-primary)]">Organisation (Comms):</strong> For campus clubs, university student societies, hackathon organizers, and academic labs.
               </li>
               <li>
-                <strong className="text-white">Company:</strong> For verified studios, enterprise partners, and recruiting firms interacting with the Collab Board and Reach Inbox.
+                <strong className="text-[var(--text-primary)]">Company:</strong> For verified studios, enterprise partners, and recruiting firms interacting with the Collab Board and Reach Inbox.
               </li>
             </ul>
             <p className="text-xs sm:text-sm">
@@ -94,7 +94,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               3. Permitted Platform Use
             </h2>
             <p>
@@ -103,7 +103,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               4. Content Policy &amp; Community Rules
             </h2>
             <p>
@@ -121,19 +121,19 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               5. Aura Reputation Integrity
             </h2>
             <p>
               Aura is the non-transferable reputation standard of CORELX. Aura is mathematically calculated based on genuine project completions, verified peer collaboration, and community contribution across 5 tiers (New, Rising, Trusted, Core, Pillar).
             </p>
-            <p className="text-white font-medium text-xs sm:text-sm">
+            <p className="text-[var(--text-primary)] font-medium text-xs sm:text-sm">
               Aura cannot be purchased, sold, transferred, or gamed. Any attempt to artificially manipulate Aura scores will result in immediate tier demotion or permanent platform expulsion.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               6. Reach Inbox Guidelines
             </h2>
             <p>
@@ -142,16 +142,16 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               7. Three-Strike Enforcement &amp; Appeals
             </h2>
             <p>
               Moderation actions follow our progressive Three-Strike structure:
             </p>
             <ul className="list-disc pl-5 space-y-1 text-xs sm:text-sm">
-              <li><strong className="text-white">Strike 1:</strong> Formal warning and removal of non-compliant content.</li>
-              <li><strong className="text-white">Strike 2:</strong> 14-day temporary freeze of collaboration posting and Reach messaging.</li>
-              <li><strong className="text-white">Strike 3:</strong> Permanent platform termination and handle forfeiture.</li>
+              <li><strong className="text-[var(--text-primary)]">Strike 1:</strong> Formal warning and removal of non-compliant content.</li>
+              <li><strong className="text-[var(--text-primary)]">Strike 2:</strong> 14-day temporary freeze of collaboration posting and Reach messaging.</li>
+              <li><strong className="text-[var(--text-primary)]">Strike 3:</strong> Permanent platform termination and handle forfeiture.</li>
             </ul>
             <p className="text-xs sm:text-sm">
               Creators may appeal any strike within 14 days by transmitting a formal review request to <a href="mailto:support@corelx.app" className="text-[var(--accent-cyan)] hover:underline">support@corelx.app</a>.
@@ -159,16 +159,16 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               8. Intellectual Property &amp; Creator Ownership
             </h2>
             <p>
-              <strong className="text-white">You own your work.</strong> CORELX claims zero ownership over the code, 3D assets, videos, music, designs, or writings you upload. By publishing on CORELX, you grant us a worldwide, non-exclusive, royalty-free license to host, display, and stream your content solely for the purpose of operating the platform.
+              <strong className="text-[var(--text-primary)]">You own your work.</strong> CORELX claims zero ownership over the code, 3D assets, videos, music, designs, or writings you upload. By publishing on CORELX, you grant us a worldwide, non-exclusive, royalty-free license to host, display, and stream your content solely for the purpose of operating the platform.
             </p>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               9. Account Termination
             </h2>
             <p>
@@ -177,7 +177,7 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-3 pt-6 border-t border-[var(--border-subtle)]">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               10. Legal Contact
             </h2>
             <p>

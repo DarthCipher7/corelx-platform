@@ -243,7 +243,7 @@ export default function FeaturesPage() {
                 onClick={() => scrollToSection(feat.id)}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-mono whitespace-nowrap transition-all ${
                   isActive
-                    ? "bg-[var(--accent-primary)] text-white shadow-lg shadow-[var(--accent-primary)]/40 font-bold"
+                    ? "bg-[var(--accent-primary)] text-[var(--text-primary)] shadow-lg shadow-[var(--accent-primary)]/40 font-bold"
                     : "bg-[var(--bg-surface)] text-[var(--text-secondary)] border border-[var(--border-subtle)]"
                 }`}
               >
@@ -270,7 +270,7 @@ export default function FeaturesPage() {
                   onClick={() => scrollToSection(feat.id)}
                   className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left transition-all group ${
                     isActive
-                      ? "bg-[var(--bg-elevated)] border border-[var(--accent-primary)] text-white shadow-md shadow-[var(--accent-primary)]/20"
+                      ? "bg-[var(--bg-elevated)] border border-[var(--accent-primary)] text-[var(--text-primary)] shadow-md shadow-[var(--accent-primary)]/20"
                       : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)]"
                   }`}
                 >
@@ -278,7 +278,7 @@ export default function FeaturesPage() {
                     <div
                       className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors ${
                         isActive
-                          ? "bg-[var(--accent-primary)] text-white"
+                          ? "bg-[var(--accent-primary)] text-[var(--text-primary)]"
                           : "bg-[var(--bg-surface)] text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
                       }`}
                     >
@@ -297,7 +297,7 @@ export default function FeaturesPage() {
             <div className="pt-4 mt-4 border-t border-[var(--border-subtle)]">
               <Link
                 href="/signup"
-                className="w-full py-2.5 px-4 rounded-xl text-xs font-medium text-white flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
+                className="w-full py-2.5 px-4 rounded-xl text-xs font-medium text-[var(--text-primary)] flex items-center justify-center gap-2 transition-transform hover:scale-[1.02]"
                 style={{
                   background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                 }}
@@ -332,7 +332,7 @@ export default function FeaturesPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-2.5">
                         <div
-                          className="w-10 h-10 rounded-xl flex items-center justify-center text-white"
+                          className="w-10 h-10 rounded-xl flex items-center justify-center text-[var(--text-primary)]"
                           style={{
                             background: `linear-gradient(135deg, ${feat.color}, #6c5ce7)`,
                             boxShadow: `0 0 16px ${feat.color}40`,
@@ -426,7 +426,7 @@ export default function FeaturesPage() {
           <div className="flex flex-wrap items-center justify-center gap-4 relative z-10">
             <Link
               href="/signup"
-              className="px-8 py-3.5 rounded-full text-sm font-semibold text-white transition-transform hover:scale-105"
+              className="px-8 py-3.5 rounded-full text-sm font-semibold text-[var(--text-primary)] transition-transform hover:scale-105"
               style={{
                 background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
                 boxShadow: "0 0 24px rgba(108,92,231,0.5)",
@@ -436,7 +436,7 @@ export default function FeaturesPage() {
             </Link>
             <Link
               href="/explore"
-              className="px-7 py-3.5 rounded-full text-sm font-medium text-[var(--text-secondary)] hover:text-white border border-[var(--glass-border)] bg-[var(--bg-frosted)] transition-colors"
+              className="px-7 py-3.5 rounded-full text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--glass-border)] bg-[var(--bg-frosted)] transition-colors"
             >
               Explore Feed
             </Link>
@@ -473,33 +473,33 @@ function MockFlaresDemo() {
 
         {/* Mock center content */}
         <div className="relative z-10 my-auto text-center">
-          <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mx-auto flex items-center justify-center text-white shadow-lg mb-2">
+          <div className="w-16 h-16 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mx-auto flex items-center justify-center text-[var(--text-primary)] shadow-lg mb-2">
             <Flame className="w-8 h-8 text-[var(--accent-cyan)]" />
           </div>
-          <p className="text-xs font-mono text-white/90 font-bold">Procedural Shaders in Rust</p>
+          <p className="text-xs font-mono text-[var(--text-primary)]/90 font-bold">Procedural Shaders in Rust</p>
         </div>
 
         {/* Video bottom overlay & action sidebar */}
         <div className="relative z-10 flex items-end justify-between">
           <div>
-            <p className="text-xs font-bold text-white">@aarav.codes</p>
-            <p className="text-[11px] text-white/80 line-clamp-1">Writing GPU kernels from scratch...</p>
+            <p className="text-xs font-bold text-[var(--text-primary)]">@aarav.codes</p>
+            <p className="text-[11px] text-[var(--text-primary)]/80 line-clamp-1">Writing GPU kernels from scratch...</p>
             <div className="w-32 h-1 bg-white/20 rounded-full mt-2 overflow-hidden">
               <div className="w-2/3 h-full bg-[var(--accent-cyan)]" />
             </div>
           </div>
 
-          <div className="flex flex-col items-center gap-3 text-white">
+          <div className="flex flex-col items-center gap-3 text-[var(--text-primary)]">
             <div className="flex flex-col items-center">
               <Heart className="w-5 h-5 text-[var(--accent-magenta)] fill-[var(--accent-magenta)]" />
               <span className="text-[10px] font-mono mt-0.5">3.8k</span>
             </div>
             <div className="flex flex-col items-center">
-              <MessageCircle className="w-5 h-5 text-white/80" />
+              <MessageCircle className="w-5 h-5 text-[var(--text-primary)]/80" />
               <span className="text-[10px] font-mono mt-0.5">241</span>
             </div>
             <div className="flex flex-col items-center">
-              <Share2 className="w-5 h-5 text-white/80" />
+              <Share2 className="w-5 h-5 text-[var(--text-primary)]/80" />
             </div>
           </div>
         </div>
@@ -522,25 +522,25 @@ function MockTracesDemo() {
       <div className="w-[280px] p-5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-subtle)] relative">
         <div className="flex items-center gap-3 mb-4">
           <div className="relative p-0.5 rounded-full bg-gradient-to-tr from-[#00d2ff] to-[#6c5ce7]">
-            <div className="w-10 h-10 rounded-full bg-[var(--bg-deep)] flex items-center justify-center text-xs font-bold text-white font-mono">
+            <div className="w-10 h-10 rounded-full bg-[var(--bg-deep)] flex items-center justify-center text-xs font-bold text-[var(--text-primary)] font-mono">
               C✦X
             </div>
           </div>
           <div>
-            <p className="text-xs font-bold text-white">@maya_ui</p>
+            <p className="text-xs font-bold text-[var(--text-primary)]">@maya_ui</p>
             <p className="text-[10px] font-mono text-[var(--accent-cyan)]">Expires in 18h 42m</p>
           </div>
         </div>
 
         <div className="w-full h-36 rounded-xl bg-gradient-to-br from-[#1a1a3a] to-[#0a0a18] border border-[var(--glass-border)] p-3 flex flex-col justify-between relative overflow-hidden">
-          <div className="flex justify-between items-center text-[10px] font-mono text-white/70">
+          <div className="flex justify-between items-center text-[10px] font-mono text-[var(--text-primary)]/70">
             <span>#Trace04</span>
             <span className="bg-[#fd79a8]/20 text-[#fd79a8] px-2 py-0.5 rounded">Raw WIP</span>
           </div>
-          <p className="text-xs text-white/90 font-medium">
+          <p className="text-xs text-[var(--text-primary)]/90 font-medium">
             &quot;Drafting the tactile glassmorphism system for next week&apos;s campus showcase. Thoughts?&quot;
           </p>
-          <div className="flex items-center gap-1.5 text-[10px] text-white/60 font-mono">
+          <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-primary)]/60 font-mono">
             <span>🔥 42</span>
             <span>⚡ 18</span>
             <span>✨ 89</span>
@@ -570,7 +570,7 @@ function MockAuraDemo() {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Shield className="w-5 h-5 text-[var(--accent-primary)]" />
-          <span className="text-sm font-bold text-white font-mono">AURA REPUTATION SCORE</span>
+          <span className="text-sm font-bold text-[var(--text-primary)] font-mono">AURA REPUTATION SCORE</span>
         </div>
         <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[#fd79a8]/20 text-[#fd79a8] border border-[#fd79a8]/40">
           TIER: CORE
@@ -613,7 +613,7 @@ function MockPodsDemo() {
     <div className="p-4 sm:p-6 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] max-w-lg mx-auto">
       <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] mb-3">
         <div>
-          <p className="text-xs font-bold text-white flex items-center gap-1.5">
+          <p className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
             <Users className="w-3.5 h-3.5 text-[var(--accent-cyan)]" />
             Autonomous Robotics Pod
           </p>
@@ -651,7 +651,7 @@ function MockCollabBoardDemo() {
           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-[var(--accent-primary)]/20 text-[var(--accent-primary)] border border-[var(--accent-primary)]/40">
             Open Bounty / Role
           </span>
-          <h4 className="text-sm font-bold text-white mt-1.5">Lead 3D Motion Designer for Sci-Fi Short</h4>
+          <h4 className="text-sm font-bold text-[var(--text-primary)] mt-1.5">Lead 3D Motion Designer for Sci-Fi Short</h4>
           <p className="text-[11px] text-[var(--text-secondary)]">Posted by Team Hyperion • BITS Pilani</p>
         </div>
         <span className="text-xs font-mono text-[#00cec9] font-bold">Aura: Trusted+</span>
@@ -667,7 +667,7 @@ function MockCollabBoardDemo() {
 
       <div className="flex items-center justify-between pt-3 border-t border-[var(--border-subtle)]">
         <span className="text-[11px] font-mono text-[var(--text-muted)]">3 slots • 8 applicants</span>
-        <button className="px-3 py-1.5 rounded-lg bg-[var(--accent-primary)] text-white text-xs font-semibold hover:brightness-110">
+        <button className="px-3 py-1.5 rounded-lg bg-[var(--accent-primary)] text-[var(--text-primary)] text-xs font-semibold hover:brightness-110">
           Apply with 1-Tap
         </button>
       </div>
@@ -680,11 +680,11 @@ function MockShowcaseDemo() {
     <div className="p-4 sm:p-6 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] max-w-lg mx-auto">
       <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)] mb-4">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#6c5ce7] to-[#00d2ff] flex items-center justify-center font-mono font-bold text-[10px] text-white">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-[#6c5ce7] to-[#00d2ff] flex items-center justify-center font-mono font-bold text-[10px] text-[var(--text-primary)]">
             C✦X
           </div>
           <div>
-            <p className="text-xs font-bold text-white">karan_ux.corelx.app</p>
+            <p className="text-xs font-bold text-[var(--text-primary)]">karan_ux.corelx.app</p>
             <p className="text-[10px] font-mono text-[var(--accent-cyan)]">Curated Living Portfolio</p>
           </div>
         </div>
@@ -693,17 +693,17 @@ function MockShowcaseDemo() {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="p-3 rounded-xl bg-[var(--bg-deep)] border border-[var(--glass-border)]">
-          <div className="w-full h-16 rounded bg-gradient-to-r from-purple-900/40 to-blue-900/40 mb-2 flex items-center justify-center text-[10px] font-mono text-white/70">
+          <div className="w-full h-16 rounded bg-gradient-to-r from-purple-900/40 to-blue-900/40 mb-2 flex items-center justify-center text-[10px] font-mono text-[var(--text-primary)]/70">
             Interactive Canvas
           </div>
-          <p className="text-xs font-bold text-white truncate">Quantum UI Framework</p>
+          <p className="text-xs font-bold text-[var(--text-primary)] truncate">Quantum UI Framework</p>
           <p className="text-[10px] font-mono text-[var(--text-secondary)]">TypeScript • GLSL</p>
         </div>
         <div className="p-3 rounded-xl bg-[var(--bg-deep)] border border-[var(--glass-border)]">
-          <div className="w-full h-16 rounded bg-gradient-to-r from-blue-900/40 to-cyan-900/40 mb-2 flex items-center justify-center text-[10px] font-mono text-white/70">
+          <div className="w-full h-16 rounded bg-gradient-to-r from-blue-900/40 to-cyan-900/40 mb-2 flex items-center justify-center text-[10px] font-mono text-[var(--text-primary)]/70">
             Mobile Prototype
           </div>
-          <p className="text-xs font-bold text-white truncate">FinTech Gesture Deck</p>
+          <p className="text-xs font-bold text-[var(--text-primary)] truncate">FinTech Gesture Deck</p>
           <p className="text-[10px] font-mono text-[var(--text-secondary)]">Framer Motion • React</p>
         </div>
       </div>
@@ -715,7 +715,7 @@ function MockReachDemo() {
   return (
     <div className="p-4 sm:p-6 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] max-w-lg mx-auto">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-xs font-bold text-white font-mono flex items-center gap-1.5">
+        <span className="text-xs font-bold text-[var(--text-primary)] font-mono flex items-center gap-1.5">
           <Compass className="w-4 h-4 text-[var(--accent-amber)]" />
           DIRECT REACH PROTOCOL
         </span>
@@ -726,7 +726,7 @@ function MockReachDemo() {
 
       <div className="p-3 rounded-xl bg-[var(--bg-deep)] border border-[var(--glass-border)] mb-3 text-xs space-y-1.5">
         <div className="flex justify-between text-[11px]">
-          <span className="text-white font-semibold">From: @arjun.foundry (Core Tier)</span>
+          <span className="text-[var(--text-primary)] font-semibold">From: @arjun.foundry (Core Tier)</span>
           <span className="text-[var(--accent-cyan)] font-mono">96% Skill Alignment</span>
         </div>
         <p className="text-[var(--text-secondary)] leading-relaxed">
@@ -738,7 +738,7 @@ function MockReachDemo() {
         <button className="px-3 py-1 rounded-lg border border-[var(--border-subtle)] text-[var(--text-secondary)]">
           Decline
         </button>
-        <button className="px-3 py-1 rounded-lg bg-[var(--accent-primary)] text-white font-semibold">
+        <button className="px-3 py-1 rounded-lg bg-[var(--accent-primary)] text-[var(--text-primary)] font-semibold">
           Accept &amp; Open Chat
         </button>
       </div>
@@ -751,7 +751,7 @@ function MockSafeModeDemo() {
     <div className="p-4 sm:p-6 bg-[var(--bg-surface)] rounded-2xl border border-[var(--border-subtle)] max-w-lg mx-auto space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold text-white flex items-center gap-1.5">
+          <p className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1.5">
             <Lock className="w-3.5 h-3.5 text-[#00cec9]" />
             SafeMode Geofence Protection
           </p>
@@ -769,7 +769,7 @@ function MockSafeModeDemo() {
         </div>
         <div className="flex justify-between text-[11px] font-mono">
           <span className="text-[var(--text-secondary)]">Outreach Shield:</span>
-          <span className="text-white">Active (Spam blocked)</span>
+          <span className="text-[var(--text-primary)]">Active (Spam blocked)</span>
         </div>
       </div>
     </div>
@@ -796,7 +796,7 @@ function MockBadgesDemo() {
             className="p-3 rounded-xl bg-[var(--bg-deep)] border border-[var(--border-subtle)] text-center hover:border-[var(--accent-cyan)] transition-all"
           >
             <div
-              className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-white text-xs font-mono font-bold"
+              className="w-10 h-10 rounded-full mx-auto mb-2 flex items-center justify-center text-[var(--text-primary)] text-xs font-mono font-bold"
               style={{
                 background: `linear-gradient(135deg, ${b.color}, #0a0a18)`,
                 boxShadow: `0 0 12px ${b.color}40`,
@@ -804,7 +804,7 @@ function MockBadgesDemo() {
             >
               ✦
             </div>
-            <p className="text-[11px] font-bold text-white leading-tight">{b.title}</p>
+            <p className="text-[11px] font-bold text-[var(--text-primary)] leading-tight">{b.title}</p>
             <p className="text-[9px] font-mono text-[var(--text-muted)] mt-1">{b.code}</p>
           </div>
         ))}

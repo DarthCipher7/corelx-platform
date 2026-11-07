@@ -250,7 +250,7 @@ export default function ChangelogPage() {
                 >
                   {/* Metadata Row */}
                   <div className="flex flex-wrap items-center gap-3 mb-3">
-                    <span className="font-mono text-sm font-bold text-white bg-[var(--bg-surface)] px-2.5 py-1 rounded-lg border border-[var(--border-subtle)]">
+                    <span className="font-mono text-sm font-bold text-[var(--text-primary)] bg-[var(--bg-surface)] px-2.5 py-1 rounded-lg border border-[var(--border-subtle)]">
                       {entry.version}
                     </span>
                     <span
@@ -275,7 +275,7 @@ export default function ChangelogPage() {
 
                   {/* Title & Description */}
                   <h2
-                    className="text-xl sm:text-2xl font-bold text-white mb-2"
+                    className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] mb-2"
                     style={{ fontFamily: "var(--font-display)" }}
                   >
                     {entry.title}
@@ -302,7 +302,7 @@ export default function ChangelogPage() {
         {/* Bottom CTA */}
         <div className="mt-20 pt-10 border-t border-[var(--border-subtle)] flex flex-col sm:flex-row items-center justify-between gap-6">
           <div>
-            <h3 className="text-lg font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h3 className="text-lg font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               Have a feature request or bug report?
             </h3>
             <p className="text-xs text-[var(--text-secondary)] mt-0.5">
@@ -311,7 +311,7 @@ export default function ChangelogPage() {
           </div>
           <Link
             href="/contact"
-            className="px-5 py-2.5 rounded-xl text-xs font-mono font-medium text-white transition-all hover:scale-105 whitespace-nowrap"
+            className="px-5 py-2.5 rounded-xl text-xs font-mono font-medium text-[var(--text-primary)] transition-all hover:scale-105 whitespace-nowrap"
             style={{
               background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
             }}

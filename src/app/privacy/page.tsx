@@ -39,7 +39,7 @@ export default function PrivacyPage() {
         <div className="mb-10 p-4 sm:p-5 rounded-2xl border border-[#fdcb6e]/40 bg-[#fdcb6e]/10 flex items-start gap-3.5">
           <AlertCircle className="w-5 h-5 text-[#fdcb6e] flex-shrink-0 mt-0.5" />
           <div className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
-            <strong className="text-white block font-medium mb-0.5">Pre-Launch Legal Notice:</strong>
+            <strong className="text-[var(--text-primary)] block font-medium mb-0.5">Pre-Launch Legal Notice:</strong>
             This privacy policy is a draft. It has been reviewed by the CORELX team but not yet by legal counsel. It will be updated before final launch.
           </div>
         </div>
@@ -51,7 +51,7 @@ export default function PrivacyPage() {
             <span>Data Governance Protocol</span>
           </div>
           <h1
-            className="text-3xl sm:text-5xl font-bold tracking-tight text-white mb-3"
+            className="text-3xl sm:text-5xl font-bold tracking-tight text-[var(--text-primary)] mb-3"
             style={{ fontFamily: "var(--font-display)" }}
           >
             Privacy Policy
@@ -64,7 +64,7 @@ export default function PrivacyPage() {
         {/* Policy Body */}
         <div className="space-y-10 text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               1. Overview &amp; Commitment
             </h2>
             <p>
@@ -73,31 +73,31 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               2. What We Collect
             </h2>
             <p>We collect only the data strictly necessary to deliver our services:</p>
             <ul className="list-disc pl-5 space-y-2 text-xs sm:text-sm">
               <li>
-                <strong className="text-white">Account Information:</strong> Your institutional email, chosen handle (@username), display name, avatar, bio, and associated university campus or college affiliation.
+                <strong className="text-[var(--text-primary)]">Account Information:</strong> Your institutional email, chosen handle (@username), display name, avatar, bio, and associated university campus or college affiliation.
               </li>
               <li>
-                <strong className="text-white">Content &amp; Artifacts:</strong> Flares (short vertical video), Traces (24-hour ephemeral posts), Showcase portfolio items, code links, and Collab Board pitch posts you publish.
+                <strong className="text-[var(--text-primary)]">Content &amp; Artifacts:</strong> Flares (short vertical video), Traces (24-hour ephemeral posts), Showcase portfolio items, code links, and Collab Board pitch posts you publish.
               </li>
               <li>
-                <strong className="text-white">Usage &amp; Interaction Data:</strong> Spark reactions, pod channel messages, collab applications, and Aura reputation signals.
+                <strong className="text-[var(--text-primary)]">Usage &amp; Interaction Data:</strong> Spark reactions, pod channel messages, collab applications, and Aura reputation signals.
               </li>
               <li>
-                <strong className="text-white">Device &amp; Telemetry Data:</strong> IP address, browser type, and operating system collected for security authentication and anti-bot defense.
+                <strong className="text-[var(--text-primary)]">Device &amp; Telemetry Data:</strong> IP address, browser type, and operating system collected for security authentication and anti-bot defense.
               </li>
               <li>
-                <strong className="text-white">SafeMode Geolocation:</strong> Approximate device location when you explicitly opt in to campus geofencing.
+                <strong className="text-[var(--text-primary)]">SafeMode Geolocation:</strong> Approximate device location when you explicitly opt in to campus geofencing.
               </li>
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               3. How We Use Information
             </h2>
             <p>Your information is utilized solely to:</p>
@@ -111,7 +111,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               4. Storage &amp; Infrastructure via Supabase
             </h2>
             <p>
@@ -120,7 +120,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               5. SafeMode &amp; Geolocation Privacy
             </h2>
             <p>
@@ -129,7 +129,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               6. AI Content Analysis &amp; Moderation
             </h2>
             <p>
@@ -138,21 +138,21 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               7. Three-Strike Enforcement System
             </h2>
             <p>
               Platform integrity violations are tracked under our transparent Three-Strike policy:
             </p>
             <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm">
-              <li><strong className="text-white">Strike 1:</strong> Formal warning and removal of the offending content.</li>
-              <li><strong className="text-white">Strike 2:</strong> 14-day suspension of Collab Board posting and Reach Inbox privileges.</li>
-              <li><strong className="text-white">Strike 3:</strong> Permanent account termination and Aura revocation.</li>
+              <li><strong className="text-[var(--text-primary)]">Strike 1:</strong> Formal warning and removal of the offending content.</li>
+              <li><strong className="text-[var(--text-primary)]">Strike 2:</strong> 14-day suspension of Collab Board posting and Reach Inbox privileges.</li>
+              <li><strong className="text-[var(--text-primary)]">Strike 3:</strong> Permanent account termination and Aura revocation.</li>
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               8. Data Retention &amp; Deletion
             </h2>
             <p>
@@ -161,7 +161,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               9. Your Rights
             </h2>
             <p>
@@ -170,7 +170,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="space-y-3 pt-6 border-t border-[var(--border-subtle)]">
-            <h2 className="text-lg sm:text-xl font-bold text-white" style={{ fontFamily: "var(--font-display)" }}>
+            <h2 className="text-lg sm:text-xl font-bold text-[var(--text-primary)]" style={{ fontFamily: "var(--font-display)" }}>
               10. Contact Us
             </h2>
             <p>

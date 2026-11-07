@@ -110,7 +110,7 @@ export default async function BlogPostPage({ params }: PageProps) {
           {/* Author bar */}
           <div className="flex items-center justify-between py-4 border-y border-[var(--border-subtle)]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#6c5ce7] to-[#00d2ff] flex items-center justify-center font-mono font-bold text-xs text-white">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#6c5ce7] to-[#00d2ff] flex items-center justify-center font-mono font-bold text-xs text-[var(--text-primary)]">
                 C✦X
               </div>
               <div>
@@ -184,7 +184,7 @@ export default async function BlogPostPage({ params }: PageProps) {
             <ShareButton title={post.title} />
             <Link
               href="/signup"
-              className="px-4 py-2 rounded-xl text-xs font-mono font-medium text-white transition-transform hover:scale-105"
+              className="px-4 py-2 rounded-xl text-xs font-mono font-medium text-[var(--text-primary)] transition-transform hover:scale-105"
               style={{
                 background: "linear-gradient(135deg, #6c5ce7, #00d2ff)",
               }}

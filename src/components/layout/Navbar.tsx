@@ -27,7 +27,8 @@ const NAV_LINKS = [
   { label: "Feed", href: "/feed" },
   { label: "Explore", href: "/explore" },
   { label: "Collab Board", href: "/collabs" },
-  { label: "Pods", href: "/pods" },
+  { label: "Flares", href: "/flares" },
+  { label: "Pods", href: "/community" },
   { label: "Showcase", href: "/showcase" },
 ];
 
