@@ -80,7 +80,7 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="transition-colors duration-500">
-        <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={true}>
           <Navbar />
           <main>{children}</main>
           <Footer />

@@ -46,7 +46,8 @@ export const FOOTER_LINKS: Record<FooterCategory, readonly FooterLink[]> = {
     { label: "Pricing", href: "/pricing" },
     { label: "Changelog", href: "/changelog" },
     { label: "Roadmap", href: "/roadmap" },
-    { label: "API", href: "/api" },
+    { label: "Design System", href: "/design-system" },
+    { label: "API", href: "/api-docs" },
   ],
   Company: [
     { label: "About", href: "/about" },

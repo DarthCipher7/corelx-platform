@@ -67,6 +67,47 @@ export default function Navbar() {
   const profileRef = useRef<HTMLDivElement>(null);
 
   const { theme, setTheme } = useTheme();
+
+  const toggleThemeWithTransition = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const nextTheme = theme === "dark" ? "light" : "dark";
+
+    if (
+      typeof document === "undefined" ||
+      !(document as any).startViewTransition ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    ) {
+      setTheme(nextTheme);
+      return;
+    }
+
+    const buttonRect = event.currentTarget.getBoundingClientRect();
+    const x = buttonRect.left + buttonRect.width / 2;
+    const y = buttonRect.top + buttonRect.height / 2;
+    const maxRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y)
+    );
+
+    const transition = (document as any).startViewTransition(() => {
+      setTheme(nextTheme);
+    });
+
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${maxRadius}px at ${x}px ${y}px)`,
+          ],
+        },
+        {
+          duration: 450,
+          easing: "cubic-bezier(0.4, 0, 0.2, 1)",
+          pseudoElement: "::view-transition-new(root)",
+        }
+      );
+    });
+  };
   const router = useRouter();
   const supabase = createClient();
 
@@ -339,7 +380,8 @@ export default function Navbar() {
                 id="navbar-theme-btn"
                 className="w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200"
                 style={iconBtnStyle}
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                onClick={toggleThemeWithTransition}
+                aria-label="Toggle theme"
                 onMouseEnter={(e) => {
                   (e.currentTarget as HTMLElement).style.borderColor = "rgba(108,92,231,0.4)";
                   (e.currentTarget as HTMLElement).style.color = "var(--text-primary)";
@@ -441,7 +483,7 @@ export default function Navbar() {
                       className="p-3 flex items-center justify-between"
                       style={{ borderBottom: "1px solid var(--border-subtle)" }}
                     >
-                      <span className="font-semibold text-white text-sm">Notifications</span>
+                      <span className="font-semibold text-[var(--text-primary)] text-sm">Notifications</span>
                       {unreadNotifs > 0 && (
                         <button
                           onClick={handleMarkAllRead}
@@ -513,7 +555,7 @@ export default function Navbar() {
 
                             {/* Text */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm text-white line-clamp-2">
+                              <p className="text-sm text-[var(--text-primary)] line-clamp-2">
                                 <span className="font-semibold">
                                   {notif.from_user?.display_name ||
                                     notif.from_user?.handle ||
@@ -670,7 +712,7 @@ export default function Navbar() {
       <motion.div
         className="fixed inset-x-0 top-16 z-40 md:hidden h-[calc(100vh-4rem)] overflow-y-auto"
         style={{
-          background: "rgba(5,5,15,0.98)",
+          background: "var(--bg-overlay)",
           backdropFilter: "blur(24px)",
           pointerEvents: mobileOpen ? "auto" : "none",
           borderBottom: "1px solid var(--border-subtle)",
@@ -680,8 +722,8 @@ export default function Navbar() {
       >
         <div className="px-4 py-6 flex flex-col gap-2">
           {user && (
-            <div className="p-4 mb-2 rounded-2xl border border-white/5 bg-white/3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[var(--accent-primary)] flex items-center justify-center font-bold text-sm text-white">
+            <div className="p-4 mb-2 rounded-2xl border border-[var(--border-subtle)] bg-[var(--bg-surface)] flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[var(--accent-primary)] flex items-center justify-center font-bold text-sm text-[var(--bg-void)]">
                 {userProfile?.avatar_url ? (
                   <img
                     src={userProfile.avatar_url}
@@ -767,7 +809,7 @@ export default function Navbar() {
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
-                    className="overflow-hidden border border-white/5 rounded-xl bg-white/3 divide-y divide-white/5 mt-1"
+                    className="overflow-hidden border border-[var(--border-subtle)] rounded-xl bg-[var(--bg-surface)] divide-y divide-[var(--border-subtle)] mt-1"
                   >
                     {notifications.length === 0 ? (
                       <div className="p-4 text-center text-xs text-[var(--text-muted)]">
@@ -786,7 +828,7 @@ export default function Navbar() {
                             background: !notif.read ? "rgba(108,92,231,0.05)" : "transparent",
                           }}
                         >
-                          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-white/5">
+                          <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 bg-[var(--bg-deep)]">
                             {notif.from_user?.avatar_url ? (
                               <img src={notif.from_user.avatar_url} alt="" className="w-full h-full object-cover" />
                             ) : (
@@ -796,7 +838,7 @@ export default function Navbar() {
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs text-white line-clamp-2">
+                            <p className="text-xs text-[var(--text-primary)] line-clamp-2">
                               <span className="font-semibold">{notif.from_user?.display_name || notif.from_user?.handle || "Someone"}</span>{" "}
                               {NOTIF_TEXT[notif.type] || notif.message}
                             </p>
@@ -848,7 +890,7 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setMobileOpen(false)}
-                className="w-full py-3 rounded-xl font-semibold text-center text-sm border border-white/10 text-white hover:bg-white/5 transition-all cursor-pointer block"
+                className="w-full py-3 rounded-xl font-semibold text-center text-sm border border-[var(--border-subtle)] text-[var(--text-primary)] hover:bg-[var(--glass-hover)] transition-all cursor-pointer block"
               >
                 Log In
               </Link>
