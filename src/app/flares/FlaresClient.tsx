@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/utils/supabase/client";
+import { MOCK_FLARES } from "@/lib/data";
 import FlaresViewer from "@/components/explore/FlaresViewer";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -14,17 +15,26 @@ export default function FlaresClient() {
 
   useEffect(() => {
     const fetchFlares = async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from("flares")
-        .select("*, users:users!flares_user_id_fkey(handle, display_name, avatar_url, aura_tier)")
-        .order("created_at", { ascending: false })
-        .limit(20);
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase
+          .from("flares")
+          .select("*, users:users!flares_user_id_fkey(handle, display_name, avatar_url, aura_tier)")
+          .order("created_at", { ascending: false })
+          .limit(20);
 
-      if (data && data.length > 0) {
-        setFlares(data);
+        if (data && data.length > 0) {
+          setFlares(data);
+        } else {
+          // Fallback to rich high-res MOCK_FLARES so the stream is vibrant
+          setFlares(MOCK_FLARES);
+        }
+      } catch (err) {
+        console.error("Error fetching flares:", err);
+        setFlares(MOCK_FLARES);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchFlares();

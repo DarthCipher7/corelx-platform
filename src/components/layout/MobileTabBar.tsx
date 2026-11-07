@@ -14,17 +14,26 @@ import {
   Briefcase,
   Layers,
   X,
+  Flame,
+  FileText,
+  Clock,
 } from "lucide-react";
 import { createClient } from "@/utils/supabase/client";
 import ComposeModal from "../explore/ComposeModal";
+import CreatePostModal from "../explore/CreatePostModal";
+import UploadFlareModal from "../explore/UploadFlareModal";
 
 export default function MobileTabBar() {
   const pathname = usePathname();
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [composeOpen, setComposeOpen] = useState(false);
+
+  // Modal open states for all options
   const [radialMenuOpen, setRadialMenuOpen] = useState(false);
+  const [postWorkOpen, setPostWorkOpen] = useState(false);
+  const [traceOpen, setTraceOpen] = useState(false);
+  const [flareUploadOpen, setFlareUploadOpen] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
   // Fetch current user & Aura tier for live Avatar Ring
@@ -122,11 +131,11 @@ export default function MobileTabBar() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.9 }}
             transition={{ type: "spring", stiffness: 400, damping: 25 }}
-            className="fixed bottom-24 inset-x-6 z-50 max-w-sm mx-auto glass-thick rounded-3xl p-4 shadow-[var(--elevation-4)] border border-[var(--glass-border)] md:hidden flex flex-col gap-2.5"
+            className="fixed bottom-24 inset-x-6 z-50 max-w-sm mx-auto glass-thick rounded-3xl p-4 shadow-[var(--elevation-4)] border border-[var(--glass-border)] md:hidden flex flex-col gap-2"
           >
             <div className="flex items-center justify-between px-2 pb-2 border-b border-[var(--border-subtle)]">
               <span className="label-mono !text-[11px] text-[var(--accent-cyan)]">
-                ✦ CREATE ACTION
+                ✦ CREATE & SHARE
               </span>
               <button
                 onClick={() => setRadialMenuOpen(false)}
@@ -136,26 +145,70 @@ export default function MobileTabBar() {
               </button>
             </div>
 
+            {/* 1. Post Work (Projects / Portfolio Piece) */}
             <button
               onClick={() => {
                 setRadialMenuOpen(false);
-                setComposeOpen(true);
+                setPostWorkOpen(true);
               }}
               className="flex items-center gap-3.5 p-3 rounded-2xl bg-[var(--bg-surface)] hover:bg-[var(--glass-hover)] transition-all text-left group"
             >
-              <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
-                <Sparkles className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400 shrink-0">
+                <FileText className="w-5 h-5" />
               </div>
               <div>
                 <div className="text-sm font-bold text-[var(--text-primary)]">
-                  New Post / Trace
+                  Post Work
                 </div>
                 <div className="text-xs text-[var(--text-secondary)]">
-                  Share updates, code, or ephemeral moments
+                  Showcase projects, engineering code, or UI design
                 </div>
               </div>
             </button>
 
+            {/* 2. Post Flare (Vertical Video) */}
+            <button
+              onClick={() => {
+                setRadialMenuOpen(false);
+                setFlareUploadOpen(true);
+              }}
+              className="flex items-center gap-3.5 p-3 rounded-2xl bg-[var(--bg-surface)] hover:bg-[var(--glass-hover)] transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 shrink-0">
+                <Flame className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-[var(--text-primary)]">
+                  Create Flare 🔥
+                </div>
+                <div className="text-xs text-[var(--text-secondary)]">
+                  Upload a 60-second vertical video for creators
+                </div>
+              </div>
+            </button>
+
+            {/* 3. Leave a Trace (24hr Ephemeral) */}
+            <button
+              onClick={() => {
+                setRadialMenuOpen(false);
+                setTraceOpen(true);
+              }}
+              className="flex items-center gap-3.5 p-3 rounded-2xl bg-[var(--bg-surface)] hover:bg-[var(--glass-hover)] transition-all text-left group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-[var(--text-primary)]">
+                  Post Trace ✦
+                </div>
+                <div className="text-xs text-[var(--text-secondary)]">
+                  Ephemeral 24-hour thought, vibe check, or audio clip
+                </div>
+              </div>
+            </button>
+
+            {/* 4. Collab Board Pitch */}
             <button
               onClick={() => {
                 setRadialMenuOpen(false);
@@ -163,7 +216,7 @@ export default function MobileTabBar() {
               }}
               className="flex items-center gap-3.5 p-3 rounded-2xl bg-[var(--bg-surface)] hover:bg-[var(--glass-hover)] transition-all text-left group"
             >
-              <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
                 <Briefcase className="w-5 h-5" />
               </div>
               <div>
@@ -172,26 +225,6 @@ export default function MobileTabBar() {
                 </div>
                 <div className="text-xs text-[var(--text-secondary)]">
                   Find builders & pitch project openings
-                </div>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                setRadialMenuOpen(false);
-                router.push("/showcase");
-              }}
-              className="flex items-center gap-3.5 p-3 rounded-2xl bg-[var(--bg-surface)] hover:bg-[var(--glass-hover)] transition-all text-left group"
-            >
-              <div className="w-10 h-10 rounded-xl bg-pink-500/15 border border-pink-500/30 flex items-center justify-center text-pink-400">
-                <Layers className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-sm font-bold text-[var(--text-primary)]">
-                  Add to Showcase
-                </div>
-                <div className="text-xs text-[var(--text-secondary)]">
-                  Publish a verified portfolio piece
                 </div>
               </div>
             </button>
@@ -289,10 +322,20 @@ export default function MobileTabBar() {
         </div>
       </motion.nav>
 
-      {/* Main Compose Modal */}
+      {/* Dedicated Modals for All Post Options */}
+      <CreatePostModal
+        isOpen={postWorkOpen}
+        onClose={() => setPostWorkOpen(false)}
+      />
+
       <ComposeModal
-        isOpen={composeOpen}
-        onClose={() => setComposeOpen(false)}
+        isOpen={traceOpen}
+        onClose={() => setTraceOpen(false)}
+      />
+
+      <UploadFlareModal
+        isOpen={flareUploadOpen}
+        onClose={() => setFlareUploadOpen(false)}
       />
     </>
   );
