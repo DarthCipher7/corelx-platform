@@ -205,7 +205,83 @@ export default function DesignSystemClient() {
         </div>
       </section>
 
-      {/* SECTION 2: AURA REPUTATION TIERS */}
+      {/* SECTION 2: 4-TIER LIQUID-GLASS MATERIAL SYSTEM */}
+      <section className="mb-20">
+        <div className="flex items-center gap-3 mb-8">
+          <Layers className="w-5 h-5 text-[var(--accent-cyan)]" />
+          <h2 className="text-2xl font-bold font-display text-[var(--text-primary)]">
+            4-Tier Liquid-Glass Material System
+          </h2>
+        </div>
+        <p className="text-sm text-[var(--text-secondary)] mb-6 max-w-3xl">
+          Engineered for refractive realism over our L 93.5% mist canvas. Features 1px top-left specular rims,
+          high-saturation backdrop blurs, and strict performance limits (≤ 3 layers per viewport).
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div className="rounded-2xl p-6 glass-thin border border-[var(--glass-thin-border)]">
+            <span className="label-mono !text-[10px] text-[var(--accent-primary)] mb-1 block">
+              TIER 1 // THIN
+            </span>
+            <h3 className="font-display font-bold text-base text-[var(--text-primary)] mb-2">
+              Micro Chrome
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              12px blur, 45% fill. For tab pills, floating tags, and quick-action chips.
+            </p>
+            <div className="pt-3 border-t border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)]">
+              blur(12px) saturate(180%)
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-6 glass-regular border border-[var(--glass-border)]">
+            <span className="label-mono !text-[10px] text-[var(--accent-cyan)] mb-1 block">
+              TIER 2 // REGULAR
+            </span>
+            <h3 className="font-display font-bold text-base text-[var(--text-primary)] mb-2">
+              Body & Shell
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              24px blur, 65% fill + 1px specular rim. For bottom tab bar, cards, and header.
+            </p>
+            <div className="pt-3 border-t border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)]">
+              blur(24px) saturate(200%)
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-6 glass-thick border border-[var(--glass-strong-border)]">
+            <span className="label-mono !text-[10px] text-[var(--accent-magenta)] mb-1 block">
+              TIER 3 // THICK
+            </span>
+            <h3 className="font-display font-bold text-base text-[var(--text-primary)] mb-2">
+              Sheets & Modals
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              36px blur, 84% fill. High opacity prevents background bleed in draggable drawers.
+            </p>
+            <div className="pt-3 border-t border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)]">
+              blur(36px) saturate(210%)
+            </div>
+          </div>
+
+          <div className="rounded-2xl p-6 glass-tinted border border-[var(--glass-tinted-border)]">
+            <span className="label-mono !text-[10px] text-[var(--accent-amber)] mb-1 block">
+              TIER 4 // TINTED
+            </span>
+            <h3 className="font-display font-bold text-base text-[var(--text-primary)] mb-2">
+              Chromatic Glass
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] mb-4">
+              28px blur with subtle violet-cyan tint. For Aura milestone celebrations and banners.
+            </p>
+            <div className="pt-3 border-t border-[var(--border-subtle)] text-[11px] font-mono text-[var(--text-muted)]">
+              blur(28px) saturate(190%) + tint
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 3: AURA REPUTATION TIERS */}
       <section className="mb-20">
         <div className="flex items-center gap-3 mb-8">
           <Sparkles className="w-5 h-5 text-[var(--accent-cyan)]" />

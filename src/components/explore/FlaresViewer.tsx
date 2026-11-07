@@ -41,11 +41,12 @@ export default function FlaresViewer({ flares, initialIndex, onClose }: FlaresVi
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#030308] flex items-center justify-center overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-[#030308] flex items-center justify-center overflow-hidden h-[100dvh]">
       {/* Mobile back / close button */}
       <button
         onClick={onClose}
-        className="absolute top-6 left-6 z-50 p-3 rounded-full bg-[rgba(14,14,36,0.6)] border border-[rgba(255,255,255,0.08)] text-white hover:bg-[rgba(255,255,255,0.1)] backdrop-blur-md transition-all"
+        className="absolute top-4 left-4 z-50 p-3 rounded-full bg-[rgba(14,14,36,0.6)] border border-[rgba(255,255,255,0.15)] text-white hover:bg-[rgba(255,255,255,0.2)] backdrop-blur-md transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
+        style={{ top: "max(16px, env(safe-area-inset-top))" }}
         aria-label="Back"
       >
         <ArrowLeft className="w-5 h-5" />
@@ -54,7 +55,9 @@ export default function FlaresViewer({ flares, initialIndex, onClose }: FlaresVi
       {/* Global mute/unmute feedback indicator at top right */}
       <button
         onClick={() => setGlobalMuted(!globalMuted)}
-        className="absolute top-6 right-6 z-50 p-3 rounded-full bg-[rgba(14,14,36,0.6)] border border-[rgba(255,255,255,0.08)] text-white hover:bg-[rgba(255,255,255,0.1)] backdrop-blur-md transition-all"
+        className="absolute top-4 right-4 z-50 p-3 rounded-full bg-[rgba(14,14,36,0.6)] border border-[rgba(255,255,255,0.15)] text-white hover:bg-[rgba(255,255,255,0.2)] backdrop-blur-md transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
+        style={{ top: "max(16px, env(safe-area-inset-top))" }}
+        aria-label="Mute or Unmute"
       >
         {globalMuted ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
       </button>

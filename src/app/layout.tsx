@@ -3,6 +3,8 @@ import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import MobileTabBar from "@/components/layout/MobileTabBar";
+import { PWARegister } from "@/components/PWARegister";
 import { ThemeProvider } from "@/components/ThemeProvider";
 
 const spaceGrotesk = Space_Grotesk({
@@ -31,6 +33,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://corelx.app"),
+  manifest: "/manifest.webmanifest",
   title: "CORELX — The Creator Identity Layer",
   description:
     "The identity layer for the next generation of creators, builders, and visionaries.",
@@ -79,11 +82,13 @@ export default function RootLayout({
       className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="transition-colors duration-500">
+      <body className="transition-colors duration-500 pb-20 md:pb-0">
         <ThemeProvider attribute="data-theme" defaultTheme="dark" enableSystem={true}>
+          <PWARegister />
           <Navbar />
           <main>{children}</main>
           <Footer />
+          <MobileTabBar />
         </ThemeProvider>
       </body>
     </html>

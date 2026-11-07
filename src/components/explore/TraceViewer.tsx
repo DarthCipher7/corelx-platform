@@ -342,12 +342,14 @@ export default function TraceViewer({
   const typeConfig = TRACE_TYPES[activeTrace.type as keyof typeof TRACE_TYPES] || { emoji: "✦", label: "Trace" };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black h-[100dvh]">
       {/* Full screen viewport container */}
       <div
-        className="w-full max-w-lg h-full relative flex flex-col justify-between overflow-hidden p-6 select-none bg-radial-gradient"
+        className="w-full max-w-lg h-[100dvh] relative flex flex-col justify-between overflow-hidden p-6 select-none bg-radial-gradient"
         style={{
-          background: "radial-gradient(circle at center, #0f0c24 0%, #030308 100%)"
+          background: "radial-gradient(circle at center, #0f0c24 0%, #030308 100%)",
+          paddingTop: "max(24px, env(safe-area-inset-top))",
+          paddingBottom: "max(24px, env(safe-area-inset-bottom))",
         }}
         onMouseDown={handleTouchStart}
         onMouseUp={handleTouchEnd}

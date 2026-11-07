@@ -149,18 +149,18 @@
 
 :root[data-theme="light"],
 [data-theme="light"] {
-  /* Core palette — Luminous Tinted Ramp (OKLCH with sRGB fallback) */
-  --bg-void: #f9f9fc;
-  --bg-deep: #f2f2f7;
-  --bg-surface: #fcfcff;
-  --bg-elevated: #ffffff;
-  --bg-overlay: rgba(255, 255, 255, 0.92);
+  /* Core palette — Luminous Mist Field (Mid-Light OKLCH, L 93.5%, No Flat White) */
+  --bg-void: #ebebf3;
+  --bg-deep: #e2e2ed;
+  --bg-surface: #f3f3f8;
+  --bg-elevated: #fafaff;
+  --bg-overlay: rgba(235, 235, 243, 0.88);
 
   @supports (color: oklch(0 0 0)) {
-    --bg-void: oklch(98.5% 0.006 280);
-    --bg-deep: oklch(96.8% 0.008 280);
-    --bg-surface: oklch(99.2% 0.004 280);
-    --bg-elevated: oklch(100% 0 0);
+    --bg-void: oklch(93.5% 0.012 285);
+    --bg-deep: oklch(90.5% 0.015 285);
+    --bg-surface: oklch(95.5% 0.008 285);
+    --bg-elevated: oklch(98.5% 0.005 285);
   }
 
   /* Electric Luminous Accent System — Tuned for WCAG AA/AAA on Light */
@@ -195,16 +195,33 @@
     --text-dim: oklch(74% 0.012 285);
   }
 
-  /* Glass, specular borders & highlight */
-  --border-subtle: rgba(87, 66, 230, 0.08);
-  --border-glow: rgba(87, 66, 230, 0.25);
-  --glass-bg: rgba(255, 255, 255, 0.76);
-  --glass-border: rgba(255, 255, 255, 0.95);
-  --glass-hover: rgba(87, 66, 230, 0.04);
-  --bg-frosted: rgba(87, 66, 230, 0.04);
-  --glass-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.94) 0%, rgba(248, 248, 253, 0.9) 100%);
-  --glass-strong-bg: rgba(255, 255, 255, 0.92);
-  --glass-strong-border: rgba(87, 66, 230, 0.12);
+  /* 4-Tier Liquid-Glass Material Tokens — Light Mode */
+  --border-subtle: rgba(87, 66, 230, 0.12);
+  --border-glow: rgba(87, 66, 230, 0.3);
+  --glass-border: rgba(255, 255, 255, 0.85);
+
+  /* Tier 1: Thin */
+  --glass-thin-bg: rgba(255, 255, 255, 0.45);
+  --glass-thin-blur: blur(12px) saturate(180%);
+  --glass-thin-border: rgba(255, 255, 255, 0.7);
+
+  /* Tier 2: Regular (Base Cards & Shell) */
+  --glass-bg: rgba(255, 255, 255, 0.65);
+  --glass-regular-bg: rgba(255, 255, 255, 0.65);
+  --glass-regular-blur: blur(24px) saturate(200%);
+  --glass-hover: rgba(87, 66, 230, 0.05);
+  --bg-frosted: rgba(87, 66, 230, 0.05);
+  --glass-card-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.78) 0%, rgba(243, 243, 248, 0.65) 100%);
+
+  /* Tier 3: Thick (Drawers & Modals) */
+  --glass-thick-bg: rgba(255, 255, 255, 0.84);
+  --glass-thick-blur: blur(36px) saturate(210%);
+  --glass-strong-bg: rgba(255, 255, 255, 0.85);
+  --glass-strong-border: rgba(87, 66, 230, 0.16);
+
+  /* Tier 4: Tinted */
+  --glass-tinted-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(235, 230, 255, 0.7) 100%);
+  --glass-tinted-border: rgba(87, 66, 230, 0.25);
 
   /* Category Colors (Light Mode Recalibrated) */
   --cat-sports-bg: rgba(184,104,0,0.08);
@@ -349,32 +366,79 @@ body {
 .elevation-4 { box-shadow: var(--elevation-4); }
 
 /* ═══════════════════════════════════════════════════
-   GLASS MORPHISM & SPECULAR UTILITIES
+   4-TIER LIQUID-GLASS & SPECULAR MATERIAL UTILITIES
 ═══════════════════════════════════════════════════ */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(20px) saturate(190%);
-  -webkit-backdrop-filter: blur(20px) saturate(190%);
-  border: 1px solid var(--glass-border);
+/* Tier 1: Thin (Badges, Floating controls, Tab pills) */
+.glass-thin {
+  background: var(--glass-thin-bg, rgba(255, 255, 255, 0.45));
+  backdrop-filter: var(--glass-thin-blur, blur(12px) saturate(180%));
+  -webkit-backdrop-filter: var(--glass-thin-blur, blur(12px) saturate(180%));
+  border: 1px solid var(--glass-thin-border, rgba(255, 255, 255, 0.7));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 2px 8px rgba(87, 66, 230, 0.04);
 }
 
-.glass-strong {
-  background: var(--glass-strong-bg);
-  backdrop-filter: blur(40px) saturate(200%);
-  -webkit-backdrop-filter: blur(40px) saturate(200%);
-  border: 1px solid var(--glass-strong-border);
+/* Tier 2: Regular (Base Cards, Bottom Tab Bar, Header Shell) */
+.glass,
+.glass-regular {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95), var(--elevation-1);
 }
 
 .glass-card {
   background: var(--glass-card-bg);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
   border: 1px solid var(--glass-border);
-  box-shadow: var(--shadow-card);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), var(--shadow-card);
+}
+
+/* Tier 3: Thick (Drawers, Bottom Sheets, Modals) */
+.glass-thick,
+.glass-strong {
+  background: var(--glass-thick-bg, var(--glass-strong-bg));
+  backdrop-filter: blur(36px) saturate(210%);
+  -webkit-backdrop-filter: blur(36px) saturate(210%);
+  border: 1px solid var(--glass-strong-border, rgba(255, 255, 255, 0.95));
+  box-shadow: inset 0 1px 0 #ffffff, var(--elevation-3);
+}
+
+/* Tier 4: Tinted (Aura promotions, Spotlight highlights) */
+.glass-tinted {
+  background: var(--glass-tinted-bg, linear-gradient(135deg, rgba(87, 66, 230, 0.12), rgba(2, 127, 168, 0.08)));
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+  border: 1px solid var(--glass-tinted-border, rgba(87, 66, 230, 0.25));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9), var(--elevation-2);
+}
+
+/* Directional Specular Light Rim (Top-Left Biased) */
+.specular-rim {
+  border-top: 1px solid rgba(255, 255, 255, 0.95);
+  border-left: 1px solid rgba(255, 255, 255, 0.8);
+  border-right: 1px solid rgba(87, 66, 230, 0.12);
+  border-bottom: 1px solid rgba(87, 66, 230, 0.15);
 }
 
 .specular-edge {
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95);
+}
+
+/* Fallback for reduced transparency / high contrast */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-thin,
+  .glass,
+  .glass-regular,
+  .glass-card,
+  .glass-thick,
+  .glass-strong,
+  .glass-tinted {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: var(--bg-surface) !important;
+  }
 }
 
 /* ═══════════════════════════════════════════════════
